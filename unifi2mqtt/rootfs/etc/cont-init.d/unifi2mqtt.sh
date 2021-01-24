@@ -50,7 +50,7 @@ COMMAND=(
 )
 
 if [ "${INSECURE}" == "true" ] ; then
-   CONFIG+=("--insecure" "${INSECURE}")
+   COMMAND+=("--insecure" "${INSECURE}")
 fi
 
 bashio::log.info "Creating startup script"
