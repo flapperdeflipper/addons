@@ -1,0 +1,6 @@
+{
+  "build_from": {
+    "amd64": "hassioaddons/prometheus-amd64:latest"
+  },
+  "args": {}
+}

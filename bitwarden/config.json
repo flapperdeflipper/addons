@@ -7,7 +7,7 @@
   "webui": "[PROTO:ssl]://[HOST]:[PORT:7277]",
   "startup": "services",
   "init": false,
-  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "arch": ["amd64"],
   "orts": {
     "7277/tcp": 7277
   },
@@ -34,5 +34,5 @@
       }
     ]
   },
-  "image": "flapperdeflipper/{arch}-addon-bitwarden"
+  "image": "flapperdeflipper/addon-bitwarden"
 }

@@ -1,7 +1,7 @@
 {
   "squash": false,
   "build_from": {
-    "amd64": "flapperdeflipper/amd64-addon-otmonitor"
+    "amd64": "flapperdeflipper/addon-otmonitor-upstream:latest"
   },
   "args": {}
 }

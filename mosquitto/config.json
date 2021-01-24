@@ -48,5 +48,5 @@
     "keyfile": "str",
     "require_certificate": "bool"
   },
-  "image": "flapperdeflipper/{arch}-addon-mosquitto"
+  "image": "flapperdeflipper/addon-mosquitto"
 }

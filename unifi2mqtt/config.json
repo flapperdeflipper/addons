@@ -4,7 +4,7 @@
   "slug": "unifi2mqtt",
   "description": "Connecting your unifi controler to mqtt",
   "url": "https://github.com/fliphess/addon-unifi2mqtt",
-  "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],
+  "arch": ["amd64"],
   "startup": "application",
   "boot": "auto",
   "services": ["mqtt:need"],
@@ -46,5 +46,5 @@
     "insecure": "bool",
     "verbosity": "list(error|warn|info|debug|info)"
   },
-  "image": "flapperdeflipper/{arch}-addon-unifi2mqtt"
+  "image": "flapperdeflipper/addon-unifi2mqtt"
 }

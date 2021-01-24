@@ -66,5 +66,5 @@
     "discovery_prefix": "str?",
     "log_level": "list(warning|information|debug)?"
   },
-  "image": "flapperdeflipper/{arch}-addon-sonos2mqtt"
+  "image": "flapperdeflipper/addon-sonos2mqtt"
 }
