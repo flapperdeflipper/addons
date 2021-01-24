@@ -55,7 +55,7 @@ fi
 
 bashio::log.info "Creating startup script"
 
-cat | tee -a /run.sh <<EOF
+cat > /run.sh <<EOF
 #!/usr/bin/env bash
 set -e -o pipefail
 exec ${COMMAND[@]}
