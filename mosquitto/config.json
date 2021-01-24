@@ -1,6 +1,6 @@
 {
   "name": "Mosquitto broker",
-  "version": "2021.01.13",
+  "version": "2021.01.01",
   "slug": "mosquitto",
   "description": "An Open Source MQTT broker with a MySQL authentication backend",
   "url": "https://github.com/fliphess/home-assistant-addons/tree/master/mosquitto",
