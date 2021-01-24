@@ -66,5 +66,6 @@
             "enabled": "bool",
             "editable": "bool"
         }
-    }
+    },
+    "image": "flapperdeflipper/otmonitor-addon-from-addons"
 }

@@ -45,5 +45,6 @@
     "unifi_site": "str",
     "insecure": "bool",
     "verbosity": "list(error|warn|info|debug|info)"
-  }
+  },
+  "image": "flapperdeflipper/{arch}-addon-unifi2mqtt"
 }
