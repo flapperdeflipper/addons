@@ -1,0 +1,13 @@
+{
+  "build_from": {
+    "aarch64": "homeassistant/aarch64-base-debian:buster",
+    "amd64": "homeassistant/amd64-base-debian:buster",
+    "armv7": "homeassistant/armv7-base-debian:buster",
+    "i386": "homeassistant/i386-base-debian:buster"
+  },
+  "args": {
+     "MOSQUITTO_VERSION": "1.6.12",
+     "MOSQUITTO_AUTH_VERSION": "0.6.1",
+     "GO_VERSION": "1.13.8"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Sonos2MQTT",
+  "version": "2021.01.4",
+  "slug": "sonos2mqtt",
+  "description": "Connecting your sonos speakers to mqtt",
+  "url": "https://github.com/fliphess/home-assistant-addons/tree/master/sonos2mqtt",
+  "arch": [
+    "amd64"
+  ],
+  "startup": "application",
+  "boot": "auto",
+  "services": ["mqtt:need"],
+  "ports": {
+    "6329/udp": 6329,
+    "6329/tcp": 6329
+  },
+  "ports_description": {
+    "6329/udp": "TCP Traffic from the sonos devices to sonos2mqtt",
+    "6329/tcp": "UDP Traffic from the sonos devices to sonos2mqtt"
+  },
+  "host_network": false,
+  "hassio_role": "default",
+  "hassio_api": false,
+  "advanced": true,
+  "environment": {
+    "CONFIG_PATH": "/etc/sonos2mqtt/config.json",
+    "SONOS2MQTT_RUNNING_IN_CONTAINER": "true"
+  },
+  "options": {
+    "mqtt_autoconfig": true,
+    "mqtt": {
+      "username": "some",
+      "password": "pass",
+      "host": "a.b.c.d",
+      "port": 1883,
+      "prefix": "home/sonos2mqtt",
+      "client_id": "sonos2mqtt"
+    },
+    "distinct": true,
+    "device": null,
+    "listener_ip": null,
+    "friendly_names": "name",
+    "tts_lang": "en-US",
+    "tts_endpoint": "",
+    "discovery": false,
+    "discovery_prefix": "homeassistant",
+    "log_level": "information"
+  },
+  "schema": {
+    "mqtt_autoconfig": "bool",
+    "mqtt": {
+      "username": "str?",
+      "password": "str?",
+      "host": "str?",
+      "port": "int?",
+      "prefix": "str?",
+      "client_id": "str?"
+    },
+    "distinct": "bool",
+    "device": "str",
+    "listener_ip": "str",
+    "friendly_names": "str?",
+    "tts_lang": "str?",
+    "tts_endpoint": "str?",
+    "discovery": "bool?",
+    "discovery_prefix": "str?",
+    "log_level": "list(warning|information|debug)?"
+  },
+  "image": "flapperdeflipper/{arch}-addon-sonos2mqtt"
+}

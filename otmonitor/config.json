@@ -1,0 +1,70 @@
+{
+    "name": "otmonitor",
+    "version": "2021.01.01",
+    "slug": "otmonitor",
+    "description": "otmonitor add-on by Bas Nijholt",
+    "url": "https://github.com/basnijholt/addon-otmonitor",
+    "startup": "before",
+    "hassio_api": true,
+    "hassio_role": "default",
+    "services": ["mqtt:want"],
+    "arch": [
+        "amd64"
+    ],
+    "boot": "auto",
+    "ingress": true,
+    "ports": {
+        "8080/tcp": 8080,
+        "7686/tcp": 7686
+    },
+    "ports_description": {
+        "8080/tcp": "otmonitor webserver port",
+        "7686/tcp": "otmonitor relay port (i.e. for OTGW integration)"
+    },
+    "map": ["share:rw"],
+    "options": {
+        "otgw": {
+            "host": "192.168.1.24",
+            "port": 6638,
+            "relay_port": 7686
+        },
+        "mqtt": {
+            "autoconfig": false,
+            "broker": "addon_core_mosquitto",
+            "port": 1883,
+            "username": "mqtt",
+            "password": "password_here",
+            "client_id": "otmonitor",
+            "action_topic": "actions/otmonitor",
+            "event_topic": "events/central_heating/otmonitor",
+            "data_format": "raw"
+        },
+        "html_templates": {
+            "enabled": false,
+            "editable": false
+        }
+    },
+    "panel_icon": "mdi:radiator",
+    "schema": {
+        "otgw": {
+            "host": "str",
+            "port": "int",
+            "relay_port": "int"
+        },
+        "mqtt": {
+            "autoconfig": "bool",
+            "broker": "str?",
+            "port": "int?",
+            "username": "str?",
+            "password": "str?",
+            "client_id": "str",
+            "action_topic": "str",
+            "event_topic": "str",
+            "data_format": "str"
+        },
+        "html_templates": {
+            "enabled": "bool",
+            "editable": "bool"
+        }
+    }
+}
