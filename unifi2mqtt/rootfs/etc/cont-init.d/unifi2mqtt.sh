@@ -6,12 +6,12 @@ bashio::log.info "Initializing service configuration."
 CONFIG_PATH=/data/options.json
 
 ## Unifi settings
-UNIFI_HOST="$( bashio::config 'unifi_host' )"
-UNIFI_PORT="$( bashio::config 'unifi_port' )"
-UNIFI_USER="$( bashio::config 'unifi_user' )"
-UNIFI_PASS="$( bashio::config 'unifi_pass' )"
-UNIFI_SITE="$( bashio::config 'unifi_site' )"
-INSECURE="$( bashio::config 'insecure')"
+UNIFI_HOST="$( bashio::config unifi_host )"
+UNIFI_PORT="$( bashio::config unifi_port )"
+UNIFI_USER="$( bashio::config unifi_user )"
+UNIFI_PASS="$( bashio::config unifi_pass )"
+UNIFI_SITE="$( bashio::config unifi_site )"
+INSECURE="$( bashio::config insecure )"
 
 ## MQTT settings
 if bashio::config.true 'mqtt_autoconfig' ; then
@@ -39,26 +39,26 @@ LOGGING="$( jq --raw-output '.verbosity // "info"' $CONFIG_PATH )"
 ## Command
 COMMAND=(
     "unifi2mqtt"
-    "--unifi-host"     "${UNIFI_HOST}"
-    "--unifi-port"     "${UNIFI_PORT}"
-    "--unifi-user"     "${UNIFI_USER}"
-    "--unifi-password" "${UNIFI_PASS}"
-    "--unifi-site"     "${UNIFI_SITE}"
-    "--verbosity"      "${LOGGING}"
-    "--name"           "${MQTT_PREFIX}"
-    "--url"            "${MQTT_URL}"
+    "--unifi-host"     "'${UNIFI_HOST}'"
+    "--unifi-port"     "'${UNIFI_PORT}'"
+    "--unifi-user"     "'${UNIFI_USER}'"
+    "--unifi-password" "'${UNIFI_PASS}'"
+    "--unifi-site"     "'${UNIFI_SITE}'"
+    "--verbosity"      "'${LOGGING}'"
+    "--name"           "'${MQTT_PREFIX}'"
+    "--url"            "'${MQTT_URL}'"
 )
 
 if [ "${INSECURE}" == "true" ] ; then
-   COMMAND+=("--insecure" "${INSECURE}")
+   COMMAND+=("--insecure")
 fi
 
 bashio::log.info "Creating startup script"
 
-cat | tee /run.sh <<EOF
+cat | tee -a /run.sh <<EOF
 #!/usr/bin/env bash
 set -e -o pipefail
-exec ${COMMAND[@]}"
+exec ${COMMAND[@]}
 EOF
 
 chmod +x /run.sh

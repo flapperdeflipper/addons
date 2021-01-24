@@ -1,6 +1,6 @@
 {
   "name": "Unifi2MQTT",
-  "version": "2021.01.01",
+  "version": "2021.01.02",
   "slug": "unifi2mqtt",
   "description": "Connecting your unifi controler to mqtt",
   "url": "https://github.com/fliphess/addon-unifi2mqtt",
