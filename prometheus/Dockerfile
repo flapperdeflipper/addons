@@ -22,7 +22,7 @@ LABEL \
     org.opencontainers.image.vendor="Flipkes personal home-assistant addons" \
     org.opencontainers.image.authors="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.licenses="MIT" \
-    org.opencontainers.image.url="https://github.com/fliphess/addon-prometheus" \
+    org.opencontainers.image.url="https://github.com/fliphess/addons" \
     org.opencontainers.image.source="https://github.com/${BUILD_REPOSITORY}" \
     org.opencontainers.image.documentation="https://github.com/${BUILD_REPOSITORY}/blob/main/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \

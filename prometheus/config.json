@@ -3,7 +3,7 @@
     "version": "2020.01.01",
     "slug": "prometheus",
     "description": "Cloud native metrics",
-    "url": "https://github.com/hassio-addons/addon-prometheus",
+    "url": "https://github.com/fliphess/addons/addon-prometheus",
     "startup": "services",
     "ingress": true,
     "ingress_port": 9090,
