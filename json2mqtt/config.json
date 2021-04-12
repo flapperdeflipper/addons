@@ -1,6 +1,6 @@
 {
   "name": "Json2MQTT",
-  "version": "dev",
+  "version": "2021041201",
   "slug": "json2mqtt",
   "description": "Send data from json apis to MQTT",
   "url": "https://github.com/fliphess/json2mqtt",
@@ -47,5 +47,6 @@
       "ssl_cert": "str"
     },
     "verbosity": "list(info|debug|error)"
-  }
+  },
+  "image": "flapperdeflipper/addon-json2mqtt"
 }
