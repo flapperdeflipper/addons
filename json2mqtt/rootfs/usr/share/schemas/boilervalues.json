@@ -1,0 +1,39 @@
+{
+    "name": "boilervalues",
+    "url": "http://${TOON_HOST}/boilerstatus/boilervalues.txt",
+    "interval": 120,
+    "fields": {
+        "last_update": {
+            "type": "String",
+            "path": "sampleTime"
+        },
+        "boiler_setpoint": {
+            "type": "Integer",
+            "path": "boilerSetpoint"
+        },
+        "room_temperature_setpoint": {
+            "type": "Integer",
+            "path": "roomTempSetpoint"
+        },
+        "boiler_pressure": {
+            "type": "Integer",
+            "path": "boilerPressure"
+        },
+        "room_temperature": {
+            "type": "Float",
+            "path": "roomTemp"
+        },
+        "boiler_out_temperature": {
+            "type": "Float",
+            "path": "boilerOutTemp"
+        },
+        "boiler_in_temperature": {
+            "type": "Float",
+            "path": "boilerInTemp"
+        },
+        "boiler_modulation_level": {
+            "type": "Integer",
+            "path": "boilerModulationLevel"
+        }
+    }
+}

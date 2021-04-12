@@ -1,0 +1,71 @@
+{
+    "name": "thermostat_info",
+    "url": "http://${TOON_HOST}/happ_thermstat?action=getThermostatInfo",
+    "interval": 120,
+    "fields": {
+        "result": {
+            "type": "String",
+            "path": "result"
+        },
+        "current_temperature": {
+            "type": "String",
+            "path": "currentTemp"
+        },
+        "current_setpoint": {
+            "type": "String",
+            "path": "currentSetpoint"
+        },
+        "current_interval_boiler_setpoint": {
+            "type": "String",
+            "path": "currentInternalBoilerSetpoint"
+        },
+        "program_state": {
+            "type": "String",
+            "path": "programState"
+        },
+        "active_state": {
+            "type": "String",
+            "path": "activeState"
+        },
+        "next_program": {
+            "type": "String",
+            "path": "nextProgram"
+        },
+        "next_state": {
+            "type": "String",
+            "path": "nextState"
+        },
+        "next_time": {
+            "type": "String",
+            "path": "nextTime"
+        },
+        "next_setpoint": {
+            "type": "String",
+            "path": "nextSetpoint"
+        },
+        "random_config_id": {
+            "type": "String",
+            "path": "randomConfigId"
+        },
+        "error_found": {
+            "type": "String",
+            "path": "errorFound"
+        },
+        "connection": {
+            "type": "String",
+            "path": "connection"
+        },
+        "burner_info": {
+            "type": "String",
+            "path": "burnerInfo"
+        },
+        "ot_comm_error": {
+            "type": "String",
+            "path": "otCommError"
+        },
+        "current_modulation_level": {
+            "type": "String",
+            "path": "currentModulationLevel"
+        }
+    }
+}
