@@ -1,0 +1,11 @@
+{
+    "name": "local_ip",
+    "url": "https://fliphess.com/ip.json",
+    "interval": 10,
+    "fields": {
+        "external_ip": {
+            "type": "String",
+            "path": "ip"
+        }
+    }
+}

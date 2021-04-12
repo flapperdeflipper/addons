@@ -1,0 +1,35 @@
+{
+    "name": "current_usage",
+    "url": "http://${TOON_HOST}/happ_pwrusage?action=GetCurrentUsage",
+    "interval": 60,
+    "fields": {
+        "result": {
+            "type": "String",
+            "path": "result"
+        },
+        "power_usage": {
+            "type": "Integer",
+            "path": "powerUsage.value"
+        },
+        "average_power_usage": {
+            "type": "Integer",
+            "path": "powerUsage.avgValue"
+        },
+        "power_production": {
+            "type": "Integer",
+            "path": "powerProduction.value"
+        },
+        "average_power_production": {
+            "type": "Integer",
+            "path": "powerProduction.avgValue"
+        },
+        "gas_usage": {
+            "type": "Integer",
+            "path": "gasUsage.value"
+        },
+        "average_gas_usage": {
+            "type": "Integer",
+            "path": "gasUsage.avgValue"
+        }
+    }
+}

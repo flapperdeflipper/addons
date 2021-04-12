@@ -1,0 +1,16 @@
+{
+    "name": "module_version",
+    "url": "http://${TOON_HOST}/happ_thermstat?action=getModuleVersion",
+    "interval": 3600,
+    "fields": {
+        "mmb": {
+            "type": "String",
+            "path": "mmb",
+            "cast": "Boolean"
+        },
+        "version": {
+            "type": "String",
+            "path": "version"
+        }
+    }
+}

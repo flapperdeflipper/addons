@@ -1,0 +1,81 @@
+{
+    "name": "toon_devices",
+    "url": "http://${TOON_HOST}/hdrv_zwave?action=getDevices.json",
+    "interval": 600,
+    "fields": {
+      "sensor_status": {
+        "type": "String",
+        "path": "dev_2.CurrentSensorStatus"
+      },
+      "sensor_connected": {
+        "type": "String",
+        "cast": "Integer",
+        "path": "dev_2.IsConnected"
+      },
+      "sensor_health_value": {
+        "type": "String",
+        "cast": "Integer",
+        "path": "dev_2.HealthValue"
+      },
+      "gas_flow": {
+        "type": "String",
+        "path": "\"dev_2.1\".CurrentGasFlow"
+      },
+      "gas_quantity": {
+        "type": "String",
+        "path": "\"dev_2.1\".CurrentGasQuantity"
+      },
+      "electricity_flow": {
+        "type": "String",
+        "path": "\"dev_2.2\".CurrentElectricityFlow"
+      },
+      "electricity_quantity": {
+        "type": "String",
+        "path": "\"dev_2.2\".CurrentElectricityQuantity"
+      },
+      "solar_flow": {
+        "type": "String",
+        "path": "\"dev_2.3\".CurrentElectricityFlow"
+      },
+      "solar_quantity": {
+        "type": "String",
+        "path": "\"dev_2.3\".CurrentElectricityQuantity"
+      },
+      "electricity_delivered_nt_flow": {
+        "type": "String",
+        "path": "\"dev_2.4\".CurrentElectricityFlow"
+      },
+      "electricity_delivered_nt_quantity": {
+        "type": "String",
+        "path": "\"dev_2.4\".CurrentElectricityQuantity"
+      },
+      "electricity_received_nt_flow": {
+        "type": "String",
+        "path": "\"dev_2.5\".CurrentElectricityFlow"
+      },
+      "electricity_received_nt_quantity": {
+        "type": "String",
+        "path": "\"dev_2.5\".CurrentElectricityQuantity"
+      },
+      "electricity_delivered_lt_flow": {
+        "type": "String",
+        "path": "\"dev_2.6\".CurrentElectricityFlow"
+      },
+      "electricity_delivered_lt_quantity": {
+        "type": "String",
+        "path": "\"dev_2.6\".CurrentElectricityQuantity"
+      },
+      "electricity_received_lt_flow": {
+        "type": "String",
+        "path": "\"dev_2.7\".CurrentElectricityFlow"
+      },
+      "electricity_received_lt_quantity": {
+        "type": "String",
+        "path": "\"dev_2.7\".CurrentElectricityQuantity"
+      },
+      "heat_quantity": {
+        "type": "String",
+        "path": "\"dev_2.8\".CurrentHeatQuantity"
+      }
+    }
+}
