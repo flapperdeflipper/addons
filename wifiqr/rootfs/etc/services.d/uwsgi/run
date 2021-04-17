@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bashio
+bashio::log.info "Starting WifiQR ..."
+
+export WIFI_SSID="$( bashio::config wifi_ssid )"
+export WIFI_PASSWORD="$( bashio::config wifi_password )"
+
+exec runuser --preserve-environment -u wifiqr -- uwsgi --ini /etc/uwsgi.ini
