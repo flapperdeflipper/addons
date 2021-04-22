@@ -7,6 +7,6 @@
     "i386": "homeassistant/i386-base:3.10"
   },
   "args": {
-      "WIFIQR_VERSION": "0.0.3"
+      "WIFIQR_VERSION": "0.0.4"
   }
 }
