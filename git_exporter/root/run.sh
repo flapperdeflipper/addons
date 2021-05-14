@@ -1,5 +1,5 @@
 #!/usr/bin/env bashio
-set -e
+set -e -o pipefail
 
 # Enable Jemalloc for better memory handling
 export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
@@ -16,7 +16,7 @@ function setup_git {
     password="$( bashio::config repository.password )"
 
     repository="$( bashio::config repository.url )"
-    commiter_mail="$( bashio::config repository.email )"
+    committer_mail="$( bashio::config repository.email )"
 
     if [[ "$password" != "ghp_*" ]]; then
         password="$( python3 -c "import urllib.parse; print(urllib.parse.quote('${password}'))" )"
@@ -30,19 +30,19 @@ function setup_git {
     cd "$local_repository"
 
     if [ ! -d .git ]; then
-        fullurl="https://${username}:${password}@${repository##*https://}"
+        full_url="https://${username}:${password}@${repository##*https://}"
 
         if [ "$pull_before_push" == 'true' ]; then
             bashio::log.info 'Clone existing repository'
-            git clone "$fullurl" "$local_repository"
+            git clone "$full_url" "$local_repository"
         else
             bashio::log.info 'Initialize new repository'
             git init "$local_repository"
-            git remote add origin "$fullurl"
+            git remote add origin "$full_url"
         fi
 
         git config user.name "${username}"
-        git config user.email "${commiter_mail:-git.exporter@home-assistant}"
+        git config user.email "${committer_mail:-git.exporter@home-assistant}"
     fi
 
     # Reset secrets if existing
@@ -97,15 +97,17 @@ function check_secrets {
 
     bashio::log.info 'Checking for secrets'
     # shellcheck disable=SC2046
-    git secrets --scan "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')" || ( bashio::log.error 'Found secrets in files!!! Fix them to be able to commit!' && exit 1 )
+    git secrets --scan "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')" || {
+        bashio::log.error 'Found secrets in files!!! Fix them to be able to commit!' && exit 1;
+    }
 }
 
 
 function set_permissions {
     directory="${local_repository}/${1}"
 
-    [ -d "$directory" ] || {
-	echo "Directory ${directory} not found!"
+    [ ! -d "$directory" ] && {
+	      echo "Directory ${directory} not found!"
         exit 1
     }
 
@@ -113,31 +115,42 @@ function set_permissions {
     find "${directory}" -type f -exec chmod 640 {} \;
 }
 
+
 function export_ha_config {
     bashio::log.info 'Get Home Assistant config'
     excludes="$( bashio::config exclude )"
     excludes=(
         "secrets.yaml"
-	".storage"
-	".cloud"
-	"esphome/"
-	".uuid"
-	"${excludes[@]}"
+	      ".storage"
+	      ".cloud"
+	      "esphome/"
+	      ".uuid"
+	      "${excludes[@]}"
     )
 
     # Cleanup existing esphome folder from config
-    [ -d "${local_repository}/config/esphome" ] && rm -r "${local_repository}/config/esphome"
+    [ -d "${local_repository}/config/esphome" ] && rm -rf "${local_repository}/config/esphome"
 
     # shellcheck disable=SC2068
-    exclude_args=$(printf -- '--exclude=%s ' ${excludes[@]})
+    exclude_args="$( printf -- '--exclude=%s ' ${excludes[@]} )"
 
     # shellcheck disable=SC2086
-    rsync -archive --compress --delete --checksum --prune-empty-dirs -q --include='.gitignore' $exclude_args /config ${local_repository}
+    rsync \
+        -q \
+        -archive \
+        --compress \
+        --delete \
+        --checksum \
+        --prune-empty-dirs \
+        --include='.gitignore' \
+        $exclude_args \
+        /config ${local_repository}
 
-    sed 's/:.*$/: ""/g' /config/secrets.yaml > ${local_repository}/config/secrets.yaml
+    sed 's/:.*$/: ""/g' /config/secrets.yaml > "${local_repository}/config/secrets.yaml"
 
     set_permissions "config"
 }
+
 
 function export_lovelace {
     bashio::log.info 'Get Lovelace config yaml'
@@ -146,91 +159,109 @@ function export_lovelace {
     find /config/.storage -name "lovelace*" -printf '%f\n' | xargs -I % cp /config/.storage/% /tmp/lovelace/%.json
 
     /utils/jsonToYaml.py '/tmp/lovelace/' 'data'
-    rsync -archive --compress --delete --checksum --prune-empty-dirs -q --include='*.yaml' --exclude='*' /tmp/lovelace/ "${local_repository}/lovelace"
+
+    rsync \
+        -q \
+        -archive \
+        --compress --delete \
+        --checksum \
+        --prune-empty-dirs \
+        --include='*.yaml' \
+        --exclude='*' \
+        /tmp/lovelace/ "${local_repository}/lovelace"
 
     set_permissions "lovelace"
 }
 
+
 function export_esphome {
     bashio::log.info 'Get ESPHome configs'
     rsync \
-	    -q \
-	    -archive \
-	    --compress \
-	    --delete \
-	    --checksum \
-	    --prune-empty-dirs \
-	    --exclude='.esphome*' \
-	    --include='*/' \
-	    --include='.gitignore' \
-	    --include='*.yaml' \
-	    --include='*.disabled' \
-	    --exclude='secrets.yaml' \
-	    --exclude='*' \
-	    /config/esphome "${local_repository}"
+        -q \
+        -archive \
+        --compress \
+        --delete \
+        --checksum \
+        --prune-empty-dirs \
+        --exclude='.esphome*' \
+        --include='*/' \
+        --include='.gitignore' \
+        --include='*.yaml' \
+        --include='*.disabled' \
+        --exclude='secrets.yaml' \
+        --exclude='*' \
+        /config/esphome "${local_repository}"
 
-    [ -f /config/esphome/secrets.yaml ] && sed 's/:.*$/: ""/g' /config/esphome/secrets.yaml > ${local_repository}/esphome/secrets.yaml
+    [ -f /config/esphome/secrets.yaml ] && {
+        sed 's/:.*$/: ""/g' /config/esphome/secrets.yaml > "${local_repository}/esphome/secrets.yaml";
+    }
 
     set_permissions "esphome"
 }
 
+
 function export_addons {
     mkdir -p "${local_repository}/addons" /tmp/addons
 
-    installed_addons=$(bashio::addons.installed)
+    installed_addons="$( bashio::addons.installed )"
 
     for addon in $installed_addons
     do
         if [ "$(bashio::addons.installed "${addon}")" == 'true' ]
-	then
+	      then
             bashio::log.info "Get ${addon} configs"
-            bashio::addon.options "$addon" >  /tmp/tmp.json
+
+            bashio::addon.options "${addon}" >  /tmp/tmp.json
+
             /utils/jsonToYaml.py /tmp/tmp.json
+
             mv /tmp/tmp.yaml "/tmp/addons/${addon}.yaml"
         fi
     done
 
     bashio::log.info "Get addon repositories"
-    bashio::addons false 'addons.repositorys' '.repositories | map(select(.source != null)) | map({(.name): {source,maintainer,slug}}) | add' > /tmp/tmp.json
+    bashio::addons false 'addons.repositories' '.repositories | map(select(.source != null)) | map({(.name): {source,maintainer,slug}}) | add' > /tmp/tmp.json
+
     /utils/jsonToYaml.py /tmp/tmp.json
+
     mv /tmp/tmp.yaml "/tmp/addons/repositories.yaml"
 
-    rsync -q \
-	  -archive \
-	  --compress \
-	  --delete \
-	  --checksum \
-	  --prune-empty-dirs \
-	  /tmp/addons/ \
-	  "${local_repository}/addons"
+    rsync \
+        -q \
+        -archive \
+        --compress \
+        --delete \
+        --checksum \
+        --prune-empty-dirs \
+        /tmp/addons/ "${local_repository}/addons"
 
     set_permissions "addons"
 }
+
 
 function main {
     bashio::log.info 'Start git export'
 
     setup_git
-
     export_ha_config
 
-    if [ "$(bashio::config 'export.lovelace')" == 'true' ]; then
+    if [ "$( bashio::config export.lovelace )" == 'true' ]; then
         export_lovelace
     fi
 
-    if [ "$(bashio::config 'export.esphome')" == 'true' ] && [ -d '/config/esphome' ]; then
+    if [ "$( bashio::config export.esphome )" == 'true' ] && [ -d '/config/esphome' ]; then
         export_esphome
     fi
 
-    if [ "$(bashio::config 'export.addons')" == 'true' ]; then
+    if [ "$( bashio::config export.addons )" == 'true' ]; then
         export_addons
     fi
 
-    if [ "$(bashio::config 'check.enabled')" == 'true' ]; then
+    if [ "$( bashio::config check.enabled )" == 'true' ]; then
         check_secrets
     fi
 
-    if [ "$(bashio::config 'dry_run')" == 'true' ]; then
+    if [ "$( bashio::config dry_run )" == 'true' ]; then
         git status
     else
         bashio::log.info 'Commit changes and push to remote'
