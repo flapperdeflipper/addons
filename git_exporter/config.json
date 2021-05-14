@@ -45,8 +45,8 @@
   },
   "schema": {
     "repository": {
-      "url": "match(https://.*)",
-      "email": "match(.+@.+)?",
+      "url": "str",
+      "email": "str?",
       "username": "str",
       "password": "password",
       "pull_before_push": "bool",
