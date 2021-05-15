@@ -1,19 +1,25 @@
 #!/bin/bash
 set -eE
 
+SUPERVISOR_VERSON="$(curl -s https://version.home-assistant.io/dev.json | jq -e -r '.supervisor' )"
 DOCKER_TIMEOUT=30
 DOCKER_PID=0
-
-SUPERVISOR_VERSON="$(curl -s https://version.home-assistant.io/dev.json | jq -e -r '.supervisor')"
-
 
 function start_docker() {
     local starttime
     local endtime
 
+    if grep -q 'Alpine' /proc/version; then
+        # The docker daemon does not start when running Alpine backed WSL2 without adjusting iptables
+        update-alternatives --set iptables /usr/sbin/iptables-legacy || echo "Fails adjust iptables"
+    fi
+
     echo "Starting docker."
     dockerd 2> /dev/null &
     DOCKER_PID=$!
+
+    ## Reset iptables (https://github.com/moby/moby/issues/16816#issuecomment-179717327)
+    service docker restart
 
     echo "Waiting for docker to initialize..."
     starttime="$(date +%s)"
@@ -29,7 +35,6 @@ function start_docker() {
     done
     echo "Docker was initialized"
 }
-
 
 function stop_docker() {
     local starttime
@@ -73,15 +78,19 @@ function cleanup_docker() {
 }
 
 function run_supervisor() {
+
+
     mkdir -p /tmp/supervisor_data
     docker run --rm --privileged \
         --name hassio_supervisor \
+        --privileged \
         --security-opt seccomp=unconfined \
         --security-opt apparmor:unconfined \
-        -v /run/docker.sock:/run/docker.sock \
-        -v /run/dbus:/run/dbus \
-        -v /tmp/supervisor_data:/data \
-        -v "/workspaces/addons:/data/addons/local" \
+        -v /run/docker.sock:/run/docker.sock:rw \
+        -v /run/dbus:/run/dbus:ro \
+        -v /run/udev:/run/udev:ro \
+        -v /tmp/supervisor_data:/data:rw \
+        -v "$WORKSPACE_DIRECTORY":/data/addons/local:rw \
         -v /etc/machine-id:/etc/machine-id:ro \
         -e SUPERVISOR_SHARE="/tmp/supervisor_data" \
         -e SUPERVISOR_NAME=hassio_supervisor \
@@ -108,6 +117,23 @@ function init_dbus() {
     dbus-daemon --system --print-address
 }
 
+function init_udev() {
+    if pgrep systemd-udevd; then
+        echo "udev is running"
+        return 0
+    fi
+
+    echo "Startup udev"
+
+    # cleanups
+    mkdir -p /run/udev
+
+    # run
+    /lib/systemd/systemd-udevd --daemon
+    sleep 3
+    udevadm trigger && udevadm settle
+}
+
 echo "Start Test-Env"
 
 start_docker
@@ -118,5 +144,6 @@ docker system prune -f
 cleanup_lastboot
 cleanup_docker
 init_dbus
+init_udev
 run_supervisor
 stop_docker

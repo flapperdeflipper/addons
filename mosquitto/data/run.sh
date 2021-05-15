@@ -271,7 +271,7 @@ fi
 bashio::log.info "Starting Mosquitto daemon"
 
 # Start Mosquitto Server
-mosquitto -c /etc/mosquitto.conf &
+runuser --user mosquitto -- mosquitto -c /etc/mosquitto.conf &
 WAIT_PIDS+=($!)
 
 ################################################################################
