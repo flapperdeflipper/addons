@@ -1,9 +1,9 @@
 {
   "name": "Mosquitto broker",
-  "version": "2021.01.01",
+  "version": "dev",
   "slug": "mosquitto",
   "description": "An Open Source MQTT broker with a MySQL authentication backend",
-  "url": "https://github.com/fliphess/home-assistant-addons/tree/master/mosquitto",
+  "url": "https://github.com/fliphess/addons/tree/master/mosquitto",
   "arch": [
       "amd64"
   ],
@@ -47,6 +47,5 @@
     "certfile": "str",
     "keyfile": "str",
     "require_certificate": "bool"
-  },
-  "image": "flapperdeflipper/addon-mosquitto"
+  }
 }
