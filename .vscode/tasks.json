@@ -14,7 +14,8 @@
                 "panel": "new"
             },
             "problemMatcher": []
-        },{
+        },
+	{
             "label": "Run Home Assistant CLI",
             "type": "shell",
             "command": "docker exec -ti hassio_cli /usr/bin/cli.sh",
