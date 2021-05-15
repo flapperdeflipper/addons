@@ -1,7 +1,7 @@
 
 {
   "name": "Home Assistant Git Exporter",
-  "version": "dev",
+  "version": "2021.05.15.1",
   "slug": "git_exporter",
   "description": "Export all of your Home Assistant configuration to a git repository of your choice.",
   "url": "https://github.com/fliphess/addons/tree/master/git_exporter",
@@ -15,9 +15,9 @@
   "map": ["config"],
   "options": {
     "repository": {
-      "url": "",
-      "username": "",
-      "password": "",
+      "url": "!secret git_exporter_url",
+      "username": "!secret git_exporter_username",
+      "password": "!secret git_exporter_password",
       "pull_before_push": true,
       "commit_message": "Home Assistant Git Exporter"
     },
@@ -67,5 +67,6 @@
     },
     "exclude": ["str"],
     "dry_run": "bool"
-  }
+  },
+  "image": "flapperdeflipper/addon-git-exporter"
 }

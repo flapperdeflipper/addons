@@ -1,6 +1,6 @@
 {
   "name": "Sonos2MQTT",
-  "version": "2021.01.01",
+  "version": "2021.05.15.1",
   "slug": "sonos2mqtt",
   "description": "Connecting your sonos speakers to mqtt",
   "url": "https://github.com/fliphess/home-assistant-addons/tree/master/sonos2mqtt",
