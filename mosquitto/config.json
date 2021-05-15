@@ -1,6 +1,6 @@
 {
   "name": "Mosquitto broker",
-  "version": "2021.05.15.1",
+  "version": "2021.05.15.2",
   "slug": "mosquitto",
   "description": "An Open Source MQTT broker with a MySQL authentication backend",
   "url": "https://github.com/fliphess/addons/tree/master/mosquitto",
