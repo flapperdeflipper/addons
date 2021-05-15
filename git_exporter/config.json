@@ -39,14 +39,17 @@
       ".DS_Store",
       "deps/",
       "known_devices.yaml",
-      "tts/"
+      "tts/",
+      "zigbee2mqtt",
+      "www",
+      "appdaemon"
     ],
     "dry_run": false
   },
   "schema": {
     "repository": {
-      "url": "str",
-      "email": "str?",
+      "url": "match(https://.*)",
+      "email": "match(.+@.+)?",
       "username": "str",
       "password": "password",
       "pull_before_push": "bool",
@@ -55,8 +58,7 @@
     "export": {
       "lovelace": "bool",
       "addons": "bool",
-      "esphome": "bool",
-      "node_red": "bool"
+      "esphome": "bool"
     },
     "check": {
       "enabled": "bool",
