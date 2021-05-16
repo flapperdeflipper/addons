@@ -77,11 +77,13 @@ function check_secrets {
 
     if [ "$( bashio::config check.check_for_secrets )" == 'true' ]
     then
+        bashio::log.info 'Add checking for credentials'
         git secrets --add-provider -- sed '/^$/d;/^#.*/d;/^&/d;s/^.*://g;s/\s//g' /config/secrets.yaml
     fi
 
     if [ "$(bashio::config check.check_for_ips )" == 'true' ]
     then
+        bashio::log.info 'Add checking for ip addresses'
         git secrets --add '([0-9]{1,3}\.){3}[0-9]{1,3}'
         git secrets --add '([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})'
 
@@ -96,10 +98,24 @@ function check_secrets {
     bashio::log.info "Prohibited patterns:\n${prohibited_patterns//\\n/\\\\n}"
 
     bashio::log.info 'Checking for secrets'
-    # shellcheck disable=SC2046
-    git secrets --scan "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')" || {
-        bashio::log.error 'Found secrets in files!!! Fix them to be able to commit!' && exit 1;
-    }
+
+    files=()
+    found=0
+
+    for filepath in "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')"
+    do
+        if ! git secrets --scan "$filepath" ; then
+            files+=("$filepath")
+            found=1
+        fi
+    done
+
+    if [ "$found" -ne 0 ]
+    then
+        bashio::log.error "Found secrets in files!!! Fix them to be able to commit!"
+        bashio::log.error "Files found: ${files[@]}"
+        exit 1
+    fi
 }
 
 
@@ -107,7 +123,7 @@ function set_permissions {
     directory="${local_repository}/${1}"
 
     [ ! -d "$directory" ] && {
-	      echo "Directory ${directory} not found!"
+          echo "Directory ${directory} not found!"
         exit 1
     }
 
@@ -121,11 +137,11 @@ function export_ha_config {
     excludes="$( bashio::config exclude )"
     excludes=(
         "secrets.yaml"
-	      ".storage"
-	      ".cloud"
-	      "esphome/"
-	      ".uuid"
-	      "${excludes[@]}"
+        ".storage"
+        ".cloud"
+        "esphome/"
+        ".uuid"
+        "${excludes[@]}"
     )
 
     # Cleanup existing esphome folder from config
@@ -208,7 +224,7 @@ function export_addons {
     for addon in $installed_addons
     do
         if [ "$(bashio::addons.installed "${addon}")" == 'true' ]
-	      then
+        then
             bashio::log.info "Get ${addon} configs"
 
             bashio::addon.options "${addon}" >  /tmp/tmp.json
