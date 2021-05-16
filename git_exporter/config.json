@@ -1,7 +1,7 @@
 
 {
   "name": "Home Assistant Git Exporter",
-  "version": "2021.05.16.4",
+  "version": "2021.05.16.5",
   "slug": "git_exporter",
   "description": "Export all of your Home Assistant configuration to a git repository of your choice.",
   "url": "https://github.com/fliphess/addons/tree/master/git_exporter",
@@ -25,11 +25,6 @@
       "lovelace": true,
       "addons": true,
       "esphome": true
-    },
-    "check": {
-      "enabled": true,
-      "check_for_secrets": true,
-      "check_for_ips": true
     },
     "exclude": [
       "*.db",
