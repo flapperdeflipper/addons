@@ -1,5 +1,4 @@
 #!/usr/bin/env bashio
-set -e -o pipefail
 
 # Enable Jemalloc for better memory handling
 export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
@@ -81,7 +80,7 @@ function check_secrets {
         git secrets --add-provider -- sed '/^$/d;/^#.*/d;/^&/d;s/^.*://g;s/\s//g' /config/secrets.yaml
     fi
 
-    if [ "$(bashio::config check.check_for_ips )" == 'true' ]
+    if [ "$( bashio::config check.check_for_ips )" == 'true' ]
     then
         bashio::log.info 'Add checking for ip addresses'
         git secrets --add '([0-9]{1,3}\.){3}[0-9]{1,3}'
@@ -104,7 +103,11 @@ function check_secrets {
 
     for filepath in "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')"
     do
+        bashio::log.info "Checking: $filepath"
+
         if ! git secrets --scan "$filepath" ; then
+            bashio::log.error "Error in $filepath: Secret found!"
+
             files+=("$filepath")
             found=1
         fi
