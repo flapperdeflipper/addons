@@ -76,13 +76,13 @@ function check_secrets {
 
     if [ "$( bashio::config check.check_for_secrets )" == 'true' ]
     then
-        bashio::log.info 'Add checking for credentials'
+        bashio::log.info 'Add provider for credentials'
         git secrets --add-provider -- sed '/^$/d;/^#.*/d;/^&/d;s/^.*://g;s/\s//g' /config/secrets.yaml
     fi
 
     if [ "$( bashio::config check.check_for_ips )" == 'true' ]
     then
-        bashio::log.info 'Add checking for ip addresses'
+        bashio::log.info 'Add patterns for ip addresses'
         git secrets --add '([0-9]{1,3}\.){3}[0-9]{1,3}'
         git secrets --add '([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})'
 
@@ -93,15 +93,15 @@ function check_secrets {
     fi
 
     bashio::log.info 'Add secrets from secrets.yaml'
-    prohibited_patterns="$( git config --get-all secrets.patterns )"
-    bashio::log.info "Prohibited patterns:\n${prohibited_patterns//\\n/\\\\n}"
+    prohibited_patterns="$( git config --get-all secrets.patterns | tr '\n' ' ' )"
+    bashio::log.info "Prohibited patterns:\n${prohibited_patterns}"
 
     bashio::log.info 'Checking for secrets'
 
     files=()
     found=0
 
-    for filepath in "$( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled')"
+    for filepath in $( find "$local_repository" -name '*.yaml' -o -name '*.yml' -o -name '*.json' -o -name '*.disabled' )
     do
         bashio::log.info "Checking: $filepath"
 
