@@ -1,12 +1,12 @@
 # addon-unifi2mqtt
 
-Home assistant addon for [wifiqr](https://github.com/fliphess/wifiqr)
+Home assistant addon for [wifiqr](https://github.com/flapperdeflipper/wifiqr)
 
 ## Info
 
 |     |     |
 | --- | --- |
-| Github repository | https://github.com/fliphess/wifiqr |
+| Github repository | https://github.com/flapperdeflipper/wifiqr |
 | PyPi | https://pypi.org/project/flask_wifiqr/ |
 
 ## Manual build

@@ -1,9 +1,9 @@
 {
     "name": "wifiqr",
-    "version": "2021.04.22.01",
+    "version": "2021.05.25.1",
     "slug": "wifiqr",
     "description": "Wifiqr add-on",
-    "url": "https://github.com/fliphess/addons/tree/master/wifiqr",
+    "url": "https://github.com/flapperdeflipper/addons/tree/master/wifiqr",
     "startup": "services",
     "hassio_api": false,
     "hassio_role": "default",

@@ -72,5 +72,5 @@ LABEL \
     org.label-schema.url="" \
     org.label-schema.usage="" \
     org.label-schema.vcs-ref=${BUILD_REF} \
-    org.label-schema.vcs-url="https://github.com/fliphess/addons" \
+    org.label-schema.vcs-url="https://github.com/flapperdeflipper/addons" \
     org.label-schema.vendor="Flipjes addons"
