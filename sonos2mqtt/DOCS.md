@@ -8,7 +8,7 @@ This addon installs [sonos2mqtt](https://github.com/svrooij/sonos2mqtt).
 
 ## Install
 
-Install by going to Supervisor -> Add-on store -> Add new repository by url and fill in `https://github.com/fliphess/addon-sonos2mqtt`.
+Install by going to Supervisor -> Add-on store -> Add new repository by url and fill in `https://github.com/flapperdeflipper/addons`.
 
 
 ## Options

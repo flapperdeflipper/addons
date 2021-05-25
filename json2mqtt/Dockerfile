@@ -45,12 +45,12 @@ LABEL \
     maintainer="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.title="Json to MQTT" \
     org.opencontainers.image.description="Send data from json apis to MQTT" \
-    org.opencontainers.image.vendor="https://github.com/fliphess/json2mqtt" \
+    org.opencontainers.image.vendor="https://github.com/flapperdeflipper/json2mqtt" \
     org.opencontainers.image.authors="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.licenses="MIT" \
-    org.opencontainers.image.url="https://github.com/fliphess/addons" \
+    org.opencontainers.image.url="https://github.com/flapperdeflipper/addons" \
     org.opencontainers.image.source="https://pypi.org/project/json2mqtt" \
-    org.opencontainers.image.documentation="https://github.com/fliphess/addons/blob/master/json2mqtt/README.md" \
+    org.opencontainers.image.documentation="https://github.com/flapperdeflipper/addons/blob/master/json2mqtt/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}

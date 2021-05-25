@@ -1,9 +1,9 @@
 {
     "name": "Prometheus",
-    "version": "2020.01.01",
+    "version": "2021.05.25.1",
     "slug": "prometheus",
     "description": "Cloud native metrics",
-    "url": "https://github.com/fliphess/addons/addon-prometheus",
+    "url": "https://github.com/flapperdeflipper/addons/addon-prometheus",
     "startup": "services",
     "ingress": true,
     "ingress_port": 9090,

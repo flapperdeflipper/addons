@@ -8,7 +8,7 @@ This addon installs [json2mqtt](https://github.com/hobbyquaker/json2mqtt).
 
 ## Install
 
-Install by going to Supervisor -> Add-on store -> Add new repository by url and fill in `https://github.com/fliphess/addons`.
+Install by going to Supervisor -> Add-on store -> Add new repository by url and fill in `https://github.com/flapperdeflipper/addons`.
 
 ## Options
 

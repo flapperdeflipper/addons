@@ -52,7 +52,7 @@ LABEL \
     maintainer="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.title="Sonos to MQTT" \
     org.opencontainers.image.description="Connecting your sonos speakers to mqtt" \
-    org.opencontainers.image.vendor="https://github.com/fliphess/addon-sonos2mqtt" \
+    org.opencontainers.image.vendor="https://github.com/flapperdeflipper/addons" \
     org.opencontainers.image.authors="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.url="https://github.com/fliphess/addon-sonos2mqtt" \

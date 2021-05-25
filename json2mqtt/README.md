@@ -1,6 +1,6 @@
 # addon-json2mqtt
 
-Home assistant addon for [json2mqtt](https://github.com/fliphess/json2mqtt)
+Home assistant addon for [json2mqtt](https://github.com/flapperdeflipper/json2mqtt)
 
 ## Info
 

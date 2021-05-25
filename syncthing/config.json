@@ -1,10 +1,9 @@
-
 {
   "name": "Syncthing",
-  "version": "2021.05.15.1",
+  "version": "2021.05.25.1",
   "slug": "syncthing",
   "description": "Syncthing is a continuous file synchronization program in a de-centralized way. ",
-  "url": "https://github.com/fliphess/addons/tree/master/syncthing",
+  "url": "https://github.com/flapperdeflipper/addons/tree/master/syncthing",
   "arch": [
     "amd64"
   ],

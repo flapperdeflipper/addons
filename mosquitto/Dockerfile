@@ -157,8 +157,8 @@ LABEL \
     org.opencontainers.image.authors="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.licenses="MIT" \
     org.opencontainers.image.url="https://addons.fliphess.com" \
-    org.opencontainers.image.source="https://github.com/fliphess/home-assistant-addons" \
-    org.opencontainers.image.documentation="https://github.com/fliphess/home-assistant-addons/blob/master/mosquitto/README.md" \
+    org.opencontainers.image.source="https://github.com/flapperdeflipper/home-assistant-addons" \
+    org.opencontainers.image.documentation="https://github.com/flapperdeflipper/home-assistant-addons/blob/master/mosquitto/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}

@@ -48,12 +48,12 @@ LABEL \
     maintainer="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.title="Unifi to MQTT" \
     org.opencontainers.image.description="Connecting your unifi speakers to mqtt" \
-    org.opencontainers.image.vendor="https://github.com/fliphess/addon-unifi2mqtt" \
+    org.opencontainers.image.vendor="https://github.com/flapperdeflipper/addon-unifi2mqtt" \
     org.opencontainers.image.authors="Flip Hess <flip@fliphess.com>" \
     org.opencontainers.image.licenses="MIT" \
-    org.opencontainers.image.url="https://github.com/fliphess/addon-unifi2mqtt" \
+    org.opencontainers.image.url="https://github.com/flapperdeflipper/addon-unifi2mqtt" \
     org.opencontainers.image.source="https://www.npmjs.com/package/unifi2mqtt" \
-    org.opencontainers.image.documentation="https://github.com/fliphess/home-assistant-addons/blob/master/unifi2mqtt/README.md" \
+    org.opencontainers.image.documentation="https://github.com/flapperdeflipper/home-assistant-addons/blob/master/unifi2mqtt/README.md" \
     org.opencontainers.image.created=${BUILD_DATE} \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}
