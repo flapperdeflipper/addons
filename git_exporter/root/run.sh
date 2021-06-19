@@ -4,6 +4,9 @@ set -e -o pipefail
 # Enable Jemalloc for better memory handling
 export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
 
+## Rsync arguments
+rsync_cmd="rsync -q -archive --compress --delete --checksum --prune-empty-dirs"
+
 ## The destination of the local repository
 local_repository='/data/repository'
 
@@ -18,21 +21,25 @@ function setup_git {
     repository="$( bashio::config repository.url )"
     committer_mail="$( bashio::config repository.email )"
 
-    if [[ "$password" != "ghp_*" ]]; then
+    if [[ "$password" != "ghp_*" ]]
+    then
         password="$( python3 -c "import urllib.parse; print(urllib.parse.quote('${password}'))" )"
     fi
 
-    if [ ! -d "$local_repository" ]; then
+    if [ ! -d "$local_repository" ]
+    then
         bashio::log.info 'Create local repository'
         mkdir -p "$local_repository"
     fi
 
     cd "$local_repository"
 
-    if [ ! -d .git ]; then
+    if [ ! -d .git ]
+    then
         full_url="https://${username}:${password}@${repository##*https://}"
 
-        if [ "$pull_before_push" == 'true' ]; then
+        if [ "$pull_before_push" == 'true' ]
+        then
             bashio::log.info 'Clone existing repository'
             git clone "$full_url" "$local_repository"
         else
@@ -45,7 +52,8 @@ function setup_git {
         git config user.email "${committer_mail:-git.exporter@home-assistant}"
     fi
 
-    if [ "$pull_before_push" == 'true' ]; then
+    if [ "$pull_before_push" == 'true' ]
+    then
         bashio::log.info 'Pull latest'
         git fetch
         git reset --hard origin/master
@@ -84,16 +92,7 @@ function export_ha_config {
     exclude_args="$( printf -- '--exclude=%s ' ${excludes[@]} )"
 
     # shellcheck disable=SC2086
-    rsync \
-        -q \
-        -archive \
-        --compress \
-        --delete \
-        --checksum \
-        --prune-empty-dirs \
-        --include='.gitignore' \
-        $exclude_args \
-        /config ${local_repository}
+    $rsync_cmd --include='.gitignore' $exclude_args /config ${local_repository}
 
     sed 's/:.*$/: ""/g' /config/secrets.yaml > "${local_repository}/config/secrets.yaml"
 
@@ -109,15 +108,7 @@ function export_lovelace {
 
     /utils/jsonToYaml.py '/tmp/lovelace/' 'data'
 
-    rsync \
-        -q \
-        -archive \
-        --compress --delete \
-        --checksum \
-        --prune-empty-dirs \
-        --include='*.yaml' \
-        --exclude='*' \
-        /tmp/lovelace/ "${local_repository}/lovelace"
+    $rsync_cmd --include='*.yaml' --exclude='*' /tmp/lovelace/ "${local_repository}/lovelace"
 
     set_permissions "${local_repository}/lovelace"
 }
@@ -125,13 +116,7 @@ function export_lovelace {
 
 function export_esphome {
     bashio::log.info 'Get ESPHome configs'
-    rsync \
-        -q \
-        -archive \
-        --compress \
-        --delete \
-        --checksum \
-        --prune-empty-dirs \
+    $rsync_cmd \
         --exclude='.esphome*' \
         --include='*/' \
         --include='.gitignore' \
@@ -175,14 +160,7 @@ function export_addons {
 
     mv /tmp/tmp.yaml "/tmp/addons/repositories.yaml"
 
-    rsync \
-        -q \
-        -archive \
-        --compress \
-        --delete \
-        --checksum \
-        --prune-empty-dirs \
-        /tmp/addons/ "${local_repository}/addons"
+    $rsync_cmd /tmp/addons/ "${local_repository}/addons"
 
     set_permissions "${local_repository}/addons"
 }
@@ -194,19 +172,23 @@ function main {
     setup_git
     export_ha_config
 
-    if [ "$( bashio::config export.lovelace )" == 'true' ]; then
+    if [ "$( bashio::config export.lovelace )" == 'true' ]
+    then
         export_lovelace
     fi
 
-    if [ "$( bashio::config export.esphome )" == 'true' ] && [ -d '/config/esphome' ]; then
+    if [ "$( bashio::config export.esphome )" == 'true' ] && [ -d '/config/esphome' ]
+    then
         export_esphome
     fi
 
-    if [ "$( bashio::config export.addons )" == 'true' ]; then
+    if [ "$( bashio::config export.addons )" == 'true' ]
+    then
         export_addons
     fi
 
-    if [ "$( bashio::config dry_run )" == 'true' ]; then
+    if [ "$( bashio::config dry_run )" == 'true' ]
+    then
         git status
     else
         bashio::log.info 'Commit changes and push to remote'
@@ -214,7 +196,8 @@ function main {
         git add .
         git commit -m "$( bashio::config repository.commit_message )"
 
-        if [ ! "$pull_before_push" == 'true' ]; then
+        if [ ! "$pull_before_push" == 'true' ]
+        then
             git push --set-upstream origin master -f
         else
             git push origin
