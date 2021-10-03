@@ -7,3 +7,10 @@ Syncthing is a continuous file synchronization program. It synchronizes files be
 This is a personal fork of the awesome addon by [Poeschl](https://github.com/Poeschl/Hassio-Addons/tree/master/syncthing).
 You are recommended to use the original one, this is only for private tests and debugging.
 
+
+```
+ARCH=amd64
+docker build . \
+  --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.14 \
+  $( cat build.json  | jq -r '.args | to_entries|map("--build-arg \(.key)=\(.value)")[]' )
+```
