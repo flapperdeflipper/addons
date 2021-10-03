@@ -15,7 +15,7 @@ Home assistant addon for [sonos2mqtt](https://svrooij.io/sonos2mqtt/)
 ```
 ARCH=amd64
 docker build . \
-    --build-arg BUILD_FROM=homeassistant/${ARCH}-base:3.10 \
+    --build-arg BUILD_FROM=homeassistant/${ARCH}-base:3.14 \
     --build-arg BUILD_ARCH=${ARCH} \
     --build-arg SONOS2MQTT_VERSION=3.1.2
 ```

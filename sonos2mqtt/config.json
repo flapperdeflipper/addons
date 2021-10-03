@@ -1,6 +1,6 @@
 {
   "name": "Sonos2MQTT",
-  "version": "2021.10.03.1",
+  "version": "2021.10.03.2",
   "slug": "sonos2mqtt",
   "description": "Connecting your sonos speakers to mqtt",
   "url": "https://github.com/flapperdeflipper/addons/tree/master/sonos2mqtt",
