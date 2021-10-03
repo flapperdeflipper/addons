@@ -17,5 +17,5 @@ ARCH=amd64
 docker build . \
     --build-arg BUILD_FROM=homeassistant/${ARCH}-base:3.10 \
     --build-arg BUILD_ARCH=${ARCH} \
-    --build-arg SONOS2MQTT_VERSION=3.1.1
+    --build-arg SONOS2MQTT_VERSION=3.1.2
 ```
