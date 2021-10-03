@@ -34,9 +34,5 @@ To manually build, use the following command:
 ARCH=amd64
 docker build . \
   --build-arg BUILD_FROM=homeassistant/${ARCH}-base-debian:buster \
-  --build-arg CJSON_VERSION=1.7.14 \
-  --build-arg LWS_VERSION=2.4.2 \
-  --build-arg MOSQUITTO_VERSION=2.0.10 \
-  --build-arg MOSQUITTO_AUTH_VERSION=1.6.0 \
-  --build-arg GO_VERSION=1.16.4
+  $( cat build.json  | jq -r '.args | to_entries|map("--build-arg \(.key)=\(.value)")[]' )
 ```
