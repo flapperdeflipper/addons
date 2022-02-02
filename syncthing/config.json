@@ -1,6 +1,6 @@
 {
   "name": "Syncthing",
-  "version": "2021.10.02.2",
+  "version": "2022.02.02.1",
   "slug": "syncthing",
   "description": "Syncthing is a continuous file synchronization program in a de-centralized way. ",
   "url": "https://github.com/flapperdeflipper/addons/tree/master/syncthing",
