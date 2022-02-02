@@ -3,6 +3,6 @@
     "amd64": "homeassistant/amd64-base:3.14"
   },
   "args": {
-      "SONOS2MQTT_VERSION": "3.1.2"
+      "SONOS2MQTT_VERSION": "3.2.0"
   }
 }
