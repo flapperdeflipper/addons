@@ -5,8 +5,8 @@
   "args": {
      "CJSON_VERSION": "1.7.15",
      "LWS_VERSION": "2.4.2",
-     "MOSQUITTO_VERSION": "2.0.12",
+     "MOSQUITTO_VERSION": "2.0.14",
      "MOSQUITTO_AUTH_VERSION": "1.8.2",
-     "GO_VERSION": "1.16.4"
+     "GO_VERSION": "1.17.6"
   }
 }
