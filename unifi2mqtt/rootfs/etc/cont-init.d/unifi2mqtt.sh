@@ -1,4 +1,7 @@
 #!/usr/bin/with-contenv bashio
+# vi: ft=bash
+# shellcheck shell=bash
+
 set -e -o pipefail +x
 
 bashio::log.info "Initializing service configuration."
@@ -10,8 +13,7 @@ UNIFI_HOST="$( bashio::config unifi_host )"
 UNIFI_PORT="$( bashio::config unifi_port )"
 UNIFI_USER="$( bashio::config unifi_user )"
 UNIFI_PASS="$( bashio::config unifi_pass )"
-UNIFI_SITE="$( bashio::config unifi_site )"
-INSECURE="$( bashio::config insecure )"
+INSECURE="$(   bashio::config insecure )"
 
 ## MQTT settings
 if bashio::config.true 'mqtt_autoconfig' ; then
@@ -30,35 +32,28 @@ else
     MQTT_PASS="$( bashio::config 'mqtt.password' )"
 fi
 
-MQTT_URL="mqtt://${MQTT_USER}:${MQTT_PASS}@${MQTT_HOST}:${MQTT_PORT}"
 MQTT_PREFIX="$( jq --raw-output '.mqtt.prefix // "home/unifi2mqtt"' $CONFIG_PATH )"
 
 ## Logging
 LOGGING="$( jq --raw-output '.verbosity // "info"' $CONFIG_PATH )"
-
-## Command
-COMMAND=(
-    "unifi2mqtt"
-    "--unifi-host"     "'${UNIFI_HOST}'"
-    "--unifi-port"     "'${UNIFI_PORT}'"
-    "--unifi-user"     "'${UNIFI_USER}'"
-    "--unifi-password" "'${UNIFI_PASS}'"
-    "--unifi-site"     "'${UNIFI_SITE}'"
-    "--verbosity"      "'${LOGGING}'"
-    "--name"           "'${MQTT_PREFIX}'"
-    "--url"            "'${MQTT_URL}'"
-)
-
-if [ "${INSECURE}" == "true" ] ; then
-   COMMAND+=("--insecure")
-fi
 
 bashio::log.info "Creating startup script"
 
 cat > /run.sh <<EOF
 #!/usr/bin/env bash
 set -e -o pipefail
-exec ${COMMAND[@]}
+export UNIFI__HOST="https://${UNIFI_HOST}:${UNIFI_PORT}"
+export UNIFI__USERNAME="${UNIFI_USER}"
+export UNIFI__PASSWORD="${UNIFI_PASS}"
+export UNIFI__DISABLESSLVALIDATION="${INSECURE}"
+export UNIFI__MQTT__TOPICPREFIX="${MQTT_PREFIX}"
+export UNIFI__MQTT__DISCOVERYENABLED=true
+export UNIFI__MQTT__DISCOVERYNAME=unifi2mqtt
+export UNIFI__MQTT__BROKER="${MQTT_HOST}:${MQTT_PORT}"
+export UNIFI__MQTT__USERNAME="${MQTT_USER}"
+export UNIFI__MQTT__PASSWORD="${MQTT_PASS}"
+
+exec /usr/bin/dotnet /app/Unifi.dll
 EOF
 
 chmod +x /run.sh
