@@ -1,6 +1,6 @@
 {
   "name": "Unifi2MQTT",
-  "version": "2021.05.25.1",
+  "version": "2022.04.06.1",
   "slug": "unifi2mqtt",
   "description": "Connecting your unifi controler to mqtt",
   "url": "https://github.com/flapperdeflipper/addons",
