@@ -1,6 +1,6 @@
 {
   "name": "Unifi2MQTT",
-  "version": "2022.04.05.1",
+  "version": "2022.04.06.1",
   "slug": "unifi2mqtt",
   "description": "Connecting your unifi controler to mqtt",
   "url": "https://github.com/flapperdeflipper/addons",
@@ -25,6 +25,7 @@
     "unifi_port": 8443,
     "unifi_user": "admin",
     "unifi_pass": "",
+    "unifi_site": "default",
     "insecure": true,
     "verbosity": "info"
   },
