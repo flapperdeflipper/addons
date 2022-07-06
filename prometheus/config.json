@@ -1,6 +1,6 @@
 {
     "name": "Prometheus",
-    "version": "2021.05.25.1",
+    "version": "2022.07.06.1",
     "slug": "prometheus",
     "description": "Cloud native metrics",
     "url": "https://github.com/flapperdeflipper/addons/addon-prometheus",
