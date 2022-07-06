@@ -10,6 +10,7 @@
   ],
   "startup": "once",
   "boot": "manual",
+  "init": false,
   "hassio_api": true,
   "hassio_role": "manager",
   "map": ["config"],

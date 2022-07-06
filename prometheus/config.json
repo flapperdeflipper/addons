@@ -12,6 +12,7 @@
     "panel_title": "Prometheus",
     "arch": ["amd64"],
     "boot": "auto",
+  "init": false,
     "hassio_api": true,
     "homeassistant_api": true,
     "hassio_role": "default",

@@ -9,6 +9,7 @@
   ],
   "startup": "application",
   "boot": "auto",
+  "init": false,
   "services": ["mqtt:need"],
   "ports": {
     "6329/udp": 6329,

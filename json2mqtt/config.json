@@ -9,6 +9,7 @@
   ],
   "startup": "services",
   "boot": "auto",
+  "init": false,
   "services": ["mqtt:need"],
   "host_network": false,
   "hassio_role": "default",
