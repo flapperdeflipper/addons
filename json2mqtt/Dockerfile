@@ -8,7 +8,9 @@ ENV LANG C.UTF-8
 SHELL ["/bin/bash", "-o", "pipefail", "-c", "+x"]
 
 RUN apk add --no-cache --virtual .build-dependencies \
+      python3-dev \
       py3-pip \
+      build-base \
  \
  && apk add --no-cache \
       gettext \
@@ -17,7 +19,7 @@ RUN apk add --no-cache --virtual .build-dependencies \
       jq \
  \
  && apk add runuser --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main \
- && pip3 install --disable-pip-version-check --no-cache-dir  --upgrade json2mqtt \
+ && pip install --disable-pip-version-check --no-cache-dir --upgrade json2mqtt \
  && apk del --no-cache --purge .build-dependencies \
  && rm -rf \
         /tmp/.[!.]* \
