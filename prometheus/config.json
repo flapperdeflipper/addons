@@ -1,6 +1,6 @@
 {
     "name": "Prometheus",
-    "version": "2022.07.06.1",
+    "version": "2021.05.25.1",
     "slug": "prometheus",
     "description": "Cloud native metrics",
     "url": "https://github.com/flapperdeflipper/addons/addon-prometheus",
@@ -12,7 +12,6 @@
     "panel_title": "Prometheus",
     "arch": ["amd64"],
     "boot": "auto",
-  "init": false,
     "hassio_api": true,
     "homeassistant_api": true,
     "hassio_role": "default",

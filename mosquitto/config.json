@@ -1,6 +1,6 @@
 {
   "name": "Mosquitto broker",
-  "version": "2022.07.06.1",
+  "version": "2022.02.02.1",
   "slug": "mosquitto",
   "description": "An Open Source MQTT broker with a MySQL authentication backend",
   "url": "https://github.com/flapperdeflipper/addons/tree/master/mosquitto",
@@ -9,7 +9,6 @@
   ],
   "startup": "system",
   "boot": "auto",
-  "init": false,
   "map": ["ssl", "share"],
   "advanced": true,
   "hassio_role": "default",

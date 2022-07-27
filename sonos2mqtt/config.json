@@ -1,6 +1,6 @@
 {
   "name": "Sonos2MQTT",
-  "version": "2022.07.06.1",
+  "version": "2022.02.02.1",
   "slug": "sonos2mqtt",
   "description": "Connecting your sonos speakers to mqtt",
   "url": "https://github.com/flapperdeflipper/addons/tree/master/sonos2mqtt",
@@ -9,7 +9,6 @@
   ],
   "startup": "application",
   "boot": "auto",
-  "init": false,
   "services": ["mqtt:need"],
   "ports": {
     "6329/udp": 6329,

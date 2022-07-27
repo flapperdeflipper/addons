@@ -1,15 +1,18 @@
 {
   "name": "Json2MQTT",
-  "version": "2022.07.06.1",
+  "version": "2021.05.25.1",
   "slug": "json2mqtt",
   "description": "Send data from json apis to MQTT",
   "url": "https://github.com/flapperdeflipper/json2mqtt",
   "arch": [
-      "amd64"
+      "aarch64",
+      "amd64",
+      "armhf",
+      "armv7",
+      "i386"
   ],
   "startup": "services",
   "boot": "auto",
-  "init": false,
   "services": ["mqtt:need"],
   "host_network": false,
   "hassio_role": "default",

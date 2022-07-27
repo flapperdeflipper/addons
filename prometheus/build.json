@@ -1,6 +1,6 @@
 {
   "build_from": {
-    "amd64": "ghcr.io/hassio-addons/prometheus/amd64:fe262a9"
+    "amd64": "hassioaddons/prometheus-amd64:45a1472"
   },
   "args": {}
 }
