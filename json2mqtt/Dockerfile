@@ -5,8 +5,6 @@ ARG JSON2MQTT_VERSION="1.1.0"
 
 ENV LANG C.UTF-8
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c", "+x"]
-
 RUN apk add --no-cache --virtual .build-dependencies \
       py3-pip \
  \
