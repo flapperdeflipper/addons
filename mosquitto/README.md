@@ -33,6 +33,6 @@ To manually build, use the following command:
 ```
 ARCH=amd64
 docker build . \
-  --build-arg BUILD_FROM=homeassistant/${ARCH}-base-debian:buster \
-  $( cat build.json  | jq -r '.args | to_entries|map("--build-arg \(.key)=\(.value)")[]' )
+  --build-arg BUILD_FROM=homeassistant/${ARCH}-base-debian:bullseye \
+  $( yamltojson build.yaml | jq -r '.args | to_entries|map("--build-arg \(.key)=\(.value)")[]' )
 ```

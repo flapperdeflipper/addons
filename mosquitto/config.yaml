@@ -1,0 +1,53 @@
+name: Mosquitto broker
+description: An Open Source MQTT broker with a MySQL authentication backend
+slug: mosquitto
+startup: application
+url: https://github.com/flapperdeflipper/addons/tree/master/mosquitto
+# image: "flapperdeflipper/addon-mosquitto"
+version: dev
+
+init: false
+hassio_api: true
+hassio_role: default
+advanced: true
+boot: auto
+arch:
+  - amd64
+
+discovery:
+  - mqtt
+
+services:
+  - mqtt:provide
+  - mysql:need
+
+ports:
+  1883/tcp: 1883
+  1884/tcp: 1884
+  8883/tcp: 8883
+  8884/tcp: 8884
+
+map:
+  - ssl
+  - share
+
+options:
+  admin_password: someverysecretthing
+  anonymous: false
+  certfile: fullchain.pem
+  customize:
+    active: false
+    folder: mosquitto
+  keyfile: privkey.pem
+  require_certificate: false
+
+schema:
+  admin_password: str
+  anonymous: bool
+  cafile: str?
+  certfile: str
+  customize:
+    active: bool
+    folder: str
+  keyfile: str
+  require_certificate: bool
