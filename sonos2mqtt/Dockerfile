@@ -10,6 +10,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c", "+x"]
 
 RUN apk add --no-cache --virtual .build-dependencies \
       c-ares \
+      build-base \
       http-parser \
       libuv \
       npm \
@@ -19,8 +20,8 @@ RUN apk add --no-cache --virtual .build-dependencies \
       curl \
       jq \
       nodejs \
+      runuser \
  \
- && apk add runuser --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main \
  && npm config set unsafe-perm \
  && npm install -g sonos2mqtt@${SONOS2MQTT_VERSION} \
  && apk del --no-cache --purge .build-dependencies \
