@@ -1,4 +1,7 @@
 #!/usr/bin/env bashio
+
+bashio::log.info "Updating mosquitto config"
+
 set +u
 
 ################################################################################
@@ -35,6 +38,8 @@ keyfile /ssl/$KEYFILE
 require_certificate $REQUIRE_CERTIFICATE
 "
 
+bashio::log.info "Retrieving mysqm username, password host and port"
+
 MYSQL_USER="$( bashio::services 'mysql' 'username' )"
 MYSQL_PASS="$( bashio::services 'mysql' 'password' )"
 MYSQL_HOST="$( bashio::services 'mysql' 'host' )"
@@ -45,6 +50,9 @@ MYSQL_PORT="$( bashio::services 'mysql' 'port' )"
 ################################################################################
 
 function get_database() {
+
+    bashio::log.info "Getting mysql databases"
+
     mysql \
         -u "${MYSQL_USER}" \
         -p"${MYSQL_PASS}"  \
@@ -55,6 +63,9 @@ function get_database() {
 }
 
 function create_database() {
+
+    bashio::log.info "creating mysql database mosquitto"
+
     mysql \
         -u "${MYSQL_USER}" \
         -p"${MYSQL_PASS}"  \
@@ -69,6 +80,8 @@ function load_database() {
     local admin_password="$1"
     local hass_password="$2"
     local addons_password="$3"
+
+    bashio::log.info "Loading mosquitto autodiscovery passwords into database"
 
     sed -i -e "s|%%ADMIN_PASSWORD%%|$admin_password|g"   /usr/share/create_tables.sql
     sed -i -e "s|%%HASS_PASSWORD%%|$hass_password|g"     /usr/share/create_tables.sql
@@ -86,6 +99,8 @@ function update_admin_passwords() {
     local admin_password="$1"
     local hass_password="$2"
     local addons_password="$3"
+
+    bashio::log.info "Updating mysql passwords"
 
     mysql "mosquitto" \
         -u "${MYSQL_USER}"  \
@@ -113,6 +128,9 @@ function write_system_users() {
     local hass="$1"
     local addons="$2"
     local admin="$3"
+
+    bashio::log.info "Setting up mysql system users"
+
     (
         echo "{\"homeassistant\": {\"password\": \"$hass\"}, \"addons\": {\"password\": \"$addons\"}, \"admin\": {\"password\": \"$admin\"}}"
     ) > "${SYSTEM_USER}"
@@ -123,6 +141,8 @@ function call_hassio() {
     local path=$2
     local data="${3}"
     local token=
+
+    bashio::log.info "Calling hassio api"
 
     token="X-Hassio-Key: ${HASSIO_TOKEN}"
     url="http://hassio/${path}"
@@ -166,6 +186,9 @@ function constrain_discovery() {
 
 
 function update_mosquitto_config() {
+
+    bashio::log.info "Updating mosquitto config"
+
     ## Allow anonymous logins
     sed -i -e "s|%%ANONYMOUS%%|$ANONYMOUS|g" /etc/mosquitto.conf
 
