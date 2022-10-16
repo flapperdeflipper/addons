@@ -9,7 +9,7 @@ ARG GO_VERSION
 ## Step 1: Build mosquitto and the go auth plugin                             ##
 ################################################################################
 
-FROM golang:${GO_VERSION}-buster AS builder
+FROM golang:${GO_VERSION}-bullseye AS builder
 ARG MOSQUITTO_VERSION
 ARG MOSQUITTO_AUTH_VERSION
 ARG CJSON_VERSION
@@ -140,9 +140,7 @@ COPY --from=builder /app/plugin/go-auth.so /usr/share/mosquitto/auth-plug.so
 COPY --from=builder /app/plugin/pw         /usr/bin/pw
 
 WORKDIR /
-COPY data/run.sh /
-COPY data/create_tables.sql /usr/share/
-COPY data/mosquitto.conf /etc/
+COPY rootfs /
 
 LABEL \
     io.hass.name="Moquitto" \
@@ -165,5 +163,4 @@ LABEL \
 
 USER root
 EXPOSE 1883 1884 8883 8884
-CMD [ "/run.sh" ]
 

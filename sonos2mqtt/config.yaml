@@ -1,0 +1,72 @@
+name: Sonos2MQTT
+slug: sonos2mqtt
+description: Connecting your sonos speakers to mqtt
+url: https://github.com/flapperdeflipper/addons/tree/master/sonos2mqtt
+
+version: 2021.10.16.1
+image: flapperdeflipper/addon-sonos2mqtt
+
+advanced: true
+
+arch:
+- amd64
+
+ports:
+  6329/tcp: 6329
+  6329/udp: 6329
+
+ports_description:
+  6329/tcp: UDP Traffic from the sonos devices to sonos2mqtt
+  6329/udp: TCP Traffic from the sonos devices to sonos2mqtt
+
+services:
+- mqtt:need
+
+init: false
+boot: auto
+startup: application
+hassio_api: false
+hassio_role: default
+host_network: false
+
+environment:
+  CONFIG_PATH: /etc/sonos2mqtt/config.json
+  SONOS2MQTT_RUNNING_IN_CONTAINER: 'true'
+
+options:
+  device: null
+  discovery: false
+  discovery_prefix: homeassistant
+  distinct: true
+  friendly_names: name
+  listener_ip: null
+  log_level: information
+  mqtt:
+    client_id: sonos2mqtt
+    host: a.b.c.d
+    password: pass
+    port: 1883
+    prefix: home/sonos2mqtt
+    username: some
+  mqtt_autoconfig: true
+  tts_endpoint: ''
+  tts_lang: en-US
+
+schema:
+  device: str
+  discovery: bool?
+  discovery_prefix: str?
+  distinct: bool
+  friendly_names: str?
+  listener_ip: str
+  log_level: list(warning|information|debug)?
+  mqtt:
+    client_id: str?
+    host: str?
+    password: str?
+    port: int?
+    prefix: str?
+    username: str?
+  mqtt_autoconfig: bool
+  tts_endpoint: str?
+  tts_lang: str?

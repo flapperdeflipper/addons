@@ -1,8 +1,0 @@
-{
-  "build_from": {
-    "amd64": "homeassistant/amd64-base:3.16"
-  },
-  "args": {
-      "UNIFI2MQTT_VERSION": "1.1.0"
-  }
-}

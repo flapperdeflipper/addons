@@ -1,0 +1,57 @@
+name: Json2MQTT
+slug: json2mqtt
+description: Send data from json apis to MQTT
+url: https://github.com/flapperdeflipper/json2mqtt
+
+image: flapperdeflipper/addon-json2mqtt
+version: 2021.10.16.1
+
+services:
+- mqtt:need
+
+startup: services
+init: false
+
+arch:
+- aarch64
+- amd64
+- armhf
+- armv7
+- i386
+
+boot: auto
+hassio_api: false
+hassio_role: default
+host_network: false
+
+map:
+- ssl
+- share:rw
+
+options:
+  mqtt:
+    host: a.b.c.d
+    password: pass
+    port: 1883
+    prefix: home/json2mqtt
+    ssl: false
+    ssl_cert: /etc/ssl/cert.pem
+    username: some
+  mqtt_autoconfig: true
+  schema_dir: /share/json2mqtt/schemas
+  toon_host: toon.local
+  verbosity: info
+
+schema:
+  mqtt:
+    host: str?
+    password: str?
+    port: int?
+    prefix: str
+    ssl: bool
+    ssl_cert: str
+    username: str?
+  mqtt_autoconfig: bool
+  schema_dir: str
+  toon_host: str
+  verbosity: list(info|debug|error)

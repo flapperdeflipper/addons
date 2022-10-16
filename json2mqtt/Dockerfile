@@ -5,21 +5,19 @@ ARG JSON2MQTT_VERSION="1.1.0"
 
 ENV LANG C.UTF-8
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c", "+x"]
-
 RUN apk add --no-cache --virtual .build-dependencies \
-      python3-dev \
       py3-pip \
       build-base \
  \
  && apk add --no-cache \
       gettext \
+      runuser \
       python3 \
+      python3-dev \
       curl \
       jq \
  \
- && apk add runuser --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main \
- && pip install --disable-pip-version-check --no-cache-dir --upgrade json2mqtt \
+ && pip3 install --disable-pip-version-check --no-cache-dir  --upgrade json2mqtt \
  && apk del --no-cache --purge .build-dependencies \
  && rm -rf \
         /tmp/.[!.]* \

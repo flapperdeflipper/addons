@@ -1,8 +1,0 @@
-{
-  "build_from": {
-    "amd64": "homeassistant/amd64-base:3.16"
-  },
-  "args": {
-      "SONOS2MQTT_VERSION": "3.2.0"
-  }
-}
