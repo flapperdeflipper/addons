@@ -4,7 +4,7 @@ description: Send data from json apis to MQTT
 url: https://github.com/flapperdeflipper/json2mqtt
 
 image: flapperdeflipper/addon-json2mqtt
-version: 2021.10.16.2
+version: 2022.10.16.2
 
 services:
 - mqtt:need

@@ -3,7 +3,7 @@ slug: sonos2mqtt
 description: Connecting your sonos speakers to mqtt
 url: https://github.com/flapperdeflipper/addons/tree/master/sonos2mqtt
 
-version: 2021.10.16.2
+version: 2022.10.16.2
 image: flapperdeflipper/addon-sonos2mqtt
 
 advanced: true
