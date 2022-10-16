@@ -1,15 +1,12 @@
 FROM mcr.microsoft.com/vscode/devcontainers/base:debian
 
-WORKDIR /workspaces
+ENV \
+    DEBIAN_FRONTEND=noninteractive \
+    DEVCONTAINER=1
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Set Docker daemon config
-RUN \
-    mkdir -p /etc/docker \
-    && echo '{"storage-driver": "vfs"}' > /etc/docker/daemon.json
-
-# Installa aditional tools
+# Install tools
 RUN \
     apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -18,29 +15,17 @@ RUN \
         libpulse0 \
         xz-utils
 
-# Install docker
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        software-properties-common \
-        gpg-agent \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
-    && add-apt-repository "deb https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        docker-ce \
-        docker-ce-cli \
-        containerd.io \
-    && rm -rf /var/lib/apt/lists/*
+COPY .devcontainer/common/rootfs /
+COPY .devcontainer/common/rootfs_supervisor /
+COPY .devcontainer/common/install /tmp/common/install
 
-# Install shellcheck
+# Install common
 RUN \
-    curl -fLs \
-        "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz" \
-        | tar -xJ \
-    \
-    && mv -f "./shellcheck-stable/shellcheck" "/usr/bin/shellcheck" \
-    && rm -rf "./shellcheck-stable"
+    bash devcontainer_init \
+    && common_install_packages \
+        docker \
+        shellcheck \
+        cas \
+        os-agent
 
-# Generate a machine-id for this container
-RUN rm /etc/machine-id && dbus-uuidgen --ensure=/etc/machine-id
+COPY .devcontainer/rootfs /
