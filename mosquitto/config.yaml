@@ -3,8 +3,8 @@ slug: mosquitto
 description: An Open Source MQTT broker with a MySQL authentication backend
 url: https://github.com/flapperdeflipper/addons/tree/master/mosquitto
 
-image: "flapperdeflipper/addon-mosquitto"
-version: 2021.10.16.2
+image: flapperdeflipper/addon-mosquitto
+version: 2022.10.16.2
 
 init: false
 startup: application
