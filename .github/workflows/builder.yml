@@ -112,5 +112,5 @@ jobs:
             ${{ env.BUILD_ARGS }} \
             --${{ matrix.arch }} \
             --target /data/${{ matrix.addon }} \
-            --docker-hub flapperdeflipper
+            --docker-hub flapperdeflipper \
             --addon
