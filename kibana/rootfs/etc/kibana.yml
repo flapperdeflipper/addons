@@ -1,0 +1,13 @@
+server:
+  host: "0.0.0.0"
+  shutdownTimeout: "5s"
+
+elasticsearch:
+  hosts:
+  - %%ELASTICSEARCH_HOST%%
+
+monitoring:
+  ui:
+    container:
+      elasticsearch:
+        enabled: true

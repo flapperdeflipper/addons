@@ -1,0 +1,28 @@
+name: Kibana ui
+slug: kibana
+description: Kibana
+url: https://github.com/flapperdeflipper/addons/tree/master/kibana
+image: flapperdeflipper/addon-kibana
+version: 2022.11.03.1
+
+init: false
+startup: application
+hassio_api: false
+hassio_role: default
+advanced: true
+boot: auto
+ingress: true
+panel_icon: "mdi:console-network"
+
+arch:
+  - amd64
+ports:
+  5601/tcp: 5601
+ports_description:
+  5601/tcp: "kibana webserver port"
+map:
+  - share:rw
+options:
+  environment: []
+schema:
+  environment: list
