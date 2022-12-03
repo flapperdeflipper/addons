@@ -22,7 +22,6 @@ ports_description:
   5601/tcp: "kibana webserver port"
 map:
   - share:rw
-  - data:rw
 
 options:
   elasticsearch:
