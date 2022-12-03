@@ -53,5 +53,5 @@ LABEL \
     org.opencontainers.image.version=${BUILD_VERSION}
 
 WORKDIR /usr/share/kibana
-USER kibana
+USER root
 EXPOSE 5601

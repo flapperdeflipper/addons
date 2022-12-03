@@ -3,7 +3,7 @@ slug: kibana
 description: Kibana
 url: https://github.com/flapperdeflipper/addons/tree/master/kibana
 image: flapperdeflipper/addon-kibana
-version: 2022.11.03.3
+version: 2022.11.03.4
 
 init: false
 startup: application
