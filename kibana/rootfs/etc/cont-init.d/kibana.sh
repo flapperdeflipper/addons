@@ -14,6 +14,12 @@ function setconf() {
 function main() {
     bashio::log.info "Initializing kibana configuration."
 
+    if ! bashio::fs.directory_exists "/share/kibana"
+    then
+        bashio::log.info "Creating default config directory"
+        mkdir -p /share/kibana
+    fi
+
     ## Set default config if not found
     if ! bashio::fs.file_exists "/share/kibana/kibana.yml"
     then
