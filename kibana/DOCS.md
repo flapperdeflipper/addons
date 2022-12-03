@@ -21,7 +21,9 @@ The add-on has a couple of options available. To get the add-on running:
 Add-on configuration:
 
 ```yaml
-environment:
-  some_env_var: some_value
+elasticsearch:
+  host: '!secret elasticsearch_host'
+  username: '!secret kibana_username'
+  password: '!secret kibana_password'
 ```
 
