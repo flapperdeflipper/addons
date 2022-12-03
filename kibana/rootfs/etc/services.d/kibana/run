@@ -8,4 +8,4 @@ export RESTART_ON_UPGRADE="true"
 
 cd "${KBN_HOME}" || exit 1
 
-exec /usr/share/kibana/bin/kibana
+exec su --preserve-environment kibana -c /usr/share/kibana/bin/kibana
