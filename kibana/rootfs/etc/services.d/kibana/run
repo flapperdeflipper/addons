@@ -2,5 +2,10 @@
 # shellcheck shell=bash
 set -e +u
 
-source "${ENVFILE:-/usr/share/kibana/.env}"
-exec /usr/local/bin/kibana-docker
+export KBN_HOME=/usr/share/kibana
+export KBN_PATH_CONF=/etc/kibana
+export RESTART_ON_UPGRADE="true"
+
+cd "${KBN_HOME}" || exit 1
+
+exec /usr/share/kibana/bin/kibana

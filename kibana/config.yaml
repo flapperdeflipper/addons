@@ -22,7 +22,16 @@ ports_description:
   5601/tcp: "kibana webserver port"
 map:
   - share:rw
+  - data:rw
+
 options:
-  environment: []
+  elasticsearch:
+    host: ""
+    username: ""
+    password: ""
+
 schema:
-  environment: list
+  elasticsearch:
+    host: str
+    username: str
+    password: str
