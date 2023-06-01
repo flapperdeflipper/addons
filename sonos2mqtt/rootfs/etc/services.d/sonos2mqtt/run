@@ -1,9 +1,0 @@
-#!/usr/bin/with-contenv bashio
-bashio::log.info "Starting sonos2mqtt..."
-
-CONFIG_PATH=/data/options.json
-
-export SONOS_LISTENER_HOST="$( jq --raw-output '.listener_ip // "0.0.0.0"' $CONFIG_PATH )"
-export CONFIG_PATH="/etc/sonos2mqtt/config.json"
-
-exec runuser --preserve-environment -u sonos2mqtt sonos2mqtt
