@@ -161,5 +161,5 @@ LABEL \
     org.opencontainers.image.revision=${BUILD_REF} \
     org.opencontainers.image.version=${BUILD_VERSION}
 
-USER mosquitto
+USER root
 EXPOSE 1883 1884 8883 8884
