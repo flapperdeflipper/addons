@@ -119,7 +119,7 @@ function call_hassio() {
 
     bashio::log.info "Calling supervisor api"
 
-    token="Authorization: Bearer ${SUPERVISOR_TOKEN}"
+    token="Authorization: Bearer ${SUPERVISOR_TOKEN:-}"
     url="http://supervisor/${path}"
 
     # Call API
