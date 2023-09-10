@@ -9,7 +9,7 @@ ARG GO_VERSION
 ## Step 1: Build mosquitto and the go auth plugin                             ##
 ################################################################################
 
-FROM golang:${GO_VERSION}-bullseye AS builder
+FROM golang:${GO_VERSION}-bookworm AS builder
 ARG MOSQUITTO_VERSION
 ARG MOSQUITTO_AUTH_VERSION
 ARG CJSON_VERSION
