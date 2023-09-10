@@ -1,8 +1,8 @@
 build_from:
   amd64: "homeassistant/amd64-base-debian:bullseye"
 args:
-  CJSON_VERSION: "1.7.15"
+  CJSON_VERSION: "1.7.16"
   LWS_VERSION: "4.2.2"
-  MOSQUITTO_VERSION: "2.0.15"
+  MOSQUITTO_VERSION: "2.0.17"
   MOSQUITTO_AUTH_VERSION: "2.1.0"
-  GO_VERSION: "1.20.4"
+  GO_VERSION: "1.21.1"
