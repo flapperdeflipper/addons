@@ -4,12 +4,10 @@ FROM $BUILD_FROM:$WAS_VERSION
 
 COPY rootfs /
 WORKDIR /app
-
 ARG BUILD_ARCH
 ARG BUILD_DATE
 ARG BUILD_REF
 ARG BUILD_VERSION
-
 LABEL \
     io.hass.name="Willow WAS" \
     io.hass.description="Run a willow application service" \
