@@ -1,10 +1,10 @@
 name: Willow Application Server
-slug: was
+slug: willow-was
 description: Run a willow application service
 url: https://github.com/toverainc/willow-application-server
 
 image: flapperdeflipper/addon-willow-was
-version: 2023.11.05.01
+version: 2023.11.05.02
 
 services:
 - mqtt:need
