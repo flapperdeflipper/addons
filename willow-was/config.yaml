@@ -4,7 +4,7 @@ description: Run a willow application service
 url: https://github.com/toverainc/willow-application-server
 
 image: flapperdeflipper/addon-willow-was
-version: 2023.11.05.02
+version: 2023.11.05.03
 
 services:
 - mqtt:need
@@ -17,12 +17,12 @@ uart: false
 
 hassio_api: true
 hassio_role: default
-host_network: false
+host_network: true
 
 arch:
 - amd64
 
-ingress: true
+ingress: false
 
 ports:
   8501/tcp: 8501
