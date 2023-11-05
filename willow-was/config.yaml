@@ -4,7 +4,7 @@ description: Run a willow application service
 url: https://github.com/toverainc/willow-application-server
 
 image: flapperdeflipper/addon-willow-was
-version: 2023.11.05.05
+version: 2023.11.05.06
 
 init: false
 boot: auto
@@ -19,6 +19,7 @@ arch:
 
 ingress: true
 ingress_port: 8502
+ingress_entry: /admin/
 
 ports:
   8501/tcp: 8501
