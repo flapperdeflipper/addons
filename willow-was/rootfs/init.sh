@@ -8,6 +8,7 @@ echo "--> Copying files from /app/storage to /share/willow/was/storage"
 cp -rv /app/storage/* /share/willow/was/storage/ || exit 1
 
 echo "--> Symlinking /app/storage to /share/willow/was/storage/"
+rm -rf /app/storage                     || exit 1
 ln -sf /share/willow/was/storage /app/  || exit 1
 
 echo "--> Running /app/entrypoint.sh"

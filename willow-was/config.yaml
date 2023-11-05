@@ -4,7 +4,7 @@ description: Run a willow application service
 url: https://github.com/toverainc/willow-application-server
 
 image: flapperdeflipper/addon-willow-was
-version: 2023.11.05.06
+version: 2023.11.05.07
 
 init: false
 boot: auto
