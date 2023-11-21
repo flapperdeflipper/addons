@@ -1,6 +1,5 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Example add-on
-version: "1.2.0"
 slug: example
 description: Example add-on
 url: "https://github.com/home-assistant/addons-example/tree/main/example"
@@ -18,3 +17,6 @@ options:
 schema:
   message: "str?"
 image: "ghcr.io/home-assistant/{arch}-addon-example"
+
+image: flapperdeflipper/addon-example
+version: 2023.11.21.1
