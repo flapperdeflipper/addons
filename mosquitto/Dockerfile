@@ -98,10 +98,12 @@ RUN set -x \
 ################################################################################
 
 FROM ${BUILD_FROM}
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
 
 RUN set -x \
  && apt-get update \
  && apt-get install -y \
+     adduser \
      ca-certificates \
      libc-ares2 \
      openssl \
