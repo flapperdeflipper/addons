@@ -39,10 +39,13 @@ RUN set -x \
  && cmake . \
      -DCMAKE_BUILD_TYPE=MinSizeRel \
      -DCMAKE_INSTALL_PREFIX=/usr \
+     -DDISABLE_WERROR=ON \
      -DLWS_IPV6=ON \
+     -DLWS_WITH_HTTP2=OFF \
      -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
      -DLWS_WITHOUT_CLIENT=ON \
      -DLWS_WITHOUT_EXTENSIONS=ON \
+     -DLWS_WITH_EXTERNAL_POLL=ON \
      -DLWS_WITHOUT_TESTAPPS=ON \
      -DLWS_WITH_SHARED=OFF \
      -DLWS_WITH_ZIP_FOPS=OFF \
@@ -75,10 +78,9 @@ RUN set -x \
      WITH_ADNS=no \
      WITH_DOCS=no \
      WITH_SHARED_LIBRARIES=yes \
-     WITH_STATIC_LIBRARIES=no \
+     WITH_STATIC_LIBRARIES=yes \
      WITH_SRV=no \
      WITH_STRIP=yes \
-     WITH_TLS_PSK=no \
      WITH_WEBSOCKETS=yes \
      prefix=/usr \
      binary \
