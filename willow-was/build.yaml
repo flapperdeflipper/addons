@@ -1,4 +1,0 @@
-build_from:
-  amd64: ghcr.io/toverainc/willow-application-server
-args:
-  WAS_VERSION: latest

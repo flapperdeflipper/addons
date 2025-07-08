@@ -1,3 +1,0 @@
-#!/usr/bin/with-contenv bashio
-bashio::log.info "Starting json2mqtt..."
-exec runuser --preserve-environment -u json2mqtt /run.sh
