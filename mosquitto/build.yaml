@@ -1,8 +1,8 @@
 build_from:
   amd64: "homeassistant/amd64-base-debian:bookworm"
 args:
-  CJSON_VERSION: "1.7.16"
-  LWS_VERSION: "4.3.3"
-  MOSQUITTO_VERSION: "2.0.18"
-  MOSQUITTO_AUTH_VERSION: "2.1.0"
-  GO_VERSION: "1.21.4"
+  CJSON_VERSION: "1.7.18"
+  LWS_VERSION: "4.3.5"
+  MOSQUITTO_VERSION: "2.0.21"
+  MOSQUITTO_AUTH_VERSION: "3.0.0"
+  GO_VERSION: "1.24.4"
