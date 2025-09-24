@@ -1,9 +1,12 @@
 ---
 name: iSponsorBlockTV add-on
-version: dev
 slug: isponsorblocktv
 description: SponsorBlock client for all YouTube TV clients.
 url: "https://github.com/flapperdeflipper/addons/tree/main/isponsorblocktv"
+
+image: flapperdeflipper/addon-isponsorblock
+version: 2025.09.24.01
+
 arch:
   - amd64
 init: false
