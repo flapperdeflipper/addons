@@ -1,0 +1,10 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start the isponsorblocktv service
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+bashio::log.info "Starting..."
+
+## Run your program
+ln -sf /data/options.json /data/config.json
+python3 -u /app/main.pyc --data /data
