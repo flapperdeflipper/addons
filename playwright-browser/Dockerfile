@@ -2,19 +2,11 @@
 # image bumped to the latest Playwright release.
 # Update procedure: /homeassistant/opencode/PLAYWRIGHT-MCP.md
 #
-# NOTE: hardcoded instead of using BUILD_FROM/build.yaml because the HA
-# Supervisor's build_from regex rejects single-segment image paths like
-# "mcr.microsoft.com/playwright", silently falling back to the Alpine base.
+# NOTE: FROM is hardcoded instead of using BUILD_FROM/build.yaml because both
+# the HA Supervisor's build_from regex and the single-segment image path
+# convention reject images like "mcr.microsoft.com/playwright". CI builds this
+# with a plain docker build, so no build.yaml is needed.
 FROM mcr.microsoft.com/playwright:v1.62.1-noble
-
-LABEL maintainer="Robson Felix"
-LABEL io.hass.version="1.62.1"
-LABEL io.hass.type="addon"
-LABEL io.hass.arch="amd64,aarch64"
-LABEL org.opencontainers.image.title="Playwright Browser for Home Assistant"
-LABEL org.opencontainers.image.description="Headless Chromium with CDP endpoint for browser automation"
-LABEL org.opencontainers.image.source="https://github.com/robsonfelix/robsonfelix-hass-addons"
-LABEL org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends jq curl nginx && \
