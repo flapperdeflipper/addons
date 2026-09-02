@@ -12,54 +12,60 @@ on:
   push:
     branches: ["master"]
 
+permissions:
+  contents: read
+
 jobs:
   init:
     runs-on: ubuntu-latest
     name: Initialize builds
     outputs:
-      changed_files: ${{ steps.changed_files.outputs.all }}
       changed_addons: ${{ steps.changed_addons.outputs.addons }}
       changed: ${{ steps.changed_addons.outputs.changed }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Get changed files
-        id: changed_files
-        uses: jitterbit/get-changed-files@v1
-
-      - name: Get add-ons
+      - name: Find add-ons
         id: addons
-        run: |
-          declare -a addons
-          for addon in $(find ./ -name config.yaml | cut -d "/" -f2 | sort -u); do
-            addons+=("$addon");
-          done
-          echo "addons=${addons[@]}" >> "$GITHUB_OUTPUT"
+        uses: home-assistant/actions/helpers/find-addons@master
 
       - name: Get changed add-ons
         id: changed_addons
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.before }}
+          PR_BASE: origin/${{ github.base_ref }}
         run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            RANGE="$PR_BASE...HEAD"
+          elif [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]] && git cat-file -e "$BASE_SHA" 2>/dev/null; then
+            RANGE="$BASE_SHA..HEAD"
+          else
+            RANGE="HEAD~1..HEAD"
+          fi
+          echo "Diff range: $RANGE"
+
           declare -a changed_addons
           for addon in ${{ steps.addons.outputs.addons }}; do
-            if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon ]]; then
-              for file in ${{ env.MONITORED_FILES }}; do
-                  if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon/$file ]]; then
-                    if [[ ! "${changed_addons[@]}" =~ $addon ]]; then
-                      changed_addons+=("\"${addon}\",");
-                    fi
-                  fi
-              done
-            fi
+            for file in $MONITORED_FILES; do
+              if git diff --name-only "$RANGE" | grep -qE "^${addon}/${file}(/|$)"; then
+                if [[ ! "${changed_addons[@]}" =~ "\"${addon}\"," ]]; then
+                  changed_addons+=("\"${addon}\",")
+                fi
+              fi
+            done
           done
 
           changed=$(echo ${changed_addons[@]} | rev | cut -c 2- | rev)
           if [[ -n ${changed} ]]; then
-            echo "Changed add-ons: $changed";
-            echo "changed=true" >> "$GITHUB_OUTPUT";
-            echo "addons=[$changed]" >> "$GITHUB_OUTPUT";
+            echo "Changed add-ons: $changed"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "addons=[$changed]" >> "$GITHUB_OUTPUT"
           else
-            echo "No add-on had any monitored files changed (${{ env.MONITORED_FILES }})";
+            echo "No add-on had any monitored files changed ($MONITORED_FILES)"
           fi
 
   build:
@@ -74,7 +80,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v7
 
       - name: Get information
         id: info
@@ -100,14 +106,14 @@ jobs:
 
       - name: Login to DockerHub
         if: env.BUILD_ARGS == '--docker-hub-check'
-        uses: docker/login-action@v3.4.0
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build ${{ matrix.addon }} add-on
         if: steps.check.outputs.build_arch == 'true'
-        uses: home-assistant/builder@2025.03.0
+        uses: home-assistant/builder@2026.02.1
         with:
           args: |
             ${{ env.BUILD_ARGS }} \

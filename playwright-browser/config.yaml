@@ -1,0 +1,27 @@
+---
+name: Playwright Browser
+slug: playwright-browser
+description: Headless Chromium browser with CDP endpoint for browser automation
+url: https://github.com/flapperdeflipper/addons/tree/master/playwright-browser
+
+image: flapperdeflipper/addon-playwright-browser
+version: "1.62.1"
+
+init: false
+startup: application
+boot: auto
+advanced: true
+arch:
+  - amd64
+
+panel_icon: mdi:google-chrome
+panel_title: Playwright Browser
+
+options:
+  cdp_port: 9222
+schema:
+  cdp_port: port
+ports:
+  9222/tcp: null
+ports_description:
+  9222/tcp: Chrome DevTools Protocol (CDP) endpoint
