@@ -5,7 +5,7 @@ description: LiteLLM proxy - an OpenAI-compatible LLM gateway (DeepSeek, Z.ai, .
 url: https://github.com/flapperdeflipper/addons/tree/master/litellm
 
 image: flapperdeflipper/addon-litellm
-version: "1.99.1"
+version: "1.99.1-1"
 
 init: false
 startup: application
@@ -15,6 +15,9 @@ arch:
   - amd64
 
 panel_icon: mdi:router-network
+
+map:
+  - homeassistant_config:ro
 
 ports:
   4000/tcp: 4000
@@ -26,8 +29,9 @@ options:
   reset_config: false
   env_vars: []
 schema:
-  master_key: password?
+  master_key: str?
   reset_config: bool
   env_vars:
     - name: "match(^[A-Z_][A-Z0-9_]*$)"
-      value: password
+      secret: str?
+      value: password?

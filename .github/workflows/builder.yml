@@ -121,3 +121,26 @@ jobs:
             --target /data/${{ matrix.addon }} \
             --docker-hub flapperdeflipper \
             --addon
+
+  ## Stable, always-running gate job. Mark "CI checks passed" as a required
+  ## status check in branch protection for master; GitHub then blocks merging
+  ## while it is pending or failed. Docs-only PRs (where `build` is skipped)
+  ## still pass, and an `init` failure fails the gate instead of being
+  ## silently skipped.
+  checks:
+    needs: [init, build]
+    if: always()
+    runs-on: ubuntu-latest
+    name: CI checks passed
+    steps:
+      - name: Verify pipeline result
+        run: |
+          echo "init:  ${{ needs.init.result }}"
+          echo "build: ${{ needs.build.result }}"
+          if [[ "${{ needs.init.result }}" != "success" ]] \
+             || [[ "${{ needs.build.result }}" == "failure" ]] \
+             || [[ "${{ needs.build.result }}" == "cancelled" ]]; then
+            echo "Pipeline did not pass - merge stays blocked."
+            exit 1
+          fi
+          echo "Pipeline passed."
