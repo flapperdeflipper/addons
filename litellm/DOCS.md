@@ -17,7 +17,7 @@ Everything persistent lives under `/data/litellm/`:
 | File | Purpose |
 |------|---------|
 | `config.yaml` | The LiteLLM proxy config. Generated once on first boot, then **left untouched forever**. Edit it freely (add-on terminal, SSH, File editor, opencode); restarts and rebuilds keep it. |
-| `master_key` | Auto-generated master key (when the `master_key` option is empty), mode 600. |
+| `master_key` | Fallback master key, auto-generated only when the `master_key` option (a secrets.yaml key name) is empty or unresolvable. Mode 600. |
 | `config.yaml.bak.<timestamp>` | Backups made by `reset_config`. |
 
 To regenerate `config.yaml` from the starter template: set the `reset_config`
@@ -25,30 +25,35 @@ option to `true` and restart the add-on. The existing file is kept as a
 timestamped `.bak` - nothing is ever deleted. Set `reset_config` back to
 `false` afterwards.
 
-### API keys
+### API keys & secrets
 
-Provider keys are not stored in `config.yaml`. Add them as entries in the
-`env_vars` add-on option, e.g.:
+**No secret values are stored in this add-on's options or files.** Options
+hold only *key names* into `/homeassistant/secrets.yaml` (the HA config
+directory is mapped read-only into the add-on), and `run.sh` resolves them at
+every start. Home Assistant add-on options cannot use `!secret` (the
+Supervisor resolves options to plain JSON), so the add-on does the equivalent
+itself.
 
-| Name | Value |
-|------|-------|
-| `DEEPSEEK_API_KEY` | *(your DeepSeek key)* |
-| `ZAI_API_KEY` | *(your Z.ai key)* |
+Example `env_vars` option entries:
 
-They are injected as environment variables on every start and referenced from
-the config as `os.environ/DEEPSEEK_API_KEY`, `os.environ/ZAI_API_KEY`, etc.
-(You can of course also hardcode keys in `config.yaml` - your file, your
-choice - but keeping them in options means HA stores them as passwords.)
+| Name (env var) | secret (secrets.yaml key) |
+|----------------|---------------------------|
+| `DATABASE_URL` | `litellm_database_dsn` |
+| `DEEPSEEK_API_KEY` | `deepseek_api_token` |
+| `ZAI_API_KEY` | `z_ai_api_token` |
+| `OPENAI_API_KEY` | `openai_api_token` |
+| `LITELLM_SALT_KEY` | `litellm_salt_key` |
 
-### The master key
+They are injected as environment variables on every start and referenced
+from the LiteLLM config as `os.environ/<NAME>`. Literal
+`{ name: ..., value: password }` entries still work, but prefer secret
+references. Unresolvable keys are skipped with a warning in the log (names
+only - values are never logged).
 
-Clients authenticate against the proxy with the master key (or virtual keys,
-if you later enable the database).
-
-- If the `master_key` option is set, that value is used.
-- If left empty, a key is generated once and persisted at
-  `/data/litellm/master_key`. Show it with:
-  `cat /data/litellm/master_key` in the add-on terminal.
+The master key works the same way: set the `master_key` option to a
+secrets.yaml key name (e.g. `litellm_master_key`). If the option is empty or
+unresolvable, a key is generated once and persisted at
+`/data/litellm/master_key` as a fallback.
 
 ## Starter config
 
@@ -94,14 +99,45 @@ integrations of your own.
 
 ## Optional: admin UI, virtual keys, spend tracking
 
-The `litellm-database` image supports the LiteLLM admin UI, per-key budgets
-and usage tracking, but only with a PostgreSQL database. To enable:
+The `litellm-database` image supports the LiteLLM admin UI, virtual keys,
+budgets and spend tracking, but only with a PostgreSQL database (LiteLLM's
+Prisma layer does not support MariaDB/MySQL). Postgres does **not** need to
+run on the HA host - a server elsewhere on the network works fine.
 
-1. Run a Postgres server (e.g. the community PostgreSQL add-on)
-2. Add `DATABASE_URL` = `postgresql://user:pass@host:5432/litellm` to the
-   add-on `env_vars`
-3. Uncomment `database_url: os.environ/DATABASE_URL` in
-   `/data/litellm/config.yaml` and restart
+### 1. Prepare PostgreSQL (on the Postgres server)
+
+```sql
+CREATE DATABASE litellm;
+CREATE USER litellm WITH PASSWORD '<choose-a-password>';
+ALTER DATABASE litellm OWNER TO litellm;
+```
+
+Ownership rather than GRANTs, because PostgreSQL 15+ restricts creating
+objects in the default `public` schema. Also make sure the server accepts
+connections from the HA host: `listen_addresses`, a `pg_hba.conf` entry for
+the HA machine, and port 5432 reachable.
+
+### 2. Point the add-on at it
+
+- Add-on **Configuration → env_vars**: name `DATABASE_URL`,
+  secret = your DSN key in secrets.yaml (e.g. `litellm_database_dsn`,
+  value `postgresql://litellm:<password>@<postgres-host>:5432/litellm` -
+  percent-encode special characters in the password, e.g. `@` → `%40`)
+- That's it: LiteLLM reads the `DATABASE_URL` environment variable directly.
+  No line in `/data/litellm/config.yaml` needs to be uncommented (the
+  explicit `database_url: os.environ/DATABASE_URL` line is optional).
+- Restart. LiteLLM creates its schema automatically on startup - no manual
+  migrations.
+
+### 3. Use it
+
+- Admin UI: `http://<ha-host>:4000/ui` - log in as user `admin` with the
+  master key as the password. Create virtual keys, set budgets, view spend.
+- Optional: add `STORE_MODEL_IN_DB` = `True` to `env_vars` to manage models
+  from the UI (DB models are served alongside the YAML `model_list`).
+
+The LiteLLM database lives outside this machine - back it up on the Postgres
+server (e.g. `pg_dump litellm`).
 
 ## Updating
 
