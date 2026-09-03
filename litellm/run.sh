@@ -23,7 +23,12 @@
 set -e
 
 DATA_DIR=/data/litellm
-CONFIG_FILE=${DATA_DIR}/config.yaml
+# Primary config location: /homeassistant/litellm/config.yaml (HA config dir,
+# mapped read-only). It is edited from OUTSIDE the add-on (opencode, SSH,
+# file editor); the add-on only reads it. Fallback: /data/litellm/config.yaml.
+CONFIG_DIR=/homeassistant/litellm
+CONFIG_FILE=${CONFIG_DIR}/config.yaml
+FALLBACK_CONFIG=${DATA_DIR}/config.yaml
 KEY_FILE=${DATA_DIR}/master_key
 SECRETS_FILE=/homeassistant/secrets.yaml
 PORT=4000
@@ -139,7 +144,13 @@ export LITELLM_MASTER_KEY
 
 ## ------------------------------------------------------------ config file ----
 
-if [ "${RESET_CONFIG}" = "true" ] && [ -f "${CONFIG_FILE}" ]; then
+# Prefer the externally-managed config in the HA config dir
+if [ ! -f "${CONFIG_FILE}" ]; then
+    echo "[WARN] ${CONFIG_FILE} not found - falling back to ${FALLBACK_CONFIG}"
+    CONFIG_FILE="${FALLBACK_CONFIG}"
+fi
+
+if [ "${RESET_CONFIG}" = "true" ] && [ -f "${CONFIG_FILE}" ] && [ "${CONFIG_FILE}" = "${FALLBACK_CONFIG}" ]; then
     BACKUP="${CONFIG_FILE}.bak.$(date +%Y%m%d%H%M%S)"
     echo "[INFO] reset_config enabled: backing up ${CONFIG_FILE} to ${BACKUP}"
     mv "${CONFIG_FILE}" "${BACKUP}"
@@ -163,20 +174,28 @@ if [ ! -f "${CONFIG_FILE}" ]; then
 
 model_list:
   # DeepSeek - env_vars: { name: DEEPSEEK_API_KEY, secret: deepseek_api_token }
-  - model_name: deepseek-chat
+  - model_name: deepseek-v4-flash
     litellm_params:
-      model: deepseek/deepseek-chat
+      model: deepseek/deepseek-v4-flash
       api_key: os.environ/DEEPSEEK_API_KEY
 
-  - model_name: deepseek-reasoner
+  - model_name: deepseek-v4-pro
     litellm_params:
-      model: deepseek/deepseek-reasoner
+      model: deepseek/deepseek-v4-pro
       api_key: os.environ/DEEPSEEK_API_KEY
 
-  # Z.ai (Zhipu GLM) - env_vars: { name: ZAI_API_KEY, secret: z_ai_api_token }
-  - model_name: glm-4.7
+  # Z.ai (Zhipu GLM) coding plan - endpoint differs from the standard API!
+  # env_vars: { name: ZAI_API_KEY, secret: z_ai_api_token }
+  - model_name: glm-5.2
     litellm_params:
-      model: zai/glm-4.7
+      model: zai/glm-5.2
+      api_base: https://api.z.ai/api/coding/paas/v4
+      api_key: os.environ/ZAI_API_KEY
+
+  - model_name: glm-5.3
+    litellm_params:
+      model: zai/glm-5.3
+      api_base: https://api.z.ai/api/coding/paas/v4
       api_key: os.environ/ZAI_API_KEY
 
   # More providers - uncomment and adjust as needed:
