@@ -1,0 +1,127 @@
+---
+# Field order here is cosmetic — the Home Assistant Configuration tab renders
+# fields in the order of the schema block in config.yaml. This file is kept in
+# that same order so the two stay easy to diff.
+#
+# House style for these strings:
+#   - Sentence case labels; no "Enable" prefix (a toggle already means that).
+#   - The subject is always "OpenCode", never "the AI" or "the model".
+#   - State a dependency in the first sentence, naming the option it depends on.
+#   - Two sentences where possible, three at most.
+#   - No restart instructions (every option needs one) and no changelog voice.
+configuration:
+  interface_mode:
+    name: "Interface mode"
+    description: "Which interface OpenCode shows in the Home Assistant sidebar. 'terminal' is the classic ttyd terminal; 'openchamber' serves the OpenChamber web UI through Home Assistant Ingress."
+
+  terminal_theme:
+    name: "Terminal theme"
+    description: "Color scheme for the terminal. All ten themes are previewed in the Documentation tab. Applies to the terminal interface only."
+
+  font_size:
+    name: "Font size"
+    description: "Font size in pixels. Larger values are easier to read, smaller values fit more on screen. Applies to the terminal interface only."
+
+  cursor_style:
+    name: "Cursor style"
+    description: "Shape of the cursor: block, underline, or bar. Applies to the terminal interface only."
+
+  cursor_blink:
+    name: "Cursor blinking"
+    description: "Blink the cursor instead of showing it solid. Applies to the terminal interface only."
+
+  focus_mode:
+    name: "Focus-friendly responses (beta)"
+    description: "Ask OpenCode for action-first, concise, progress-aware replies that are quicker to scan and act on. Changes response wording only — it does not change permissions or safety confirmations."
+
+  mcp_enabled:
+    name: "MCP integration"
+    description: "Let OpenCode query your entities and call services through its built-in Model Context Protocol (MCP) server, so you can ask it to turn on the living room lights or check the bedroom temperature."
+
+  mcp_tool_profile:
+    name: "MCP tool profile"
+    description: "Controls which built-in Home Assistant MCP tools OpenCode receives. 'compact' is read-only diagnostics, 'configuration' adds documentation, validation and safe config writes, and 'full' keeps every existing tool including control and administration. A smaller profile reduces prompt size and tool-selection ambiguity, especially for local models."
+
+  lsp_enabled:
+    name: "LSP integration"
+    description: "Give OpenCode live diagnostics, entity and service auto-completion, and validation while it edits Home Assistant YAML, through the Language Server Protocol (LSP)."
+
+  screenshot_enabled:
+    name: "Screenshot tool"
+    description: "Requires the Home Assistant access token below, and a model that accepts image input - many fast models cannot see pictures at all. Lets OpenCode photograph Home Assistant pages in a headless browser to check the result of dashboard changes; each capture takes about 5-10 seconds."
+
+  access_token:
+    name: "Home Assistant access token"
+    description: "Long-lived access token for talking to Home Assistant Core directly. Required by the screenshot tool above and by the ESPHome commands — leave empty if you use neither. Create one in Home Assistant under Profile → Long-lived access tokens."
+
+  native_ha_mcp_enabled:
+    name: "Native Home Assistant MCP bridge (beta)"
+    description: "Adds a second MCP server that proxies to Home Assistant Core's own native LLM MCP endpoint. Requires the MCP Server integration to be set up in Home Assistant first. The keyed /api/mcp/<API ID> endpoints and the native LLM tool platforms first ship in Home Assistant 2026.8; on earlier versions the bridge falls back to the configured /api/mcp endpoint. This complements the MCP integration above rather than replacing it; leave it off unless you are testing Home Assistant's native LLM platform."
+
+  native_ha_mcp_api_id:
+    name: "Native MCP API ID"
+    description: "Applies only when the native bridge above is on. The default 'assist' targets /api/mcp/assist; leave it empty to use every LLM API selected in the MCP Server integration. Any registered API ID is reachable from here: Home Assistant requires admin access for keyed IDs other than 'assist', and the Supervisor calls Home Assistant Core as its own admin system user."
+
+  home_briefing_enabled:
+    name: "Install briefing"
+    description: "Give OpenCode a short summary of this installation — Home Assistant version, areas, entity counts per domain, and how your configuration files are split up — so it does not rediscover them in every session. The summary is rebuilt from scratch on every start and capped at roughly 500 tokens, so it cannot grow over time. Run 'ha-context show' in the terminal to read exactly what is sent."
+
+  decision_notes_enabled:
+    name: "Decision notes"
+    description: "Let OpenCode carry lasting decisions between sessions — an integration you removed on purpose, a file it should leave alone — instead of re-deciding them each time. Nothing is recorded without your explicit approval, and the notes are plain YAML in /config/opencode/decisions.yaml that you can read, edit, or delete."
+
+  restrict_sensitive_files:
+    name: "Restrict access to sensitive files"
+    description: "Denies OpenCode read access to secrets.yaml, the .storage and .cloud directories, the ssl folder, and any .key or .pem file, so their contents cannot be sent to the model. Everything else stays readable, and OpenCode can still edit config that references secrets with !secret. This covers OpenCode's file read and edit tools, not shell commands."
+
+  addon_access_enabled:
+    name: "Add-on folder guidance"
+    description: "Shows guidance for working in the mounted /addons and /addon_configs folders. Both are mounted whatever this is set to, and /addon_configs may hold other add-ons' credentials — this is guidance, not a filesystem permission boundary."
+
+  cpu_mode:
+    name: "CPU mode"
+    description: "Which OpenCode binary to run. 'auto' detects your CPU (recommended), 'baseline' selects the build meant for older CPUs without AVX2, and 'regular' forces the standard build. OpenCode requires a CPU with SSE4.2 in every mode. Note that upstream currently ships the same binary in both packages, so 'baseline' does not presently help a CPU without AVX2."
+
+  enable_server:
+    name: "OpenCode LAN server"
+    description: "Starts an OpenCode server on internal port 4096 so other computers can attach to this session with the OpenCode CLI. To reach it, also map 4096/tcp in the Network section below. Use this on trusted networks only, and never expose it to the internet."
+
+  cors_origins:
+    name: "LAN server CORS origins"
+    description: "Applies only when the LAN server above is on, and only to browser-based clients such as a web or VS Code UI — 'opencode attach' does not need it. Each entry is an exact origin: scheme, host, and port, with no path, for example 'http://192.168.1.20:8080'. Without a matching entry a browser client may list providers and models but never receive replies."
+
+  ppq_private_enabled:
+    name: "PPQ private TEE models (beta)"
+    description: "Requires the PPQ API key below. Starts an internal PPQ private-mode encryption proxy and adds it to OpenCode as a provider for TEE-backed models; the proxy binds to 127.0.0.1 inside the container and is not reachable from your network."
+
+  ppq_api_key:
+    name: "PPQ API key"
+    description: "API key for PPQ private-mode models. Stored as a masked add-on option and exported only to the internal PPQ proxy. Leave empty unless the option above is on."
+
+  z2m_url:
+    name: "Zigbee2MQTT URL"
+    description: "Address of your Zigbee2MQTT frontend, used by zigporter commands such as 'list-z2m' and 'network-map'. Only needed when the Zigbee2MQTT add-on is not discovered automatically — use the same address and port you open its UI on. Include http:// or https://; a bare host or IP is treated as http://."
+
+  z2m_mqtt_topic:
+    name: "Zigbee2MQTT base topic"
+    description: "MQTT base topic that Zigbee2MQTT publishes on. Change this only if you changed it in Zigbee2MQTT itself; the default is 'zigbee2mqtt'."
+
+  serial_devices:
+    name: "Serial devices"
+    description: "Host serial/UART devices to map into the add-on, for work that needs direct serial access such as local USB flashing or adapter inspection. Nothing is mapped unless you add a device here, for example /dev/ttyUSB0 or a /dev/serial/by-id/... path."
+
+  enable_openchamber_lan:
+    name: "OpenChamber LAN web UI"
+    description: "Publish the OpenChamber web UI on internal port 4097 so a reverse proxy or tunnel can point straight at the root path. Only works when Interface mode is 'openchamber'. To reach it, also map 4097/tcp in the Network settings. There is no Home Assistant login in front of this port, so only use it on trusted networks and put it behind a reverse proxy or Cloudflare Access before any remote exposure."
+
+  env_vars:
+    name: "Environment variables"
+    description: "Extra environment variables for OpenCode and the terminal shell, each with a name and a value. Useful for providers that are configured through the environment, such as AZURE_RESOURCE_NAME or OPENAI_API_KEY — most providers are set up inside the app with '/connect' instead. Critical system variables such as HOME, PATH and SUPERVISOR_TOKEN cannot be overridden."
+
+  opencode_config:
+    name: "Custom OpenCode configuration"
+    description: "A JSON object merged into OpenCode's own configuration, for providers, keybindings, permission rules and similar. Leave empty for the defaults; the full schema is at https://opencode.ai/docs/config."
+
+  user_hooks_enabled:
+    name: "Startup hooks"
+    description: "Runs your own .sh scripts from the 'startup.d' folder in this add-on's directory, once every time the add-on starts. These scripts run as root with access to the Home Assistant API, and the add-on does not check, supervise, or restart them; leave this off unless you want that responsibility."

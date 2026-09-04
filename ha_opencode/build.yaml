@@ -1,0 +1,29 @@
+---
+# Release CI reads selected channel pins below; the canonical devcontainer build
+# helper passes every entry under args. Keep every value aligned with its
+# Dockerfile ARG default. Home Assistant itself does not read this file because
+# config.yaml sets `image:`. See RELEASING.md.
+#
+# Using Debian Trixie base for latest packages and glibc compatibility
+# (opencode-ai ships pre-compiled native binaries that require glibc)
+# Includes: S6-Overlay, Bashio, TempIO
+build_from:
+  aarch64: ghcr.io/home-assistant/base-debian:trixie
+  amd64: ghcr.io/home-assistant/base-debian:trixie
+args:
+  NODE_VERSION: "24.15.0"
+  # Must match the exact certified version in the Dockerfile.
+  OPENCODE_VERSION: "1.18.25"
+  OPENCHAMBER_VERSION: "1.21.0"
+  PPQ_PROXY_VERSION: "0.1.0"
+  TSX_VERSION: "4.20.6"
+  TTYD_VERSION: "1.7.7"
+  YQ_VERSION: "v4.53.3"
+  # hab CLI is cloned at the HAB_VERSION tag in a multi-stage Docker build
+  # (ha_opencode/Dockerfile) — it cannot be expressed here at all.
+labels:
+  org.opencontainers.image.title: "OpenCode"
+  org.opencontainers.image.description: "AI coding agent for Home Assistant"
+  org.opencontainers.image.source: "https://github.com/magnusoverli/opencode"
+  org.opencontainers.image.licenses: "Unlicense AND MIT"
+  org.opencontainers.image.vendor: "Magnus Overli"

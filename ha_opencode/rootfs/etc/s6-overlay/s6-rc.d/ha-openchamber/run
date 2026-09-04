@@ -1,0 +1,76 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# OpenCode - OpenChamber Server Service
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NPM_CONFIG_PREFIX="/data/.npm-global"
+export NODE_OPTIONS="--max-old-space-size=768"
+
+if [ -f /data/.env_vars ]; then
+    source /data/.env_vars
+fi
+
+if [ -f /data/.env_vars_discovered ]; then
+    source /data/.env_vars_discovered
+fi
+
+# Keep the Supervisor token process-only. Tools that expect HA_TOKEN receive it
+# from the live environment instead of a persisted /data/.env_vars entry.
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    export HA_TOKEN="${SUPERVISOR_TOKEN}"
+fi
+
+# Only the certified runtime in this image is on PATH. /data/.npm-global is
+# left out on purpose so an OpenCode installed there by an older add-on version
+# cannot shadow the build this release was tested against.
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
+export OPENCODE_DISABLE_AUTOUPDATE=true
+# OpenChamber otherwise performs a separate runtime update check and offers an
+# in-place upgrade. The image binary is a certified, immutable runtime.
+export OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR="/usr/local/bin"
+
+INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
+if [ "${INTERFACE_MODE}" != "openchamber" ]; then
+    bashio::log.info "Interface mode is '${INTERFACE_MODE}'; OpenChamber server is inactive."
+    exec sleep infinity
+fi
+
+OPENCHAMBER_INTERNAL_PORT=3010
+OPENCHAMBER_INGRESS_PORT=8099
+
+export OPENCHAMBER_DATA_DIR="/data/.config/openchamber"
+export OPENCHAMBER_HOST="127.0.0.1"
+export OPENCHAMBER_SKIP_API_COMPRESSION=true
+export OPENCHAMBER_COMPRESS_API=false
+export OPENCHAMBER_OPENCODE_HOSTNAME="127.0.0.1"
+# Neutralize OpenChamber's built-in self-update. OpenChamber is pinned and
+# Ingress-patched at image build time, so an in-app update cannot persist or
+# stay patched and only hangs the UI on "Waiting for server...". Point the
+# update-check API at a local canned "no update" endpoint served by the ingress
+# proxy below, so both the OpenChamber update notification and the update-install
+# action report no update available. OpenChamber is updated by updating the add-on.
+export OPENCHAMBER_UPDATE_API_URL="http://127.0.0.1:${OPENCHAMBER_INGRESS_PORT}/__ha_openchamber_update_check"
+
+mkdir -p "${OPENCHAMBER_DATA_DIR}"
+
+bashio::log.info "=============================================="
+bashio::log.info "  OpenChamber server (Home Assistant ingress)"
+bashio::log.info "=============================================="
+bashio::log.info "Starting OpenChamber on 127.0.0.1:${OPENCHAMBER_INTERNAL_PORT}"
+
+# Always launch the bundled OpenChamber package patched during image build.
+# It resolves `opencode` from PATH, which carries only the certified runtime.
+OPENCHAMBER_BIN="/usr/local/bin/openchamber"
+
+cd /homeassistant
+
+# This must stay the service's direct child. The ingress proxy is separately
+# supervised, so s6 can reliably stop either port owner without a shell
+# coordinator leaving an orphan behind.
+exec "${OPENCHAMBER_BIN}" serve \
+    --foreground \
+    --port "${OPENCHAMBER_INTERNAL_PORT}" \
+    --host 127.0.0.1
