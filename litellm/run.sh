@@ -8,9 +8,12 @@
 #   env_vars:
 #     - { name: DATABASE_URL, secret: litellm_database_dsn }
 # Values are resolved from secrets.yaml at every start and injected as
-# environment variables. (Home Assistant add-on options cannot use !secret -
-# the Supervisor resolves options to plain JSON - so this add-on resolves them
-# itself. Literal { name: ..., value: password } entries still work too.)
+# environment variables. (Add-on options DO support HA-style '!secret <key>'
+# values - the Supervisor resolves them against secrets.yaml before writing
+# /data/options.json. This add-on keeps its key-name scheme anyway, because
+# the env_vars list maps many NAME->secret pairs from a single option and
+# master_key stays a bare key name. Literal { name: ..., value: password }
+# entries still work too.)
 #
 # Persistent state (all under /data, survives restarts and rebuilds):
 #   /data/litellm/config.yaml  LiteLLM proxy config. Generated from a starter
@@ -228,6 +231,8 @@ EOF
 else
     echo "[INFO] Using existing config at ${CONFIG_FILE} (left untouched)"
 fi
+
+## --------------------------------------------------------------- mcp server ------
 
 ## ------------------------------------------------------------------ start ----
 

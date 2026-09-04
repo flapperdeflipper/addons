@@ -74,6 +74,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - bzip2: Required by system tar to extract OpenChamber voice models
 # - procps: Provides pgrep for health check
 # - tmux: Session persistence to prevent multiple OpenCode instances
+# - python3-yaml: PyYAML for ad-hoc python3 YAML parsing in sessions
 # - chromium: Headless browser for screenshot_url MCP tool (visual verification)
 # - g++/make: native fallback builds for OpenChamber dependencies on all arches
 RUN apt-get update \
@@ -92,6 +93,7 @@ RUN apt-get update \
         procps \
         python3 \
         python3-venv \
+        python3-yaml \
         tmux \
     && command -v ssh >/dev/null \
     && command -v ssh-keygen >/dev/null \

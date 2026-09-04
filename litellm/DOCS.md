@@ -30,9 +30,11 @@ timestamped `.bak` - nothing is ever deleted. Set `reset_config` back to
 **No secret values are stored in this add-on's options or files.** Options
 hold only *key names* into `/homeassistant/secrets.yaml` (the HA config
 directory is mapped read-only into the add-on), and `run.sh` resolves them at
-every start. Home Assistant add-on options cannot use `!secret` (the
-Supervisor resolves options to plain JSON), so the add-on does the equivalent
-itself.
+every start. (Add-on options *do* support HA-style `!secret <key>` values —
+the Supervisor resolves them against `secrets.yaml` before writing
+`/data/options.json`. This add-on's key-name scheme is its own convention,
+kept because the `env_vars` list maps many NAME→secret pairs from a single
+option; `master_key` likewise holds a bare key name, not a `!secret` value.)
 
 Example `env_vars` option entries:
 
@@ -77,6 +79,52 @@ curl -s http://localhost:4000/v1/chat/completions \
 
 `GET /health/liveliness` is used as the container health check;
 `GET /v1/models` lists configured models.
+
+## MCP server: LiteLLM memory over MCP
+
+The bundled MCP server (`mcp_servers/`) exposes the proxy's [memory API](https://docs.litellm.ai/docs/proxy/memory)
+(`/v1/memory`, requires the PostgreSQL database) as MCP tools, so coding
+agents get durable cross-session memory. Enabled by the `mcp_memory` option
+(default `true`); served on **port 4001** at `/mcp` (streamable HTTP).
+
+| Tool | Purpose |
+|------|---------|
+| `memory_get(key)` | Read one entry (key, value, metadata, updated_at) |
+| `memory_set(key, value)` | Create/update (upsert) an entry |
+| `memory_list(key_prefix?)` | List entries, optional key-prefix filter |
+| `memory_delete(key)` | Delete one entry |
+
+**Key conventions**: `opencode:global:*` (shared), `opencode:<project>:*`
+(per project), `user:<topic>` (personal preferences). Entries are scoped by
+the API key's user/team on the LiteLLM side.
+
+**Registering clients** - the endpoint is `http://<ha-host>:4001/mcp`:
+
+- opencode add-on: merge into its `opencode_config` option
+  `"litellm-memory": { "type": "remote", "url": "http://<ha-host>:4001/mcp", "enabled": true }`
+- claude code: `claude mcp add --transport http litellm-memory http://<ha-host>:4001/mcp`
+- llama.cpp / anything MCP-capable: same URL
+
+**Auth**: the server calls the proxy on localhost with the master key
+resolved by run.sh. To use a scoped virtual key instead, add `LITELLM_MEMORY_KEY`
+to `env_vars` (name `LITELLM_MEMORY_KEY`, secret = a key holding that virtual
+key) - it takes precedence.
+
+**Discovering tools**: every deployment registers a `registry_list` tool
+that reports all available modules (name, description, enabled state) — ask
+an agent to call it to see what this server offers and what could be enabled.
+From the shell: `PYTHONPATH=/mcp_servers python3 -m litellm_mcp --list`
+(works without the `mcp` package). Enabled tool names are validated against
+the registry at startup, so unknown names fail fast.
+
+**Adding more MCP tools later**: the server is a Python package,
+`mcp_servers/litellm_mcp/` (entry point `python -m litellm_mcp`). A new tool
+is a module in `litellm_mcp/tools/` declaring `NAME`, `DESCRIPTION` and
+`register(server, client)`, plus one line in the `REGISTRY` dict and one
+option line in `run.sh` appending its name to `MCP_ARGS`. Tool names are
+validated against the registry at startup. Tests: `python3 test/test_package.py`
+(runs without the `mcp` SDK installed). Log: `/data/litellm/mcp_server.log`
+(truncated at each start).
 
 ## Wiring into Assist
 

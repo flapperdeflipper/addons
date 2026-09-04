@@ -1,5 +1,5 @@
 name: "SearXNG w/ MCP"
-version: "2026.9.4-15b0c8ef3"
+version: "2026.9.4-15b0c8ef3-1"
 slug: searxng_with_mcp
 description: >-
   SearXNG is a metasearch engine. Adds OvertliDS/mcp-searxng-enhanced endpoint
@@ -19,8 +19,12 @@ hassio_api: true
 init: false
 options:
   set_base_url_for_ingress: true
+  github_token: "!secret github_token"
+  gitlab_engine: true
 schema:
   set_base_url_for_ingress: bool
+  github_token: str?
+  gitlab_engine: bool
 ports:
   8080/tcp: 8080
   8081/tcp: 8081

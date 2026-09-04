@@ -47,6 +47,22 @@ For convenience there is one addon configuration option:
 
 If the set_base_url_for_ingress enabled it sets the SEARXNG_BASE_URL environment variable which is needed for ingress usage and it overrides the base_url variable in settings.yml
 
+## GitHub / GitLab code search (managed engines)
+
+Two add-on options control code-search engines that the add-on injects into
+`settings.yml` itself at every start:
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `github_token` | `!secret github_token` | Adds the authenticated `github code` engine (shortcut `ghc`). The value supports HA-style `!secret <key>` — the Supervisor resolves it against `secrets.yaml`, so the token is never stored in the add-on options. Empty = engine disabled. |
+| `gitlab_engine` | `true` | Adds the `gitlab` engine (shortcut `gl`) for gitlab.com project search. Upstream has no auth support — public projects only. |
+
+The engines live between `BEGIN/END addon managed engines` markers in
+`settings.yml` and are regenerated at each boot; do not edit between the
+markers (edits are lost). Everything else in the file is untouched. On first
+boot (no `settings.yml` yet) a minimal `use_default_settings: true` config is
+created.
+
 ## Customization
 
 After the first run in the addon config folder (addon_configs/2effc9b9_searxng_with_mcp) there will be a custom.sh file in witch you can add your own commands

@@ -7,6 +7,7 @@ FROM searxng/searxng:2026.9.4-15b0c8ef3
 
 COPY rootfs/ /
 COPY mcp_server.py /
+COPY secrets_engines.py /
 COPY requirements.txt .
 RUN python -m ensurepip --upgrade
 RUN pip3 install --no-cache-dir -r requirements.txt

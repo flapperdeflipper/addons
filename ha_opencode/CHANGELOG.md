@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.6.1
+
+- **Bundled PyYAML** — system python3 can parse YAML directly (`python3-yaml`), so ad-hoc session scripts no longer fail with `ModuleNotFoundError: No module named 'yaml'`.
+
 ## 2.6.0
 
 - **Terminal and OpenChamber at the same time** — `enable_openchamber_lan` now works with `interface_mode: terminal`: the sidebar keeps the terminal while OpenChamber is served in parallel on the mapped 4097/tcp port. The OpenChamber server starts whenever either frontend needs it, and its canned update check follows whichever proxy is active.
