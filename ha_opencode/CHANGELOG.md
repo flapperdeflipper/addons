@@ -1,8 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## 2.6.0
 
+- **Terminal and OpenChamber at the same time** — `enable_openchamber_lan` now works with `interface_mode: terminal`: the sidebar keeps the terminal while OpenChamber is served in parallel on the mapped 4097/tcp port. The OpenChamber server starts whenever either frontend needs it, and its canned update check follows whichever proxy is active.
+- **Fixed local MCP servers on fresh installs and data migrations** — `npx`-based MCP entries (e.g. `@playwright/mcp`, `prometheus-mcp-server`) crashed with `ENOENT ... .npm-global/lib` when the npm prefix lacked its `lib` directory; the init service now creates it.
+- **Bundled gh, glab, and binutils** — GitHub and GitLab CLIs for issue/PR/repo automation, and `strings` for binary inspection.
 - Made the official Home Assistant Supervisor devcontainer the default workflow and added repeatable app, s6, smoke-test, and Home Assistant Core Ingress acceptance.
 - Standardized the container runtime on Node 24.15.0 while retaining Home Assistant's Supervisor-compatible Debian base.
 - Fixed the read-only session prompt normalization so the in-add-on smoke test no longer reports a false failure.

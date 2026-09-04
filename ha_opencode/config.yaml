@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "2.5.3"
+version: "2.6.0"
 slug: "ha_opencode"
 image: "ghcr.io/magnusoverli/ha_opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -22,7 +22,7 @@ ports:
   4097/tcp: null
 ports_description:
   4096/tcp: "OpenCode LAN server — only serves traffic when the 'OpenCode LAN server' option is enabled"
-  4097/tcp: "OpenChamber LAN web UI — only serves traffic when the 'OpenChamber LAN web UI' option is enabled"
+  4097/tcp: "OpenChamber LAN web UI (requires interface_mode: openchamber)"
 
 # File access - Home Assistant config directory
 map:
@@ -133,12 +133,9 @@ options:
   serial_devices: []
 
   # --- 8. Advanced -------------------------------------------------------
-  # Optional LAN access to the OpenChamber web UI. Works in both interface
-  # modes: with interface_mode=openchamber it adds a LAN entry point next to
-  # the sidebar; with interface_mode=terminal the sidebar keeps the terminal
-  # while OpenChamber is served in parallel on the mapped port. Serves
-  # OpenChamber at the root path on a mappable network port so reverse
-  # proxies / tunnels can point straight at it.
+  # Optional LAN access to the OpenChamber web UI (only used when
+  # interface_mode is openchamber). Serves OpenChamber at the root path on a
+  # mappable network port so reverse proxies / tunnels can point straight at it.
   # Warning: If you map 4097/tcp in Network settings, this exposes the
   # OpenChamber UI on your LAN with no Home Assistant Ingress auth in front.
   enable_openchamber_lan: false
