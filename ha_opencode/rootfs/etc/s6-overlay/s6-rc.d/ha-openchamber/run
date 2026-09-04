@@ -33,8 +33,15 @@ export OPENCODE_DISABLE_AUTOUPDATE=true
 export OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR="/usr/local/bin"
 
 INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
-if [ "${INTERFACE_MODE}" != "openchamber" ]; then
-    bashio::log.info "Interface mode is '${INTERFACE_MODE}'; OpenChamber server is inactive."
+ENABLE_OPENCHAMBER_LAN=$(bashio::config 'enable_openchamber_lan' 2>/dev/null || echo "false")
+
+# The OpenChamber server (127.0.0.1:3010) backs two independent frontends:
+# the Home Assistant Ingress proxy on 8099 (interface_mode=openchamber) and
+# the LAN web UI proxy on 4097 (enable_openchamber_lan=true). Either one is
+# reason enough to run the server, so the terminal interface and OpenChamber
+# can be used at the same time.
+if [ "${INTERFACE_MODE}" != "openchamber" ] && ! bashio::var.true "${ENABLE_OPENCHAMBER_LAN}"; then
+    bashio::log.info "Interface mode is '${INTERFACE_MODE}' and OpenChamber LAN web UI is disabled; OpenChamber server is inactive."
     exec sleep infinity
 fi
 
@@ -49,10 +56,13 @@ export OPENCHAMBER_OPENCODE_HOSTNAME="127.0.0.1"
 # Neutralize OpenChamber's built-in self-update. OpenChamber is pinned and
 # Ingress-patched at image build time, so an in-app update cannot persist or
 # stay patched and only hangs the UI on "Waiting for server...". Point the
-# update-check API at a local canned "no update" endpoint served by the ingress
-# proxy below, so both the OpenChamber update notification and the update-install
-# action report no update available. OpenChamber is updated by updating the add-on.
-export OPENCHAMBER_UPDATE_API_URL="http://127.0.0.1:${OPENCHAMBER_INGRESS_PORT}/__ha_openchamber_update_check"
+# OpenChamber is updated by updating the add-on. Point the update-check API at
+# a local canned "no update" endpoint served by the ingress proxy below (or, in
+# terminal+LAN mode where the ingress proxy is inactive, by the LAN proxy on
+# 4097), so both the OpenChamber update notification and the update-install
+# action report no update available.
+UPDATE_CHECK_PROXY_PORT=$([ "${INTERFACE_MODE}" = "openchamber" ] && echo "${OPENCHAMBER_INGRESS_PORT}" || echo "4097")
+export OPENCHAMBER_UPDATE_API_URL="http://127.0.0.1:${UPDATE_CHECK_PROXY_PORT}/__ha_openchamber_update_check"
 
 mkdir -p "${OPENCHAMBER_DATA_DIR}"
 
