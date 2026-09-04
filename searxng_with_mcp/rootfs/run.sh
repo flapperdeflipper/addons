@@ -18,6 +18,26 @@ SEARXNG_BASE_URL=$(wget -qO- --header="$header" \
     | sed -n 's/.*"ingress_url":"\([^"]*\)".*/\1/p') #sed by ai
 fi
 
+# ---------------------------------------------- managed search engines ------
+# The Supervisor natively resolves '!secret <key>' option values against
+# /homeassistant/secrets.yaml before writing /data/options.json, so the token
+# arrives already resolved. Guard: if it ever shows up unresolved, disable
+# the engine rather than write the marker into settings.yml.
+GHC_TOKEN=$(python -c "import json;print(str((json.load(open('/data/options.json')) or {}).get('github_token') or '').strip())" 2>/dev/null || echo "")
+case "${GHC_TOKEN}" in
+    "!secret"*)
+        echo "[WARN] github_token arrived unresolved - github code engine disabled"
+        GHC_TOKEN=""
+        ;;
+esac
+GITLAB_ENGINE=$(python -c "import json;print('true' if (json.load(open('/data/options.json')) or {}).get('gitlab_engine', True) else 'false')" 2>/dev/null || echo true)
+export GHC_TOKEN GITLAB_ENGINE
+
+# Inject/update the managed engines block (github code + gitlab) in
+# settings.yml. Optional functionality - never blocks the add-on.
+python /secrets_engines.py || echo "[WARN] managed engines patch failed - searxng continues"
+unset GHC_TOKEN GITLAB_ENGINE
+
 if [ ! -f /etc/searxng/custom.sh ]; then
     cp /custom.sh /etc/searxng/custom.sh
 fi

@@ -17,9 +17,10 @@ FROM ghcr.io/berriai/litellm-database:v1.99.1
 RUN apk add --no-cache npm
 
 COPY run.sh /run.sh
+COPY mcp_servers/litellm_mcp /mcp_servers/litellm_mcp
 RUN chmod +x /run.sh
 
-EXPOSE 4000
+EXPOSE 4000 4001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD python3 -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5).status == 200 else 1)"
