@@ -10,7 +10,6 @@ version: "1.62.1"
 init: false
 startup: application
 boot: auto
-advanced: true
 arch:
   - amd64
 
