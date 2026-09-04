@@ -69,6 +69,8 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - openssh-client: Provides ssh, ssh-keygen, and ssh-keyscan for Git SSH remotes
 # - jq: JSON processing for helper scripts
 # - curl/ca-certificates: For downloading ttyd
+# - gh/glab: GitHub and GitLab CLIs for issue/PR/repo automation
+# - binutils: Provides strings for binary inspection
 # - bzip2: Required by system tar to extract OpenChamber voice models
 # - procps: Provides pgrep for health check
 # - tmux: Session persistence to prevent multiple OpenCode instances
@@ -80,7 +82,10 @@ RUN apt-get update \
         ca-certificates \
         chromium \
         curl \
+        binutils \
+        gh \
         git \
+        glab \
         jq \
         libatomic1 \
         openssh-client \
@@ -91,6 +96,8 @@ RUN apt-get update \
     && command -v ssh >/dev/null \
     && command -v ssh-keygen >/dev/null \
     && command -v ssh-keyscan >/dev/null \
+    && command -v gh >/dev/null \
+    && command -v glab >/dev/null \
     && test "$(command -v node)" = /usr/local/bin/node \
     && test "$(node --version)" = "v${NODE_VERSION}" \
     && npm --version >/dev/null \

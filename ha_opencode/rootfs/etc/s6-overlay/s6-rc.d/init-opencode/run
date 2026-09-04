@@ -97,7 +97,11 @@ export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
 export OPENCODE_DISABLE_AUTOUPDATE=true
 
 rm -rf "${OPENCODE_TMPDIR}"
-mkdir -p /data/.local/share/opencode /data/.config/opencode "${NPM_CONFIG_PREFIX}" "${OPENCODE_TMPDIR}"
+# The npm prefix needs its lib/ directory to exist: npx (used by local MCP
+# servers) fails with ENOENT lstat "<prefix>/lib" when it is missing, which
+# happens on fresh installs and migrations because .npm-global is excluded
+# from backups and data syncs.
+mkdir -p /data/.local/share/opencode /data/.config/opencode "${NPM_CONFIG_PREFIX}/lib" "${OPENCODE_TMPDIR}"
 chmod 700 "${OPENCODE_TMPDIR}"
 printf '%s\n' "${INTERFACE_MODE}" > /data/.interface_mode
 

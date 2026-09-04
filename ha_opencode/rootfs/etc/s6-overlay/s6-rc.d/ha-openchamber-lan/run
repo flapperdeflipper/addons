@@ -4,10 +4,12 @@
 # ------------------------------------------------------------------------------
 # Publishes the OpenChamber web UI on a mappable network port (4097/tcp) so
 # reverse proxies and tunnels can point straight at the root path, mirroring the
-# optional OpenCode LAN server on 4096/tcp. Only active when interface_mode is
-# 'openchamber' and enable_openchamber_lan is true. This instance runs a second
-# copy of the ingress proxy with the remote-address allowlist relaxed, because
-# there is no Home Assistant Ingress session in front of the mapped port.
+# optional OpenCode LAN server on 4096/tcp. Active whenever enable_openchamber_lan
+# is true, regardless of interface_mode: with interface_mode=terminal the sidebar
+# shows the terminal while OpenChamber is served here in parallel. This instance
+# runs a second copy of the ingress proxy with the remote-address allowlist
+# relaxed, because there is no Home Assistant Ingress session in front of the
+# mapped port.
 # ==============================================================================
 
 export HOME="/data"
@@ -15,13 +17,7 @@ export XDG_DATA_HOME="/data/.local/share"
 export XDG_CONFIG_HOME="/data/.config"
 export NPM_CONFIG_PREFIX="/data/.npm-global"
 
-INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
 ENABLE_OPENCHAMBER_LAN=$(bashio::config 'enable_openchamber_lan' 2>/dev/null || echo "false")
-
-if [ "${INTERFACE_MODE}" != "openchamber" ]; then
-    bashio::log.info "Interface mode is '${INTERFACE_MODE}'; OpenChamber LAN service is inactive."
-    exec sleep infinity
-fi
 
 if ! bashio::var.true "${ENABLE_OPENCHAMBER_LAN}"; then
     bashio::log.info "OpenChamber LAN web UI is disabled; service is inactive."
