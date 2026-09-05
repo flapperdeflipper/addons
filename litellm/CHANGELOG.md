@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.99.1-7
+
+- **Dropped the ha-mcp-server image copy** — ha_opencode 2.8.0+ serves its full MCP server over authenticated streamable HTTP (`mcp_http_enabled` + `mcp_http_token`, port 8927/tcp), so the gateway registers it as a plain HTTP server instead of a stdio child. Removes the multi-stage `COPY --from` from the Dockerfile and, with it, the known gap where companion CLI tools (zigporter, hab) failed at call time. Switch `/homeassistant/litellm/config.yaml` from the stdio `homeassistant` entry to the HTTP URL when updating.
+
 ## 1.99.1-6
 
 - **Full Home Assistant MCP server in the gateway** — the `ha-mcp-server` from the published ha_opencode add-on image (multi-stage `COPY --from=flapperdeflipper/addon-ha-opencode:2.7.0`, pure-JS deps so the Debian node_modules survive the Alpine base) is available at `/mcp_servers/ha-mcp-server` for stdio registration. Register it in `/homeassistant/litellm/config.yaml` with `SUPERVISOR_TOKEN` passed through the env map (stdio children get a scrubbed environment). Companion CLIs (zigporter, hab) are absent in this image — their tools list but fail at call time.

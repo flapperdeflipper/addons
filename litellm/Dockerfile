@@ -19,15 +19,6 @@ RUN apk add --no-cache npm
 COPY run.sh /run.sh
 COPY mcp_servers/litellm_mcp /mcp_servers/litellm_mcp
 
-# Full Home Assistant MCP server (ha-mcp-server) from the published
-# ha_opencode add-on image. Dependencies are pure JS (MCP SDK, ws, yaml,
-# zod, puppeteer-core) so the Debian-built node_modules run fine on this
-# Alpine base. Companion CLIs (zigporter, hab) are NOT present here: their
-# tools appear in the catalog but fail at call time - serving them properly
-# needs the HTTP-transport route in ha_opencode instead of this copy.
-# Pin to the released ha_opencode version; bump together with `version:`.
-COPY --from=flapperdeflipper/addon-ha-opencode:2.7.0 /opt/ha-mcp-server /mcp_servers/ha-mcp-server
-
 RUN chmod +x /run.sh
 
 EXPOSE 4000 4001
