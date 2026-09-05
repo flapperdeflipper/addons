@@ -35,6 +35,8 @@ button:hover{border-color:var(--acc)}
 .row input{flex:1 1 120px}
 a{color:var(--acc)}
 #gate{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center}
+#gate[hidden]{display:none}
+#gate-err{color:var(--stale)}
 #gate>div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px;text-align:center;width:min(340px,90vw)}
 #gate input{margin:8px 0}
 .done{text-decoration:line-through;color:var(--dim)}
@@ -52,12 +54,12 @@ a{color:var(--acc)}
   </div>
 </header>
 <div id="gate" hidden>
-  <div>
+  <form id="gate-form" onsubmit="return false">
     <p>SlopClanker bearer token</p>
-    <input id="tok" type="password" placeholder="token" autofocus>
-    <button id="save">save</button>
+    <input id="tok" type="password" placeholder="token" autocomplete="off">
+    <button id="save" type="button">save</button>
     <p class="sub" id="gate-err"></p>
-  </div>
+  </form>
 </div>
 <main>
   <section><h2>Clankers</h2><div id="agents" class="sub">…</div></section>
