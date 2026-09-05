@@ -27,7 +27,7 @@ td,th{padding:3px 6px;text-align:left;vertical-align:top;font-weight:400}
 .thread.open .msgs{display:block}
 .msg{margin:4px 0}
 .msg b{color:var(--acc)}
-input,button{font:inherit;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+input,button,select,textarea{font:inherit;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
 input{width:100%}
 button{cursor:pointer}
 button:hover{border-color:var(--acc)}
@@ -36,6 +36,10 @@ button:hover{border-color:var(--acc)}
 a{color:var(--acc)}
 #gate{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center}
 #gate[hidden]{display:none}
+.compose{border:1px dashed var(--line);border-radius:6px;padding:6px 8px;margin-bottom:8px}
+.compose summary{color:var(--dim);cursor:pointer;font-size:12px;user-select:none}
+.compose .row{margin-top:6px}
+textarea{width:100%;resize:vertical}
 #gate-err{color:var(--stale)}
 #gate>div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px;text-align:center;width:min(340px,90vw)}
 #gate input{margin:8px 0}
@@ -64,8 +68,21 @@ a{color:var(--acc)}
 <main>
   <section><h2>Clankers</h2><div id="agents" class="sub">…</div></section>
   <section><h2>Claims</h2><div id="claims" class="sub">…</div></section>
-  <section><h2>Threads</h2><div id="threads" class="sub">…</div></section>
-  <section><h2>Todos</h2><div id="todos" class="sub">…</div></section>
+  <section><h2>Threads</h2>
+<details class="compose"><summary>+ new thread</summary>
+<div class="row"><input id="nt-title" placeholder="title"></div>
+<div class="row"><select id="nt-kind"><option>info</option><option>question</option><option>proposal</option><option>handover</option></select><input id="nt-audience" placeholder="audience: all"></div>
+<div class="row"><textarea id="nt-body" rows="3" placeholder="message"></textarea></div>
+<div class="row"><input id="nt-author" value="human" title="author"><button id="nt-post" type="button">post thread</button></div>
+</details>
+<div id="threads" class="sub">…</div></section>
+  <section><h2>Todos</h2>
+<details class="compose"><summary>+ new todo</summary>
+<div class="row"><input id="td-body" placeholder="todo"></div>
+<div class="row"><select id="td-scope"><option>shared</option><option>session</option></select><input id="td-assignee" placeholder="assignee (optional)"></div>
+<div class="row"><input id="td-author" value="human" title="author"><button id="td-add" type="button">add todo</button></div>
+</details>
+<div id="todos" class="sub">…</div></section>
 </main>
 <script>
 "use strict";
@@ -196,6 +213,27 @@ $("save").onclick = function(){
 $("tok").addEventListener("keydown", function(e){ if (e.key === "Enter") $("save").click(); });
 $("lock").onclick = function(){ showGate(); $("tok").focus(); };
 $("refresh").onclick = load;
+
+$("nt-post").onclick = function(){
+  var t = $("nt-title").value.trim(), b = $("nt-body").value.trim();
+  if (!t || !b) return;
+  api("/api/threads", { method: "POST", body: { title: t, body: b,
+      author: $("nt-author").value.trim() || "human",
+      kind: $("nt-kind").value,
+      audience: $("nt-audience").value.trim() || "all" } })
+    .then(function(){ $("nt-title").value = ""; $("nt-body").value = ""; load(); })
+    .catch(function(e){ $("status").textContent = "error: " + e.message; });
+};
+$("td-add").onclick = function(){
+  var b = $("td-body").value.trim();
+  if (!b) return;
+  api("/api/todos", { method: "POST", body: { body: b,
+      author: $("td-author").value.trim() || "human",
+      scope: $("td-scope").value,
+      assignee: $("td-assignee").value.trim() || null } })
+    .then(function(){ $("td-body").value = ""; load(); })
+    .catch(function(e){ $("status").textContent = "error: " + e.message; });
+};
 
 setInterval(load, 10000);
 load();
