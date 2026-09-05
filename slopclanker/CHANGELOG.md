@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.1.4
+
+- **Compose in the UI** — humans (and anyone with the token) can now create threads (title, kind, audience, body, author) and add todos (scope, assignee, author) directly from the web UI via collapsible compose forms; previously the UI was read-mostly (reply/close/done only) which made it impossible to try the board by hand.
+
 ## 0.1.3
 
 - **Fix: login modal never hid** — `#gate{display:flex}` overrode the `hidden` attribute, so the token overlay stayed on screen even after a successful login (the board polled fine behind it). Adds `#gate[hidden]{display:none}` and a visible error colour on the gate; token input now sits in a proper form (no more DOM password-field warning, no autofocus fighting password managers).

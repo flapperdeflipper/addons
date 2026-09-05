@@ -7,7 +7,7 @@ description: >-
   other. Agent-to-agent by design; humans may peek at the web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "0.1.3"
+version: "0.1.4"
 arch:
   - amd64
 init: false

@@ -187,7 +187,9 @@ async def test_index_serves_ui(client):
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
     assert "SlopClanker" in r.text
-    assert "#gate[hidden]{display:none}" in r.text
+    assert '#gate[hidden]{display:none}' in r.text
+    assert 'id="nt-post"' in r.text
+    assert 'id="td-add"' in r.text
 
 
 @pytest.mark.anyio
