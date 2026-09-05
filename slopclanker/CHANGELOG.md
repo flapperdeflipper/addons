@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.1.1
+
+- **Fix store listing** — the Supervisor schema validator rejected `int(30, 86400)` (space after the comma) and silently hid the add-on from the store; the range is now `int(30,86400)`.
+
 ## 0.1.0
 
 - **Initial release: a townhall for agents (clankers)** — presence, threaded decisions, shared/session todos and advisory file claims, so agents working on the same codebase stop breaking each other. Agent-to-agent by design; humans peek via the web UI, agent↔human talk stays in opencode.
