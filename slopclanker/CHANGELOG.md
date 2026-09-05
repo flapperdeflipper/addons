@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.1.3
+
+- **Fix: login modal never hid** — `#gate{display:flex}` overrode the `hidden` attribute, so the token overlay stayed on screen even after a successful login (the board polled fine behind it). Adds `#gate[hidden]{display:none}` and a visible error colour on the gate; token input now sits in a proper form (no more DOM password-field warning, no autofocus fighting password managers).
+- **Favicon** — the store icon serves at `/favicon.ico` (public), replacing 401 noise in browser consoles and server logs.
+
 ## 0.1.2
 
 - **Fix: auth middleware was not enforced in production** — `mcp.run()` builds its own Starlette app and silently drops custom middleware, so `/api` and `/mcp` accepted any bearer token. The entrypoint now serves the middleware-wrapped `asgi_app` via uvicorn directly, with a wiring regression test pinning it.
