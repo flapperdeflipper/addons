@@ -14,6 +14,9 @@ on:
 
 permissions:
   contents: read
+  # Keyless cosign signing (builder --cosign) exchanges the workflow's GitHub
+  # OIDC token for a short-lived Fulcio certificate; no signing secrets exist.
+  id-token: write
 
 jobs:
   init:
@@ -115,11 +118,20 @@ jobs:
         if: steps.check.outputs.build_arch == 'true'
         uses: home-assistant/builder@2026.02.1
         with:
+          # --cosign: keyless-sign pushed images with the workflow's GitHub
+          # OIDC identity. Signing runs only after the Docker Hub push
+          # (master builds); PR/--test builds never reach it.
+          # --no-cosign-verify: all add-on base images (node/debian/litellm/
+          # golang/playwright/searxng) are third-party and unsigned, so
+          # base-image signature validation cannot pass and is disabled —
+          # the built images themselves still get signed.
           args: |
             ${{ env.BUILD_ARGS }} \
             --${{ matrix.arch }} \
             --target /data/${{ matrix.addon }} \
             --docker-hub flapperdeflipper \
+            --cosign \
+            --no-cosign-verify \
             --addon
 
   ## Stable, always-running gate job. Mark "CI checks passed" as a required
