@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.1.2
+
+- **Fix: auth middleware was not enforced in production** — `mcp.run()` builds its own Starlette app and silently drops custom middleware, so `/api` and `/mcp` accepted any bearer token. The entrypoint now serves the middleware-wrapped `asgi_app` via uvicorn directly, with a wiring regression test pinning it.
+- **Icon and logo** — store assets (216x216 icon, 250x100 logo): townhall speech-bubble mark with the three clanker dots.
+- **uvicorn pinned as a direct dependency** — it is imported directly by the entrypoint now.
+
 ## 0.1.1
 
 - **Fix store listing** — the Supervisor schema validator rejected `int(30, 86400)` (space after the comma) and silently hid the add-on from the store; the range is now `int(30,86400)`.
