@@ -1,17 +1,16 @@
 #############
+# Thin wrapper: the application lives in flapperdeflipper/slopclanker and
+# is released as ghcr.io/flapperdeflipper/slopclanker:<version>. This layer
+# adds the Supervisor entrypoint; bump the FROM tag together with the
+# config.yaml version (Dependabot opens the FROM bump for you).
 ARG BUILD_ARCH
 ARG BUILD_VERSION
 
-FROM python:3.13-slim
+FROM ghcr.io/flapperdeflipper/slopclanker:0.5.0
 
-COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
-
-COPY app /app/app
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
 
-WORKDIR /app
 ENTRYPOINT ["/run.sh"]
 
 LABEL \

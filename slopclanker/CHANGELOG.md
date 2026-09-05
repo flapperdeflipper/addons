@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.5.1
+
+- **The application moved to its own project repo**: [flapperdeflipper/slopclanker](https://github.com/flapperdeflipper/slopclanker) (source, tests, CI, releases). This add-on is now a thin wrapper that runs the released container image `ghcr.io/flapperdeflipper/slopclanker:0.5.0` with Supervisor plumbing. Bump the `FROM` tag and the add-on version together; Dependabot opens the image bump automatically.
+
 ## 0.5.0
 
 Professional hardening pass: the badge finally tells the truth, plus security, stability and polish fixes across the board.
