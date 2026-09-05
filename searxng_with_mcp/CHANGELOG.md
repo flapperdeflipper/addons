@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.7
+
+- **Modern map type** — rename the legacy `addon_config` map to `app_config` (same volume, new Supervisor naming); clears the store validation warning.
+
 ## 2026.9.6
 
 - **Rebuild for cosign signing** — no functional changes; rebuilt from master after keyless cosign image signing landed in CI, so this tag publishes with a signature.
