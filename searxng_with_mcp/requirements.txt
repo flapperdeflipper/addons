@@ -8,5 +8,5 @@ python-dateutil>=2.9.0.post0,<3.0.0 # For robust date parsing
 cachetools>=5.0.0,<6.0.0 # For caching get_website results
 filetype>=1.1.0,<2.0.0 # For detecting file types when processing get_website results
 pymupdf>=1.20.0,<2.0.0 # For converting PDFs to plaintext
-pymupdf4llm>=0.0.20,<0.1 # For MD formatting of converted PDFs
+pymupdf4llm>=1.28.2,<1.29 # For MD formatting of converted PDFs
 lxml_html_clean 
