@@ -1,5 +1,5 @@
 name: "SearXNG w/ MCP"
-version: "2026.9.6"
+version: "2026.9.7"
 slug: searxng_with_mcp
 description: >-
   SearXNG is a metasearch engine. Adds OvertliDS/mcp-searxng-enhanced endpoint
@@ -12,7 +12,7 @@ environment:
   MCP_HTTP_HOST: 0.0.0.0
   MCP_HTTP_PORT: "8081"
 map:
-  - type: addon_config
+  - type: app_config
     read_only: false
     path: /etc/searxng
 hassio_api: true
