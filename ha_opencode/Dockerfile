@@ -48,6 +48,11 @@ ARG YQ_VERSION=v4.53.3
 # time. Standalone archive from 1Password's distribution cache (not in Debian
 # repos), same pinned-release pattern as yq/ttyd above.
 ARG OP_CLI_VERSION=2.30.3
+# sigstore cosign, for OCI image signing/verification from agent sessions —
+# the same tool CI uses to keyless-sign the published add-on images. Static
+# Go binary from GitHub releases (not in Debian repos), same pinned-release
+# pattern as yq/op above.
+ARG COSIGN_VERSION=v3.1.3
 
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
@@ -141,6 +146,16 @@ RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
     && install -m 0755 /tmp/op-cli/op /usr/local/bin/op \
     && rm -rf /tmp/op-cli /tmp/op-cli.zip \
     && [ "$(op --version)" = "${OP_CLI_VERSION}" ]
+
+# Install cosign (sigstore) from GitHub releases: OCI image signing and
+# verification for agent sessions, matching the keyless signing CI applies to
+# the published images. Release asset names use Go arch (amd64/arm64). The
+# trailing version assertion fails the build on a truncated or HTML-error
+# download.
+RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
+    && curl -fsSL "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-${ARCH}" -o /usr/local/bin/cosign \
+    && chmod +x /usr/local/bin/cosign \
+    && cosign version 2>/dev/null | grep -q "GitVersion:.*${COSIGN_VERSION}"
 
 # Copy hab CLI binary built from source (pinned release)
 # A CLI designed for AI agents to manage HA via REST/WebSocket APIs
