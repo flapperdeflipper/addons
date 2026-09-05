@@ -19,6 +19,7 @@ args:
   TSX_VERSION: "4.20.6"
   TTYD_VERSION: "1.7.7"
   YQ_VERSION: "v4.53.3"
+  OP_CLI_VERSION: "2.30.3"
   # hab CLI is cloned at the HAB_VERSION tag in a multi-stage Docker build
   # (ha_opencode/Dockerfile) — it cannot be expressed here at all.
 labels:
