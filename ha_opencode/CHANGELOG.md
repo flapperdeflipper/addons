@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.7.0
+
+- **Bundled 1Password CLI** — `op` 2.30.3 (pinned standalone archive) so `hasecret` and agent sessions can resolve `op://` secret references at read time; authenticate with `OP_SERVICE_ACCOUNT_TOKEN` via the env_vars option.
+- **Added `hasecret` companion workflow** — names-only secret management for `/homeassistant/secrets.yaml` with surgical byte-preserving writes, backup + verify + atomic rename, env-var injection instead of printing, and `op://` resolution. The tool itself lives in the config directory (`bin/hasecret`), not the image.
+
 ## 2.6.2
 
 - **Bundled rsync** — directory syncing for addon-source syncs and skills staging.

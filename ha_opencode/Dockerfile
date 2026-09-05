@@ -44,6 +44,10 @@ ARG OPENCHAMBER_VERSION=1.21.0
 ARG PPQ_PROXY_VERSION=0.1.0
 ARG TSX_VERSION=4.20.6
 ARG YQ_VERSION=v4.53.3
+# 1Password CLI, for op:// secret references resolved by hasecret at read
+# time. Standalone archive from 1Password's distribution cache (not in Debian
+# repos), same pinned-release pattern as yq/ttyd above.
+ARG OP_CLI_VERSION=2.30.3
 
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
@@ -125,6 +129,18 @@ RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
     && curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${ARCH}" -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq \
     && yq --version | grep -q mikefarah
+
+# Install the 1Password CLI (op) from the official standalone archive.
+# Self-contained binary; python3's zipfile module extracts it (unzip is not
+# installed). The trailing version assertion fails the build on a truncated or
+# HTML-error download. Agent shells authenticate it as a service account by
+# setting OP_SERVICE_ACCOUNT_TOKEN through the add-on's env_vars option.
+RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
+    && curl -fsSL "https://cache.agilebits.com/dist/1P/op2/pkg/v${OP_CLI_VERSION}/op_linux_${ARCH}_v${OP_CLI_VERSION}.zip" -o /tmp/op-cli.zip \
+    && python3 -m zipfile -e /tmp/op-cli.zip /tmp/op-cli \
+    && install -m 0755 /tmp/op-cli/op /usr/local/bin/op \
+    && rm -rf /tmp/op-cli /tmp/op-cli.zip \
+    && [ "$(op --version)" = "${OP_CLI_VERSION}" ]
 
 # Copy hab CLI binary built from source (pinned release)
 # A CLI designed for AI agents to manage HA via REST/WebSocket APIs
