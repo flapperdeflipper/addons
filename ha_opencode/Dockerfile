@@ -75,6 +75,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - procps: Provides pgrep for health check
 # - tmux: Session persistence to prevent multiple OpenCode instances
 # - python3-yaml: PyYAML for ad-hoc python3 YAML parsing in sessions
+# - rsync: directory syncing (addon source sync, skills staging)
 # - chromium: Headless browser for screenshot_url MCP tool (visual verification)
 # - g++/make: native fallback builds for OpenChamber dependencies on all arches
 RUN apt-get update \
@@ -94,6 +95,7 @@ RUN apt-get update \
         python3 \
         python3-venv \
         python3-yaml \
+        rsync \
         tmux \
     && command -v ssh >/dev/null \
     && command -v ssh-keygen >/dev/null \
