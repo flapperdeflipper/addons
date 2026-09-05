@@ -49,7 +49,7 @@ describe("tokenMatches", () => {
 describe("createMcpHttpListener", () => {
   it("returns 401 without a bearer header", async () => {
     const transport = fakeTransport();
-    const base = await serve(createMcpHttpListener({ token: TOKEN, transport }));
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: transport.handleRequest.bind(transport) }));
     const res = await fetch(`${base}/mcp`, { method: "POST" });
     expect(res.status).toBe(401);
     expect(res.headers.get("www-authenticate")).toContain("Bearer");
@@ -58,7 +58,7 @@ describe("createMcpHttpListener", () => {
 
   it("returns 401 for a wrong token", async () => {
     const transport = fakeTransport();
-    const base = await serve(createMcpHttpListener({ token: TOKEN, transport }));
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: transport.handleRequest.bind(transport) }));
     const res = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: { authorization: "Bearer wrong-token" },
@@ -69,7 +69,7 @@ describe("createMcpHttpListener", () => {
 
   it("passes authorized /mcp requests to the transport", async () => {
     const transport = fakeTransport();
-    const base = await serve(createMcpHttpListener({ token: TOKEN, transport }));
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: transport.handleRequest.bind(transport) }));
     const res = await fetch(`${base}/mcp`, {
       method: "POST",
       headers: { authorization: `Bearer ${TOKEN}`, "content-type": "application/json" },
@@ -82,7 +82,7 @@ describe("createMcpHttpListener", () => {
 
   it("serves GET /health without auth", async () => {
     const transport = fakeTransport();
-    const base = await serve(createMcpHttpListener({ token: TOKEN, transport }));
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: transport.handleRequest.bind(transport) }));
     const res = await fetch(`${base}/health`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: "ok" });
@@ -90,7 +90,7 @@ describe("createMcpHttpListener", () => {
 
   it("returns 404 for other paths even with a valid token", async () => {
     const transport = fakeTransport();
-    const base = await serve(createMcpHttpListener({ token: TOKEN, transport }));
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: transport.handleRequest.bind(transport) }));
     const res = await fetch(`${base}/elsewhere`, {
       headers: { authorization: `Bearer ${TOKEN}` },
     });
@@ -104,7 +104,7 @@ describe("createMcpHttpListener", () => {
     const base = await serve(
       createMcpHttpListener({
         token: TOKEN,
-        transport,
+        handle: transport.handleRequest.bind(transport),
         onUnauthorized: (req) => seen.push(req.url),
       })
     );
@@ -114,6 +114,6 @@ describe("createMcpHttpListener", () => {
 
   it("throws when constructed without a token or transport", () => {
     expect(() => createMcpHttpListener({})).toThrow(/token/);
-    expect(() => createMcpHttpListener({ token: "x" })).toThrow(/transport/);
+    expect(() => createMcpHttpListener({ token: "x" })).toThrow(/handle/);
   });
 });

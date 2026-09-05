@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.9.1
+
+- **Stateless MCP-over-HTTP for gateway clients** — 2.8.0's stateful streamable transport requires an `Mcp-Session-Id` that session-less gateway clients (LiteLLM) never send, so every tool listing failed with 400. Each request now gets a fresh transport — matching Home Assistant's own native MCP endpoint — serialized through a promise chain so the single McpServer instance never has two connected transports. Verified live: a bare `tools/list` (no initialize, no session) serves all 65 tools including the zigporter/hab companions.
+
 ## 2.9.0
 
 - **Bundled cosign** — sigstore's `cosign` v3.1.3 (pinned GitHub release, version-asserted) for OCI image signing and verification from agent sessions, matching the keyless signing the add-on repository's CI now applies to every published image.

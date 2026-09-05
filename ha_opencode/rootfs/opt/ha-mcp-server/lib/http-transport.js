@@ -6,12 +6,15 @@
 // carry `Authorization: Bearer <MCP_HTTP_TOKEN>`; anything else is
 // rejected before it reaches the MCP transport.
 //
-// The transport is stateful (session ids are issued on initialize and
-// required afterwards), which lets the single module-level McpServer
-// instance stay connected once instead of being rebuilt per request.
+// STATELESS on purpose: gateway clients POST methods such as tools/list
+// directly, without initialize or an Mcp-Session-Id (Home Assistant's own
+// native MCP endpoint behaves the same way). Each request gets a fresh
+// StreamableHTTPServerTransport; the single module-level McpServer is
+// connected to it and disconnected again once the response closes, so
+// concurrent requests never fight over one transport.
 
 import { createServer } from "node:http";
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 /** Constant-time bearer comparison; length leak is acceptable for a LAN token. */
@@ -30,14 +33,54 @@ function bearerFrom(headers) {
 }
 
 /**
- * Build the request listener used by the HTTP server. Split out from
- * startHttpMcpServer so tests can drive it with a fake transport.
+ * Per-request stateless handler around a single McpServer instance.
+ * Serialized through a promise chain because the SDK allows one connected
+ * transport at a time; requests queue rather than race.
  */
-export function createMcpHttpListener({ token, transport, onUnauthorized } = {}) {
-  if (!token) throw new Error("token is required");
-  if (!transport || typeof transport.handleRequest !== "function") {
-    throw new Error("transport with handleRequest is required");
+export function createStatelessMcpHandler(mcpServer) {
+  if (!mcpServer || typeof mcpServer.connect !== "function") {
+    throw new Error("mcpServer with connect() is required");
   }
+  let chain = Promise.resolve();
+  return function handle(req, res) {
+    chain = chain
+      .then(async () => {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+          enableJsonResponse: true,
+        });
+        res.on("close", () => transport.close().catch(() => {}));
+        await mcpServer.connect(transport);
+        await transport.handleRequest(req, res);
+      })
+      .catch((error) => {
+        if (!res.headersSent) {
+          res.writeHead(500, { "content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32603, message: "internal error" },
+              id: null,
+            })
+          );
+        }
+      });
+  };
+}
+
+/**
+ * Build the request listener used by the HTTP server. `handle` receives
+ * authorized /mcp requests (a transport-like object or any function).
+ */
+export function createMcpHttpListener({ token, handle, onUnauthorized } = {}) {
+  if (!token) throw new Error("token is required");
+  const dispatch =
+    typeof handle === "function"
+      ? handle
+      : handle && typeof handle.handleRequest === "function"
+        ? (req, res) => handle.handleRequest(req, res)
+        : null;
+  if (!dispatch) throw new Error("handle function or transport with handleRequest is required");
   return function listener(req, res) {
     const url = new URL(req.url ?? "/", "http://localhost");
     if (req.method === "GET" && url.pathname === "/health") {
@@ -65,27 +108,19 @@ export function createMcpHttpListener({ token, transport, onUnauthorized } = {})
       );
       return;
     }
-    transport.handleRequest(req, res);
+    dispatch(req, res);
   };
 }
 
 /**
- * Connect `mcpServer` to a stateful StreamableHTTPServerTransport and serve
- * it on `port`. Returns the node:http server (call .close() to stop).
+ * Serve `mcpServer` statelessly (per-request transports) on `port`.
+ * Returns the node:http server (call .close() to stop).
  */
 export async function startHttpMcpServer(mcpServer, { port, token, host = "0.0.0.0", log = () => {} } = {}) {
-  if (!mcpServer || typeof mcpServer.connect !== "function") {
-    throw new Error("mcpServer with connect() is required");
-  }
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-  await mcpServer.connect(transport);
-
   const httpServer = createServer(
     createMcpHttpListener({
       token,
-      transport,
+      handle: createStatelessMcpHandler(mcpServer),
       onUnauthorized: (req) => log("warn", `unauthorized MCP http request from ${req.socket.remoteAddress}`),
     })
   );

@@ -2494,7 +2494,7 @@ const SERVICE_RESPONSE_MAX_CHARS = 20000;
 const server = new Server(
   {
     name: "home-assistant",
-    version: "2.8.0",
+    version: "2.9.1",
     description: "OpenCode Home Assistant MCP server for configuration editing, diagnostics, admin workflows, and HA-native LLM readiness reporting.",
   },
   {
@@ -7659,7 +7659,7 @@ async function main() {
 
   sendLog("info", "mcp-server", { 
     action: "started",
-    version: "2.8.0",
+    version: "2.9.1",
     transport: transportMode,
     tools: TOOLS.length,
     resources: RESOURCES.length,
@@ -7678,7 +7678,7 @@ async function main() {
       token,
       log: (level, message) => sendLog(level === "warn" ? "warning" : level, "mcp-http", { message }),
     });
-    console.error(`Home Assistant MCP server v2.8.0 listening on 0.0.0.0:${port}/mcp (HTTP, bearer authenticated)`);
+    console.error(`Home Assistant MCP server v2.9.1 listening on 0.0.0.0:${port}/mcp (HTTP, bearer authenticated)`);
     console.error(`Capabilities: Tools (${TOOLS.length}), Resources (${RESOURCES.length}), Prompts (${PROMPTS.length}), Logging`);
     return;
   }
@@ -7686,7 +7686,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
-  console.error("Home Assistant MCP server v2.8.0 started (Agent Capability Edition)");
+  console.error("Home Assistant MCP server v2.9.1 started (Agent Capability Edition)");
   console.error(`Capabilities: Tools (${TOOLS.length}), Resources (${RESOURCES.length}), Prompts (${PROMPTS.length}), Logging`);
   console.error(`Features: Structured Output, Tool Annotations, Resource Links, Content Annotations, Live Docs, Safe Config Writing, Screenshots${SCREENSHOT_ENABLED ? " (enabled)" : " (disabled)"}`);
 }
