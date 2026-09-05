@@ -178,6 +178,16 @@ dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 details.donebox{margin-top:16px}
 details.donebox summary{color:var(--faint);cursor:pointer;font-size:13px}
 @media(max-width:640px){header{flex-wrap:wrap;gap:8px} main{padding:12px 10px 70px}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+::-webkit-scrollbar-track{background:transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+dialog{animation:dpop .14s ease-out}
+@keyframes dpop{from{transform:scale(.97);opacity:0}to{transform:none;opacity:1}}
+.panel.on{animation:fadein .12s ease-out}
+@keyframes fadein{from{opacity:.4}to{opacity:1}}
+#tabbar button.on{transition:border-color .15s}
 </style>
 </head>
 <body>
@@ -341,7 +351,7 @@ details.donebox summary{color:var(--faint);cursor:pointer;font-size:13px}
   <h3 id="we-head">New wiki page</h3>
   <div class="frm">
     <label>title <input id="w-title"></label>
-    <label>slug <span id="we-slug-hint" class="hint">auto from title</span><input id="w-slug" placeholder="auto"></label>
+    <label>slug <span id="we-slug-hint" class="hint">auto from title, fixed once saved</span><input id="w-slug" placeholder="auto"></label>
     <label>project <select id="w-project"></select></label>
     <label>content (markdown) <textarea id="w-body" style="min-height:220px"></textarea></label>
     <input type="hidden" id="w-id">
@@ -403,6 +413,7 @@ var state = {
   events: [],
   agents: [], claims: [],
   autoTimer: null, chatTimer: null,
+  seen: parseFloat(localStorage.getItem("sc_seen") || "0") || 0,
 };
 
 function esc(s){ return String(s == null ? "" : s)
@@ -474,7 +485,7 @@ function md(src, opts){
   for (var i = 0; i < lines.length; i++){
     var L = lines[i];
     if (/^```/.test(L)) { flush(); out.push(inCode ? "</code></pre>" : "<pre><code>"); inCode = !inCode; continue; }
-    if (inCode) { out.push(esc(lines[i].replace(/&(?=amp;|lt;|gt;|quot;|#39;)/g,"&")) .replace(/&amp;/g,"&")); continue; }
+    if (inCode) { out.push(lines[i]); continue; }
     var ck = L.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
     if (ck){
       flush();
@@ -533,6 +544,7 @@ function setupAuto(){
   if (state.chatTimer) { clearInterval(state.chatTimer); state.chatTimer = null; }
   if ($("autorefresh").checked) state.autoTimer = setInterval(function(){ refresh(); }, 30000);
   if (state.tab === "chat") startChatPoll();
+  else if (state.chatTimer) { clearInterval(state.chatTimer); state.chatTimer = null; }
 }
 $("proj").onchange = function(){ state.project = this.value; refresh(); };
 $("btn-project").onclick = function(){
@@ -560,9 +572,14 @@ function saveAuthor(){ try{ localStorage.setItem("sc_author", author); }catch(e)
 function refresh(manual){
   if ($("gate").hidden === false) return;
   var t = state.tab;
-  var jobs = [api("/api/overview").then(function(o){
+  var seenQ = state.seen ? "?seen=" + state.seen : "";
+  var jobs = [api("/api/overview" + seenQ).then(function(o){
     state.overview = o; state.agents = o.agents; state.claims = o.claims;
     state.projects = o.projects; renderProjects(); renderCounts();
+    if (t === "board"){          // looking at the board = mark as read
+      state.seen = o.server_time;
+      try { localStorage.setItem("sc_seen", String(state.seen)); } catch(e){}
+    }
   })];
   if (t === "board") jobs.push(loadBoard());
   if (t === "todos") jobs.push(loadTodos());
@@ -591,14 +608,13 @@ function renderProjects(){
 function renderCounts(){
   var o = state.overview; if (!o) return;
   var map = {
-    board: o.counts.open_posts, todos: o.counts.open_todos,
-    notes: o.counts.notes, wiki: o.counts.wiki_pages,
+    board: o.counts.unread_posts, todos: o.counts.open_todos,
   };
   document.querySelectorAll("#tabbar button").forEach(function(b){
     var c = b.querySelector(".cnt"); if (c) c.remove();
     var n = map[b.dataset.tab];
     if (n){ var s = document.createElement("span");
-      s.className = "cnt" + (n > 0 && b.dataset.tab !== "notes" && b.dataset.tab !== "wiki" ? " hot" : "");
+      s.className = "cnt hot"; s.title = b.dataset.tab === "board" ? "new activity" : "open";
       s.textContent = n; b.appendChild(s); }
   });
 }
@@ -618,6 +634,9 @@ function renderChips(){
 function loadBoard(){
   return api("/api/posts"+qs()).then(function(d){
     state.posts = d;
+    var keep = {};
+    Object.keys(state.expanded).forEach(function(id){ keep[id] = state.detail[id]; });
+    state.detail = keep;
     return Promise.all(d.filter(function(p){ return state.expanded[p.id]; })
       .map(function(p){ return api("/api/posts/"+p.id).then(function(det){ state.detail[p.id] = det; })
           .catch(function(){}); }));
@@ -640,7 +659,7 @@ function renderBoard(){
       (p.project_slug && p.project_slug!=="general" ? '<span class="sep">·</span><span class="badge">'+esc(p.project_slug)+'</span>':"")+
       (p.audience && p.audience!=="all" ? '<span class="sep">·</span><span class="badge">@'+esc(p.audience)+'</span>':"")+
       '</div>'+
-      '<h3 class="t clickable">'+esc(p.title)+'</h3>'+
+      '<h3 class="t clickable" data-expand="'+p.id+'">'+esc(p.title)+'</h3>'+
       (!open && p.outcome ? '<div class="outcome"><b>outcome:</b> '+esc(p.outcome)+'</div>':"")+
       '<div class="meta">'+p.comment_count+' comments · '+
       '<button class="link small" data-expand="'+p.id+'">'+(state.expanded[p.id]?"hide":"open")+'</button></div>'+
@@ -978,6 +997,8 @@ function openPageDialog(title, body, existing){
   $("w-title").value = existing ? existing.title : (title || "");
   $("w-slug").value = existing ? existing.slug : "";
   $("w-body").value = existing ? existing.body : (body || "");
+  $("w-project").disabled = !!existing;
+  $("w-slug").disabled = !!existing;
   if (existing) $("w-project").value = existing.project_id;
   $("dlg-page-edit").showModal();
 }

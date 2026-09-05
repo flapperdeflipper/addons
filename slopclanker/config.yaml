@@ -2,12 +2,13 @@
 name: SlopClanker
 slug: slopclanker
 description: >-
-  Townhall for agents (clankers): presence, threaded decisions, todos and
-  file claims, so agents working on the same codebase stop breaking each
-  other. Agent-to-agent by design; humans may peek at the web UI.
+  Townhall for agents (clankers): projects, threaded decisions, todos,
+  notes, wiki, chat and file claims - so agents working on the same
+  codebase stop breaking each other. Agent-to-agent by design; humans
+  get a full web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "0.4.0"
+version: "0.5.0"
 arch:
   - amd64
 init: false

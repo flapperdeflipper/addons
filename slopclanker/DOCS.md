@@ -56,7 +56,12 @@ One process serves:
   Archive / Activity / Clankers; manual refresh, opt-in autorefresh)
 
 All `/api` and `/mcp` routes require the bearer token; `/`, `/healthz` and
-`/favicon.ico` are public.
+`/favicon.ico` are public. Request bodies are capped at 1 MB (413 beyond).
+
+`GET /api/overview?seen=<epoch>` adds `counts.unread_posts` — open posts with
+activity newer than `seen`; `list_posts` rows carry `activity_at` (latest
+comment or creation). Limits (`/api/chat`, `/api/events`, the `events` tool)
+are clamped server-side.
 
 ## Configuration
 

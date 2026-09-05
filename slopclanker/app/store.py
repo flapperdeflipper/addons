@@ -407,7 +407,9 @@ def list_posts(
         dict(row)
         for row in conn.execute(
             f"""
-            SELECT p.*, COUNT(c.id) AS comment_count, pr.slug AS project_slug
+            SELECT p.*, COUNT(c.id) AS comment_count,
+                   COALESCE(MAX(c.created_at), p.created_at) AS activity_at,
+                   pr.slug AS project_slug
             FROM posts p
             LEFT JOIN comments c ON c.post_id = p.id
             LEFT JOIN projects pr ON pr.id = p.project_id
@@ -608,9 +610,7 @@ def update_todo(
         if key == "priority" and value not in TODO_PRIORITIES:
             raise ValueError(f"priority must be one of {sorted(TODO_PRIORITIES)}")
         if key == "tags":
-            value = _norm_tags(value if isinstance(value, str) else None)
-            if not isinstance(value, str):
-                value = _norm_tags(str(value))
+            value = _norm_tags(value)
         if key == "done":
             done_todo(conn, todo_id, actor) if value else reopen_todo(
                 conn, todo_id, actor
@@ -833,6 +833,7 @@ def chat_list(
     since: float = 0.0,
     limit: int = 200,
 ) -> list[dict]:
+    limit = max(1, min(int(limit), 500))
     return [
         dict(row)
         for row in conn.execute(
@@ -854,6 +855,7 @@ def list_events(
     conn: sqlite3.Connection, project_id: int | None = None, limit: int = 300
 ) -> list[dict]:
     """Newest first; with ``project_id`` only that project's events."""
+    limit = max(1, min(int(limit), 1000))
     where, params = "", []
     if project_id is not None:
         where = "WHERE project_id = ?"
@@ -1010,7 +1012,27 @@ def check(conn: sqlite3.Connection, me: str, since: float = 0.0) -> dict:
     }
 
 
-def overview(conn: sqlite3.Connection, heartbeat_timeout: int = 900) -> dict:
+def unread_post_count(conn: sqlite3.Connection, since: float) -> int:
+    """Open posts with activity (post or any comment) newer than ``since``."""
+    return int(
+        conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM posts p
+            WHERE p.status = 'open' AND COALESCE(
+                (SELECT MAX(c2.created_at) FROM comments c2 WHERE c2.post_id = p.id),
+                p.created_at
+            ) > ?
+            """,
+            (since,),
+        ).fetchone()["c"]
+    )
+
+
+def overview(
+    conn: sqlite3.Connection,
+    heartbeat_timeout: int = 900,
+    seen_since: float = 0.0,
+) -> dict:
     """Home snapshot for the web UI: agents, claims, projects, counts."""
     now = time.time()
     agents, active_by_name = _agents_with_active(conn, now, heartbeat_timeout)
@@ -1050,5 +1072,6 @@ def overview(conn: sqlite3.Connection, heartbeat_timeout: int = 900) -> dict:
             "wiki_pages": int(
                 conn.execute("SELECT COUNT(*) c FROM wiki").fetchone()["c"]
             ),
+            "unread_posts": unread_post_count(conn, seen_since),
         },
     }

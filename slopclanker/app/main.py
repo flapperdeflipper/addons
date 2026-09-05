@@ -11,6 +11,7 @@ Environment (set by run.sh):
   SLOPCLANKER_HEARTBEAT_TIMEOUT         agent active window in seconds (default 900)
 """
 
+import hmac
 import os
 import time
 from collections.abc import Awaitable, Callable
@@ -57,13 +58,22 @@ def _db():
         conn.close()
 
 
+class RequestTooLarge(Exception):
+    """Request body above the size cap."""
+
+
+MAX_BODY_BYTES = 1_000_000
+
+
 def _api(handler: Callable[[Request], Awaitable[JSONResponse]]) -> Callable[..., Any]:
-    """Map ValueError to a 400 JSON response."""
+    """Map ValueError/TypeError to 400 and RequestTooLarge to 413."""
 
     @wraps(handler)
     async def wrapped(request: Request) -> JSONResponse:
         try:
             return await handler(request)
+        except RequestTooLarge as err:
+            return JSONResponse({"error": str(err)}, status_code=413)
         except (TypeError, ValueError) as err:
             return JSONResponse({"error": str(err)}, status_code=400)
 
@@ -71,6 +81,14 @@ def _api(handler: Callable[[Request], Awaitable[JSONResponse]]) -> Callable[...,
 
 
 async def _json_body(request: Request) -> dict:
+    if request.headers.get("content-length"):
+        try:
+            if int(request.headers["content-length"]) > MAX_BODY_BYTES:
+                raise RequestTooLarge(f"body over {MAX_BODY_BYTES} bytes")
+        except RequestTooLarge:
+            raise
+        except ValueError:
+            pass
     try:
         data = await request.json()
     except Exception as err:
@@ -139,9 +157,15 @@ async def api_hello(request: Request) -> JSONResponse:
 @mcp.custom_route("/api/overview", methods=["GET"])
 @_api
 async def api_overview(request: Request) -> JSONResponse:
+    try:
+        seen = float(request.query_params.get("seen", "0"))
+    except ValueError:
+        seen = 0.0
     with _db() as conn:
         return JSONResponse(
-            store.overview(conn, heartbeat_timeout=_heartbeat_timeout())
+            store.overview(
+                conn, heartbeat_timeout=_heartbeat_timeout(), seen_since=seen
+            )
         )
 
 
@@ -604,7 +628,8 @@ class BearerAuth:
             if token:
                 headers = {k.lower(): v for k, v in scope.get("headers", [])}
                 auth = headers.get(b"authorization", b"").decode("latin-1")
-                if auth != f"Bearer {token}":
+                expected = f"Bearer {token}".encode()
+                if not hmac.compare_digest(auth.encode("utf-8", "replace"), expected):
                     await JSONResponse({"error": "unauthorized"}, status_code=401)(
                         scope, receive, send
                     )
