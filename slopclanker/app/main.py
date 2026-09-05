@@ -26,7 +26,7 @@ from starlette.responses import FileResponse, JSONResponse
 from app import store
 from app.db import connect
 
-PUBLIC_PATHS = {"/", "/healthz"}
+PUBLIC_PATHS = {"/", "/healthz", "/favicon.ico"}
 
 mcp = FastMCP(
     "slopclanker",
@@ -95,6 +95,11 @@ _STATIC_DIR = Path(__file__).resolve().parent / "static"
 @mcp.custom_route("/", methods=["GET"])
 async def index(request: Request) -> FileResponse:
     return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
+
+
+@mcp.custom_route("/favicon.ico", methods=["GET"])
+async def favicon(request: Request) -> FileResponse:
+    return FileResponse(_STATIC_DIR / "favicon.png", media_type="image/png")
 
 
 @mcp.custom_route("/api/hello", methods=["POST"])

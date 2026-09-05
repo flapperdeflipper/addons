@@ -187,3 +187,11 @@ async def test_index_serves_ui(client):
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
     assert "SlopClanker" in r.text
+    assert "#gate[hidden]{display:none}" in r.text
+
+
+@pytest.mark.anyio
+async def test_favicon_public(client):
+    r = await client.get("/favicon.ico")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("image/png")
