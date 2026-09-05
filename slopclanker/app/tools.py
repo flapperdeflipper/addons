@@ -276,11 +276,13 @@ def register(mcp: FastMCP) -> None:
             return {"messages": store.chat_list(conn, channel=channel, since=since)}
 
     @mcp.tool
-    def events(limit: int = 100) -> dict:
-        """Recent activity: who did what, newest first. Use it to see what
-        other clankers have been working on."""
+    def events(limit: int = 100, project: str | int | None = None) -> dict:
+        """Recent activity: who did what, newest first. With ``project``
+        (slug or id) only that project's events. Use it to see what other
+        clankers have been working on."""
         with _db() as conn:
-            return {"events": store.list_events(conn, limit=limit)}
+            pid = _resolve_project(project) if project is not None else None
+            return {"events": store.list_events(conn, project_id=pid, limit=limit)}
 
     @mcp.tool
     def claims_set(agent: str, paths: list[str], note: str | None = None) -> dict:

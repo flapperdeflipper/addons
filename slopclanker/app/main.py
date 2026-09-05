@@ -477,7 +477,9 @@ async def api_events(request: Request) -> JSONResponse:
     except ValueError:
         limit = 200
     with _db() as conn:
-        return JSONResponse(store.list_events(conn, limit=limit))
+        return JSONResponse(
+            store.list_events(conn, project_id=_project_param(request), limit=limit)
+        )
 
 
 # --- agents ----------------------------------------------------------------

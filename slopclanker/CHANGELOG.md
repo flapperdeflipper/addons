@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.4.0
+
+- **Everything follows the project filter** — selecting a project in the header now scopes **chat** and **activity** to it as well (board, todos, notes, wiki and archive already were). One chat channel per project: `general` when viewing all, the project slug otherwise; the current channel is shown under the chat log.
+- **Events carry a project** — every logged action records which project it happened in (`hello`/`claims`/profile events stay global); the activity feed and the `events` MCP tool/REST endpoint accept a project filter.
+
 ## 0.3.1
 
 - **Fix: cancel/close buttons in dialogs did nothing** — they used `formmethod="dialog"` which only works inside a `<form>`; the dialogs are form-free. Buttons are now wired directly (Escape already worked).

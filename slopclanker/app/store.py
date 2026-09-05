@@ -19,11 +19,12 @@ def _log(
     obj_type: str,
     obj_id: str | int,
     summary: str = "",
+    project_id: int | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO events(ts, actor, verb, obj_type, obj_id, summary)"
-        " VALUES(?, ?, ?, ?, ?, ?)",
-        (time.time(), actor, verb, obj_type, str(obj_id), summary[:200]),
+        "INSERT INTO events(ts, actor, verb, obj_type, obj_id, summary, project_id)"
+        " VALUES(?, ?, ?, ?, ?, ?, ?)",
+        (time.time(), actor, verb, obj_type, str(obj_id), summary[:200], project_id),
     )
 
 
@@ -216,7 +217,15 @@ def create_project(
         """,
         (slug, name.strip(), description.strip(), created_by, now),
     )
-    _log(conn, created_by, "created project", "project", slug, name.strip())
+    _log(
+        conn,
+        created_by,
+        "created project",
+        "project",
+        slug,
+        name.strip(),
+        project_id=int(cur.lastrowid),
+    )
     conn.commit()
     return get_project(conn, int(cur.lastrowid))  # type: ignore[return-value]
 
@@ -273,7 +282,15 @@ def create_post(
         ),
     )
     pid = int(cur.lastrowid)
-    _log(conn, created_by, "posted", "post", pid, title.strip()[:120])
+    _log(
+        conn,
+        created_by,
+        "posted",
+        "post",
+        pid,
+        title.strip()[:120],
+        project_id=project_id,
+    )
     conn.commit()
     return pid
 
@@ -290,7 +307,9 @@ def add_comment(
     Nesting is capped at MAX_COMMENT_DEPTH levels under the post; deeper
     replies are rejected so threads stay readable.
     """
-    post = conn.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
+    post = conn.execute(
+        "SELECT status, project_id FROM posts WHERE id = ?", (post_id,)
+    ).fetchone()
     if post is None:
         raise ValueError(f"post {post_id} does not exist")
     if post["status"] != "open":
@@ -327,6 +346,7 @@ def add_comment(
         "post",
         post_id,
         f"depth {depth + 1}",
+        project_id=post["project_id"],
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -334,7 +354,7 @@ def add_comment(
 
 def close_post(conn: sqlite3.Connection, post_id: int, outcome: str) -> None:
     row = conn.execute(
-        "SELECT status, created_by FROM posts WHERE id = ?", (post_id,)
+        "SELECT status, created_by, project_id FROM posts WHERE id = ?", (post_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"post {post_id} does not exist")
@@ -344,7 +364,15 @@ def close_post(conn: sqlite3.Connection, post_id: int, outcome: str) -> None:
         "UPDATE posts SET status = 'closed', outcome = ?, closed_at = ? WHERE id = ?",
         (outcome, time.time(), post_id),
     )
-    _log(conn, row["created_by"], "closed", "post", post_id, outcome[:120])
+    _log(
+        conn,
+        row["created_by"],
+        "closed",
+        "post",
+        post_id,
+        outcome[:120],
+        project_id=row["project_id"],
+    )
     conn.commit()
 
 
@@ -448,7 +476,9 @@ def add_todo(
         ),
     )
     tid = int(cur.lastrowid)
-    _log(conn, created_by, "added todo", "todo", tid, title[:120])
+    _log(
+        conn, created_by, "added todo", "todo", tid, title[:120], project_id=project_id
+    )
     conn.commit()
     return tid
 
@@ -500,7 +530,7 @@ def list_todos(
 
 def done_todo(conn: sqlite3.Connection, todo_id: int, actor: str = "") -> None:
     row = conn.execute(
-        "SELECT done, title FROM todos WHERE id = ?", (todo_id,)
+        "SELECT done, title, project_id FROM todos WHERE id = ?", (todo_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"todo {todo_id} does not exist")
@@ -509,29 +539,54 @@ def done_todo(conn: sqlite3.Connection, todo_id: int, actor: str = "") -> None:
     conn.execute(
         "UPDATE todos SET done = 1, done_at = ? WHERE id = ?", (time.time(), todo_id)
     )
-    _log(conn, actor or "?", "finished todo", "todo", todo_id, row["title"][:120])
+    _log(
+        conn,
+        actor or "?",
+        "finished todo",
+        "todo",
+        todo_id,
+        row["title"][:120],
+        project_id=row["project_id"],
+    )
     conn.commit()
 
 
 def reopen_todo(conn: sqlite3.Connection, todo_id: int, actor: str = "") -> None:
-    row = conn.execute("SELECT done FROM todos WHERE id = ?", (todo_id,)).fetchone()
+    row = conn.execute(
+        "SELECT done, project_id FROM todos WHERE id = ?", (todo_id,)
+    ).fetchone()
     if row is None:
         raise ValueError(f"todo {todo_id} does not exist")
     conn.execute("UPDATE todos SET done = 0, done_at = NULL WHERE id = ?", (todo_id,))
-    _log(conn, actor or "?", "reopened todo", "todo", todo_id)
+    _log(
+        conn,
+        actor or "?",
+        "reopened todo",
+        "todo",
+        todo_id,
+        project_id=row["project_id"],
+    )
     conn.commit()
 
 
 def archive_todo(conn: sqlite3.Connection, todo_id: int, actor: str = "") -> None:
     row = conn.execute(
-        "SELECT archived, title FROM todos WHERE id = ?", (todo_id,)
+        "SELECT archived, title, project_id FROM todos WHERE id = ?", (todo_id,)
     ).fetchone()
     if row is None:
         raise ValueError(f"todo {todo_id} does not exist")
     if row["archived"]:
         return
     conn.execute("UPDATE todos SET archived = 1 WHERE id = ?", (todo_id,))
-    _log(conn, actor or "?", "archived todo", "todo", todo_id, row["title"][:120])
+    _log(
+        conn,
+        actor or "?",
+        "archived todo",
+        "todo",
+        todo_id,
+        row["title"][:120],
+        project_id=row["project_id"],
+    )
     conn.commit()
 
 
@@ -566,7 +621,17 @@ def update_todo(
     if sets:
         params.append(todo_id)
         conn.execute(f"UPDATE todos SET {', '.join(sets)} WHERE id = ?", params)
-        _log(conn, actor or "?", "updated todo", "todo", todo_id)
+        row2 = conn.execute(
+            "SELECT project_id FROM todos WHERE id = ?", (todo_id,)
+        ).fetchone()
+        _log(
+            conn,
+            actor or "?",
+            "updated todo",
+            "todo",
+            todo_id,
+            project_id=row2["project_id"],
+        )
         conn.commit()
     out = conn.execute("SELECT * FROM todos WHERE id = ?", (todo_id,)).fetchone()
     return dict(out)  # type: ignore[arg-type]
@@ -598,7 +663,15 @@ def save_note(
             (project_id, title.strip(), body, _norm_tags(tags), created_by, now, now),
         )
         nid = int(cur.lastrowid)
-        _log(conn, created_by, "created note", "note", nid, title.strip()[:120])
+        _log(
+            conn,
+            created_by,
+            "created note",
+            "note",
+            nid,
+            title.strip()[:120],
+            project_id=project_id,
+        )
     else:
         cur = conn.execute(
             "UPDATE notes SET title = ?, body = ?, tags = ?, updated_at = ? WHERE id = ?",
@@ -607,7 +680,18 @@ def save_note(
         if cur.rowcount == 0:
             raise ValueError(f"note {note_id} does not exist")
         nid = note_id
-        _log(conn, created_by, "updated note", "note", nid, title.strip()[:120])
+        row = conn.execute(
+            "SELECT project_id FROM notes WHERE id = ?", (nid,)
+        ).fetchone()
+        _log(
+            conn,
+            created_by,
+            "updated note",
+            "note",
+            nid,
+            title.strip()[:120],
+            project_id=row["project_id"],
+        )
     conn.commit()
     return nid
 
@@ -664,7 +748,15 @@ def save_page(
             """,
             (project_id, slug, title.strip(), body, created_by, now, now),
         )
-        _log(conn, created_by, "created wiki page", "wiki", slug, title.strip()[:120])
+        _log(
+            conn,
+            created_by,
+            "created wiki page",
+            "wiki",
+            slug,
+            title.strip()[:120],
+            project_id=project_id,
+        )
     else:
         cur = conn.execute(
             "UPDATE wiki SET slug = ?, title = ?, body = ?, updated_at = ? WHERE id = ?",
@@ -672,7 +764,18 @@ def save_page(
         )
         if cur.rowcount == 0:
             raise ValueError(f"wiki page {page_id} does not exist")
-        _log(conn, created_by, "updated wiki page", "wiki", slug, title.strip()[:120])
+        row = conn.execute(
+            "SELECT project_id FROM wiki WHERE id = ?", (page_id,)
+        ).fetchone()
+        _log(
+            conn,
+            created_by,
+            "updated wiki page",
+            "wiki",
+            slug,
+            title.strip()[:120],
+            project_id=row["project_id"],
+        )
     conn.commit()
     return slug
 
@@ -747,11 +850,19 @@ def chat_list(
 # --------------------------------------------------------------------------
 
 
-def list_events(conn: sqlite3.Connection, limit: int = 300) -> list[dict]:
+def list_events(
+    conn: sqlite3.Connection, project_id: int | None = None, limit: int = 300
+) -> list[dict]:
+    """Newest first; with ``project_id`` only that project's events."""
+    where, params = "", []
+    if project_id is not None:
+        where = "WHERE project_id = ?"
+        params.append(project_id)
     return [
         dict(row)
         for row in conn.execute(
-            "SELECT * FROM events ORDER BY ts DESC LIMIT ?", (limit,)
+            f"SELECT * FROM events {where} ORDER BY ts DESC LIMIT ?",
+            (*params, limit),
         )
     ]
 
