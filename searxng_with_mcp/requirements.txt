@@ -1,6 +1,6 @@
 fastmcp>=3.0.0,<4.0.0
 httpx>=0.20.0,<1.0.0
-beautifulsoup4>=4.9.0,<5.0.0
+beautifulsoup4>=4.15.0,<5.0.0
 pydantic>=1.8.0,<3.0.0
 tzdata>=2022.1 # For timezone support
 trafilatura>=1.8.0,<2.0.0 # For main content extraction
