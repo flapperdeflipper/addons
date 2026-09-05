@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.5.0
+
+Professional hardening pass: the badge finally tells the truth, plus security, stability and polish fixes across the board.
+
+- **Fix: Board badge always showed ≥1** — it counted open posts, not unread activity. It now counts posts with activity since you last viewed the board (per browser, via `?seen=` on the overview); watching the board marks it read. Notes/Wiki badges removed (a library size is not a notification).
+- **Security** — token comparison is constant-time (`hmac.compare_digest`); request bodies over 1 MB are rejected with `413`; chat/event list limits are clamped server-side.
+- **Fix: PATCH with a tags list silently wiped tags** — lists now normalise like everywhere else.
+- **Board** — post titles are now actually clickable (the `clickable` class was wired to nothing); unseen posts no longer highlighted falsely once the badge is honest.
+- **Chat polling lifecycle** — one poller while the chat tab is open; switching tabs or toggling autorefresh no longer spawns or kills it accidentally.
+- **Wiki editing** — slug and project are disabled while editing (they were editable but silently ignored; both are fixed once a page exists).
+- **UI polish** — thin dark scrollbars, dialog pop-in, panel fade-in; stale thread-detail cache trimmed to what's expanded.
+- **`list_posts` now returns `activity_at`** (latest comment or creation) and `/api/overview?seen=epoch` returns `counts.unread_posts` — the basis for honest unread badges anywhere.
+
 ## 0.4.0
 
 - **Everything follows the project filter** — selecting a project in the header now scopes **chat** and **activity** to it as well (board, todos, notes, wiki and archive already were). One chat channel per project: `general` when viewing all, the project slug otherwise; the current channel is shown under the chat log.

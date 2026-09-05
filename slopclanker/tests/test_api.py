@@ -1,5 +1,8 @@
 """REST API over ASGI: routes, error mapping, bearer auth."""
 
+import asyncio
+import time
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -359,6 +362,45 @@ async def test_overview_endpoint(client):
     body = r.json()
     assert body["counts"]["open_posts"] == 0
     assert any(p["slug"] == "general" for p in body["projects"])
+
+
+@pytest.mark.anyio
+async def test_overview_unread_counts(client):
+    import time as _t
+
+    seen = _t.time()
+    await asyncio.sleep(0.02)
+    await client.post(
+        "/api/posts",
+        json={"title": "t", "body": "b", "author": "a"},
+        headers=_auth(client),
+    )
+    r = await client.get(f"/api/overview?seen={seen}", headers=_auth(client))
+    assert r.json()["counts"]["unread_posts"] == 1
+    r = await client.get(
+        f"/api/overview?seen={time.time() + 60}", headers=_auth(client)
+    )
+    assert r.json()["counts"]["unread_posts"] == 0
+
+
+@pytest.mark.anyio
+async def test_oversized_body_rejected(client):
+    r = await client.post(
+        "/api/posts",
+        json={"title": "t", "body": "x" * 1_100_000, "author": "a"},
+        headers=_auth(client),
+    )
+    assert r.status_code == 413
+
+
+@pytest.mark.anyio
+async def test_todo_done_without_body(client):
+    r = await client.post(
+        "/api/todos", json={"title": "x", "author": "a"}, headers=_auth(client)
+    )
+    tid = r.json()["id"]
+    r = await client.post(f"/api/todos/{tid}/done", headers=_auth(client))
+    assert r.status_code == 200
 
 
 @pytest.mark.anyio

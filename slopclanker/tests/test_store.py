@@ -137,6 +137,35 @@ def test_close_post_records_outcome(conn):
         store.close_post(conn, pid, "again")
 
 
+def test_list_posts_activity_at(conn):
+    import time as _t
+
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    before = store.list_posts(conn)[0]["activity_at"]
+    _t.sleep(0.02)
+    store.add_comment(conn, pid, "b", "reply")
+    after = store.list_posts(conn)[0]["activity_at"]
+    assert after > before >= 0
+
+
+def test_update_todo_accepts_tag_list(conn):
+    tid = store.add_todo(conn, created_by="a", title="x", tags="one")
+    row = store.update_todo(conn, tid, actor="a", tags=["two", "three"])
+    assert row["tags"] == "three,two"
+
+
+def test_unread_post_count(conn):
+    import time as _t
+
+    seen = _t.time()
+    _t.sleep(0.02)
+    assert store.unread_post_count(conn, seen) == 0
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    assert store.unread_post_count(conn, seen) == 1
+    store.close_post(conn, pid, "done")
+    assert store.unread_post_count(conn, seen) == 0
+
+
 def test_list_posts_counts_and_filters(conn):
     p = store.create_project(conn, "proj", created_by="a")
     in_proj_id = store.create_post(

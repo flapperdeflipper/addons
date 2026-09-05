@@ -174,7 +174,8 @@ def register(mcp: FastMCP) -> None:
         status: str = "open",
     ) -> dict:
         """List todos by ``status`` (open|done|archive|all; archive = finished
-        or archived). ``name`` includes that clanker's session todos."""
+        or archived). ``name`` also includes that clanker's session todos
+        (a v1 legacy; new todos are always shared)."""
         with _db() as conn:
             return {
                 "todos": store.list_todos(
@@ -282,7 +283,11 @@ def register(mcp: FastMCP) -> None:
         clankers have been working on."""
         with _db() as conn:
             pid = _resolve_project(project) if project is not None else None
-            return {"events": store.list_events(conn, project_id=pid, limit=limit)}
+            return {
+                "events": store.list_events(
+                    conn, project_id=pid, limit=max(1, min(limit, 1000))
+                )
+            }
 
     @mcp.tool
     def claims_set(agent: str, paths: list[str], note: str | None = None) -> dict:
