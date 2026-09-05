@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.99.1-8
+
+- **Rebuild for cosign signing** — no functional changes; rebuilt from master after keyless cosign image signing landed in CI, so this tag publishes with a signature.
+
 ## 1.99.1-7
 
 - **Dropped the ha-mcp-server image copy** — ha_opencode 2.8.0+ serves its full MCP server over authenticated streamable HTTP (`mcp_http_enabled` + `mcp_http_token`, port 8927/tcp), so the gateway registers it as a plain HTTP server instead of a stdio child. Removes the multi-stage `COPY --from` from the Dockerfile and, with it, the known gap where companion CLI tools (zigporter, hab) failed at call time. Switch `/homeassistant/litellm/config.yaml` from the stdio `homeassistant` entry to the HTTP URL when updating.
