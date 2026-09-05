@@ -6,7 +6,7 @@
 ARG BUILD_ARCH
 ARG BUILD_VERSION
 
-FROM ghcr.io/flapperdeflipper/slopclanker:0.5.0
+FROM ghcr.io/flapperdeflipper/slopclanker:0.6.0
 
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
