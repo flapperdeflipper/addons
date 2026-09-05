@@ -1,0 +1,78 @@
+# Dependabot version updates: CI action pins, add-on base images and Python
+# requirements. Dependabot opens PRs; merging stays manual.
+#
+# BEFORE MERGING a PR that changes an add-on's monitored files (Dockerfile,
+# rootfs, ...): bump `version:` in that add-on's config.yaml and add a
+# CHANGELOG.md entry, per repo convention — Dependabot cannot apply the
+# repo's version scheme itself, and merging without the bump would rebuild
+# and re-push an already-released image tag.
+#
+# Scope notes:
+# - Only literal `FROM <image>:<tag>` pins are managed. ARG-indirected pins
+#   (BUILD_FROM, NODE_VERSION, GO_VERSION, MOSQUITTO_*, BASE_IMAGE, ...) are
+#   invisible to Dependabot and remain manual.
+# - mosquitto/, terminal/ and isponsorblocktv/ therefore have no entries.
+version: 2
+updates:
+  # GitHub Actions pins in .github/workflows/builder.yml
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ci"
+    labels: ["dependencies"]
+
+  # golang:<ver>-trixie build stage in ha_opencode
+  - package-ecosystem: docker
+    directory: "/ha_opencode"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "ha_opencode"
+    labels: ["dependencies"]
+
+  # ghcr.io/berriai/litellm-database base image.
+  # NOTE: when this tag moves (e.g. v1.99.1 -> v1.99.2), the add-on version
+  # must follow the upstream-N scheme (v1.99.2 -> version "1.99.2-1").
+  - package-ecosystem: docker
+    directory: "/litellm"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "litellm"
+    labels: ["dependencies"]
+
+  # mcr.microsoft.com/playwright base image
+  - package-ecosystem: docker
+    directory: "/playwright-browser"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "playwright-browser"
+    labels: ["dependencies"]
+
+  # searxng/searxng base image (date+hash tags; may be skipped by Dependabot
+  # if the tag does not parse as a version — verify the first run)
+  - package-ecosystem: docker
+    directory: "/searxng_with_mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "searxng_with_mcp"
+    labels: ["dependencies"]
+
+  # MCP server requirements.txt
+  - package-ecosystem: pip
+    directory: "/searxng_with_mcp"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: "searxng_with_mcp"
+    labels: ["dependencies"]
