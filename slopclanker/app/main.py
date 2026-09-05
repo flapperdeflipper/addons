@@ -1,8 +1,8 @@
 """SlopClanker server: MCP tools + REST + web UI in one FastMCP app.
 
-Agent-to-agent coordination layer: presence, threaded decisions, todos and
-file claims. Humans are bystanders with a browser; agent<->human talk stays
-in opencode sessions.
+Agent coordination layer: projects, posts with nested comments, todos,
+notes, wiki, chat, presence and file claims. Humans get a full web UI;
+agent<->human talk stays in opencode sessions.
 
 Environment (set by run.sh):
   SLOPCLANKER_HOST / SLOPCLANKER_PORT   bind address (default 0.0.0.0:8090)
@@ -12,6 +12,7 @@ Environment (set by run.sh):
 """
 
 import os
+import time
 from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
 from functools import wraps
@@ -32,8 +33,9 @@ mcp = FastMCP(
     "slopclanker",
     instructions=(
         "Townhall for agents. Say hello at session start to announce yourself "
-        "and get the awareness snapshot; post, check and close threads to talk "
-        "and decide; keep todos; claim files before editing them."
+        "and get the awareness snapshot; post, comment and close posts to talk "
+        "and decide; keep todos, notes and wiki pages for knowledge; claim "
+        "files before editing them."
     ),
 )
 
@@ -84,6 +86,20 @@ def _require(data: dict, *fields: str) -> None:
         raise ValueError(f"missing required field(s): {', '.join(missing)}")
 
 
+def _project_param(request: Request, data: dict | None = None) -> int | None:
+    """Resolve the project: ?project= query param wins, then body 'project'
+    (slug or id), then body 'project_id'. None if nothing given."""
+    ref = request.query_params.get("project") or (data or {}).get("project")
+    if not ref:
+        pid = (data or {}).get("project_id")
+        return int(pid) if pid else None
+    with _db() as conn:
+        found = store.get_project(conn, ref)
+    if found is None:
+        raise ValueError(f"project '{ref}' does not exist")
+    return int(found["id"])
+
+
 @mcp.custom_route("/healthz", methods=["GET"])
 async def healthz(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "service": "slopclanker"})
@@ -113,6 +129,8 @@ async def api_hello(request: Request) -> JSONResponse:
             data["name"],
             session_id=data.get("session_id"),
             note=data.get("note"),
+            role=data.get("role"),
+            contact=data.get("contact"),
             heartbeat_timeout=_heartbeat_timeout(),
         )
     return JSONResponse(snap)
@@ -127,93 +145,119 @@ async def api_overview(request: Request) -> JSONResponse:
         )
 
 
-@mcp.custom_route("/api/threads", methods=["POST"])
+# --- projects --------------------------------------------------------------
+
+
+@mcp.custom_route("/api/projects", methods=["GET"])
 @_api
-async def api_create_thread(request: Request) -> JSONResponse:
+async def api_list_projects(request: Request) -> JSONResponse:
+    with _db() as conn:
+        return JSONResponse(store.overview(conn, _heartbeat_timeout())["projects"])
+
+
+@mcp.custom_route("/api/projects", methods=["POST"])
+@_api
+async def api_create_project(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "name", "author")
+    with _db() as conn:
+        project = store.create_project(
+            conn,
+            data["name"],
+            created_by=data["author"],
+            slug=data.get("slug"),
+            description=data.get("description", ""),
+        )
+    return JSONResponse(project)
+
+
+# --- posts + comments ------------------------------------------------------
+
+
+@mcp.custom_route("/api/posts", methods=["POST"])
+@_api
+async def api_create_post(request: Request) -> JSONResponse:
     data = await _json_body(request)
     _require(data, "title", "body", "author")
     with _db() as conn:
-        tid = store.create_thread(
+        pid = store.create_post(
             conn,
             data["title"],
             data["body"],
             created_by=data["author"],
             kind=data.get("kind", "info"),
             audience=data.get("audience", "all"),
+            project_id=_project_param(request, data) or 1,
         )
-    return JSONResponse({"id": tid})
+    return JSONResponse({"id": pid})
 
 
-@mcp.custom_route("/api/threads", methods=["GET"])
+@mcp.custom_route("/api/posts", methods=["GET"])
 @_api
-async def api_list_threads(request: Request) -> JSONResponse:
+async def api_list_posts(request: Request) -> JSONResponse:
     include_closed = request.query_params.get("include_closed") in ("1", "true", "yes")
     with _db() as conn:
-        return JSONResponse(store.list_threads(conn, include_closed=include_closed))
+        return JSONResponse(
+            store.list_posts(
+                conn, project_id=_project_param(request), include_closed=include_closed
+            )
+        )
 
 
-@mcp.custom_route("/api/threads/{thread_id:int}", methods=["GET"])
+@mcp.custom_route("/api/posts/{post_id:int}", methods=["GET"])
 @_api
-async def api_thread_detail(request: Request) -> JSONResponse:
+async def api_post_detail(request: Request) -> JSONResponse:
     with _db() as conn:
-        detail = store.thread_detail(conn, request.path_params["thread_id"])
+        detail = store.post_detail(conn, request.path_params["post_id"])
     if detail is None:
-        return JSONResponse({"error": "thread not found"}, status_code=404)
+        return JSONResponse({"error": "post not found"}, status_code=404)
     return JSONResponse(detail)
 
 
-@mcp.custom_route("/api/threads/{thread_id:int}/messages", methods=["POST"])
+@mcp.custom_route("/api/posts/{post_id:int}/comments", methods=["POST"])
 @_api
-async def api_add_message(request: Request) -> JSONResponse:
+async def api_add_comment(request: Request) -> JSONResponse:
     data = await _json_body(request)
     _require(data, "author", "body")
     with _db() as conn:
-        mid = store.add_message(
-            conn, request.path_params["thread_id"], data["author"], data["body"]
+        cid = store.add_comment(
+            conn,
+            request.path_params["post_id"],
+            data["author"],
+            data["body"],
+            parent_id=data.get("parent_id"),
         )
-    return JSONResponse({"id": mid})
+    return JSONResponse({"id": cid})
 
 
-@mcp.custom_route("/api/threads/{thread_id:int}/close", methods=["POST"])
+@mcp.custom_route("/api/posts/{post_id:int}/close", methods=["POST"])
 @_api
-async def api_close_thread(request: Request) -> JSONResponse:
+async def api_close_post(request: Request) -> JSONResponse:
     data = await _json_body(request)
     _require(data, "outcome")
     with _db() as conn:
-        store.close_thread(conn, request.path_params["thread_id"], data["outcome"])
+        store.close_post(conn, request.path_params["post_id"], data["outcome"])
     return JSONResponse({"ok": True})
 
 
-@mcp.custom_route("/api/check", methods=["GET"])
-@_api
-async def api_check(request: Request) -> JSONResponse:
-    params = request.query_params
-    if not params.get("name"):
-        return JSONResponse(
-            {"error": "missing required query param: name"}, status_code=400
-        )
-    try:
-        since = float(params.get("since", "0"))
-    except ValueError:
-        return JSONResponse({"error": "since must be a number"}, status_code=400)
-    with _db() as conn:
-        result = store.check(conn, params["name"], since=since)
-    return JSONResponse(result)
+# --- todos -----------------------------------------------------------------
 
 
 @mcp.custom_route("/api/todos", methods=["POST"])
 @_api
 async def api_add_todo(request: Request) -> JSONResponse:
     data = await _json_body(request)
-    _require(data, "body", "author")
+    _require(data, "author")
     with _db() as conn:
         tid = store.add_todo(
             conn,
-            data["body"],
             created_by=data["author"],
-            scope=data.get("scope", "shared"),
-            session_key=data.get("session_key"),
+            title=data.get("title", ""),
+            body=data.get("body", ""),
+            priority=data.get("priority", "medium"),
+            tags=data.get("tags", ""),
             assignee=data.get("assignee"),
+            project_id=_project_param(request, data) or 1,
         )
     return JSONResponse({"id": tid})
 
@@ -222,21 +266,260 @@ async def api_add_todo(request: Request) -> JSONResponse:
 @_api
 async def api_list_todos(request: Request) -> JSONResponse:
     params = request.query_params
+    assignee = params.get("assignee")
+    status = params.get("status", "open")
     with _db() as conn:
         todos = store.list_todos(
             conn,
+            project_id=_project_param(request),
+            assignee=assignee,
             name=params.get("name"),
-            include_done=params.get("include_done") in ("1", "true", "yes"),
+            status=status,
         )
     return JSONResponse(todos)
+
+
+@mcp.custom_route("/api/todos/{todo_id:int}", methods=["PATCH"])
+@_api
+async def api_update_todo(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    if "project" in data:
+        raise ValueError("use query param ?project= to move todos between projects")
+    with _db() as conn:
+        todo = store.update_todo(
+            conn,
+            request.path_params["todo_id"],
+            actor=data.get("actor", ""),
+            **{k: v for k, v in data.items() if k != "actor"},
+        )
+    return JSONResponse(todo)
 
 
 @mcp.custom_route("/api/todos/{todo_id:int}/done", methods=["POST"])
 @_api
 async def api_done_todo(request: Request) -> JSONResponse:
+    data = (
+        {}
+        if request.headers.get("content-length") == "0"
+        else await _json_body(request)
+    )
     with _db() as conn:
-        store.done_todo(conn, request.path_params["todo_id"])
+        store.done_todo(conn, request.path_params["todo_id"], data.get("actor", ""))
     return JSONResponse({"ok": True})
+
+
+@mcp.custom_route("/api/todos/{todo_id:int}/reopen", methods=["POST"])
+@_api
+async def api_reopen_todo(request: Request) -> JSONResponse:
+    with _db() as conn:
+        store.reopen_todo(conn, request.path_params["todo_id"])
+    return JSONResponse({"ok": True})
+
+
+@mcp.custom_route("/api/todos/{todo_id:int}/archive", methods=["POST"])
+@_api
+async def api_archive_todo(request: Request) -> JSONResponse:
+    with _db() as conn:
+        store.archive_todo(conn, request.path_params["todo_id"])
+    return JSONResponse({"ok": True})
+
+
+# --- notes -----------------------------------------------------------------
+
+
+@mcp.custom_route("/api/notes", methods=["GET"])
+@_api
+async def api_list_notes(request: Request) -> JSONResponse:
+    with _db() as conn:
+        return JSONResponse(store.list_notes(conn, _project_param(request)))
+
+
+@mcp.custom_route("/api/notes", methods=["POST"])
+@_api
+async def api_create_note(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "title", "author")
+    with _db() as conn:
+        nid = store.save_note(
+            conn,
+            data["title"],
+            created_by=data["author"],
+            body=data.get("body", ""),
+            project_id=_project_param(request) or int(data.get("project_id", 1)),
+            tags=data.get("tags", ""),
+        )
+    return JSONResponse({"id": nid})
+
+
+@mcp.custom_route("/api/notes/{note_id:int}", methods=["GET"])
+@_api
+async def api_get_note(request: Request) -> JSONResponse:
+    with _db() as conn:
+        note = store.get_note(conn, request.path_params["note_id"])
+    if note is None:
+        return JSONResponse({"error": "note not found"}, status_code=404)
+    return JSONResponse(note)
+
+
+@mcp.custom_route("/api/notes/{note_id:int}", methods=["PUT"])
+@_api
+async def api_update_note(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "title", "author")
+    with _db() as conn:
+        store.save_note(
+            conn,
+            data["title"],
+            created_by=data["author"],
+            body=data.get("body", ""),
+            note_id=request.path_params["note_id"],
+            tags=data.get("tags", ""),
+        )
+        note = store.get_note(conn, request.path_params["note_id"])
+    return JSONResponse(note)
+
+
+# --- wiki ------------------------------------------------------------------
+
+
+@mcp.custom_route("/api/wiki", methods=["GET"])
+@_api
+async def api_list_pages(request: Request) -> JSONResponse:
+    with _db() as conn:
+        return JSONResponse(store.list_pages(conn, _project_param(request)))
+
+
+@mcp.custom_route("/api/wiki", methods=["POST"])
+@_api
+async def api_create_page(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "title", "author")
+    with _db() as conn:
+        slug = store.save_page(
+            conn,
+            data["title"],
+            created_by=data["author"],
+            body=data.get("body", ""),
+            slug=data.get("slug"),
+            project_id=_project_param(request) or int(data.get("project_id", 1)),
+        )
+    return JSONResponse({"slug": slug})
+
+
+@mcp.custom_route("/api/wiki/{slug}", methods=["GET"])
+@_api
+async def api_get_page(request: Request) -> JSONResponse:
+    with _db() as conn:
+        page = store.get_page(conn, request.path_params["slug"])
+    if page is None:
+        return JSONResponse({"error": "page not found"}, status_code=404)
+    return JSONResponse(page)
+
+
+@mcp.custom_route("/api/wiki/{slug}", methods=["PUT"])
+@_api
+async def api_update_page(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "title", "author")
+    with _db() as conn:
+        existing = store.get_page(conn, request.path_params["slug"])
+        if existing is None:
+            return JSONResponse({"error": "page not found"}, status_code=404)
+        store.save_page(
+            conn,
+            data["title"],
+            created_by=data["author"],
+            body=data.get("body", ""),
+            slug=request.path_params["slug"],
+            page_id=int(existing["id"]),
+        )
+        page = store.get_page(conn, request.path_params["slug"])
+    return JSONResponse(page)
+
+
+# --- chat ------------------------------------------------------------------
+
+
+@mcp.custom_route("/api/chat", methods=["GET"])
+@_api
+async def api_chat_list(request: Request) -> JSONResponse:
+    params = request.query_params
+    try:
+        since = float(params.get("since", "0"))
+    except ValueError:
+        return JSONResponse({"error": "since must be a number"}, status_code=400)
+    with _db() as conn:
+        return JSONResponse(
+            store.chat_list(conn, channel=params.get("channel", "general"), since=since)
+        )
+
+
+@mcp.custom_route("/api/chat", methods=["POST"])
+@_api
+async def api_chat_send(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    _require(data, "author", "body")
+    with _db() as conn:
+        cid = store.chat_send(
+            conn, data["author"], data["body"], channel=data.get("channel", "general")
+        )
+    return JSONResponse({"id": cid})
+
+
+# --- events / activity -----------------------------------------------------
+
+
+@mcp.custom_route("/api/events", methods=["GET"])
+@_api
+async def api_events(request: Request) -> JSONResponse:
+    try:
+        limit = int(request.query_params.get("limit", "200"))
+    except ValueError:
+        limit = 200
+    with _db() as conn:
+        return JSONResponse(store.list_events(conn, limit=limit))
+
+
+# --- agents ----------------------------------------------------------------
+
+
+@mcp.custom_route("/api/agents", methods=["GET"])
+@_api
+async def api_list_agents(request: Request) -> JSONResponse:
+    with _db() as conn:
+        return JSONResponse(
+            store.list_agents(conn, heartbeat_timeout=_heartbeat_timeout())
+        )
+
+
+@mcp.custom_route("/api/agents/{name}", methods=["GET"])
+@_api
+async def api_get_agent(request: Request) -> JSONResponse:
+    with _db() as conn:
+        agent = store.get_agent(conn, request.path_params["name"])
+        if agent is None:
+            return JSONResponse({"error": "agent not found"}, status_code=404)
+        agent["active"] = time.time() - agent["last_seen"] <= _heartbeat_timeout()
+        agent["claims"] = store.agent_claims(conn, request.path_params["name"])
+    return JSONResponse(agent)
+
+
+@mcp.custom_route("/api/agents/{name}", methods=["PUT"])
+@_api
+async def api_put_agent(request: Request) -> JSONResponse:
+    data = await _json_body(request)
+    with _db() as conn:
+        agent = store.profile_set(
+            conn,
+            request.path_params["name"],
+            note=data.get("note"),
+            role=data.get("role"),
+            contact=data.get("contact"),
+        )
+    return JSONResponse(agent)
+
+
+# --- claims ----------------------------------------------------------------
 
 
 @mcp.custom_route("/api/claims", methods=["POST"])
@@ -262,13 +545,13 @@ async def api_check_claims(request: Request) -> JSONResponse:
             {"error": "missing required query param: path"}, status_code=400
         )
     with _db() as conn:
-        claims = store.check_claims(
+        found = store.check_claims(
             conn,
             path,
             agent=request.query_params.get("agent"),
             heartbeat_timeout=_heartbeat_timeout(),
         )
-    return JSONResponse(claims)
+    return JSONResponse(found)
 
 
 @mcp.custom_route("/api/claims", methods=["DELETE"])
@@ -281,6 +564,26 @@ async def api_release_claims(request: Request) -> JSONResponse:
     with _db() as conn:
         store.release_claims(conn, data["agent"], data["paths"])
     return JSONResponse({"ok": True})
+
+
+# --- awareness -------------------------------------------------------------
+
+
+@mcp.custom_route("/api/check", methods=["GET"])
+@_api
+async def api_check(request: Request) -> JSONResponse:
+    params = request.query_params
+    if not params.get("name"):
+        return JSONResponse(
+            {"error": "missing required query param: name"}, status_code=400
+        )
+    try:
+        since = float(params.get("since", "0"))
+    except ValueError:
+        return JSONResponse({"error": "since must be a number"}, status_code=400)
+    with _db() as conn:
+        result = store.check(conn, params["name"], since=since)
+    return JSONResponse(result)
 
 
 class BearerAuth:
