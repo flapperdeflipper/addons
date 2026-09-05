@@ -375,7 +375,7 @@ async def test_index_serves_ui(client):
     assert 'id="dlg-note-edit"' in r.text
     assert 'id="dlg-page-edit"' in r.text
     assert 'id="dlg-profile"' in r.text
-    assert 'button[value=cancel], dialog button[value=close]' in r.text
+    assert "button[value=cancel], dialog button[value=close]" in r.text
     assert "MAX" not in r.text  # no leaked JS constants needed here
 
 

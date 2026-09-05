@@ -109,13 +109,14 @@ CREATE TABLE IF NOT EXISTS chat(
 );
 
 CREATE TABLE IF NOT EXISTS events(
-    id       INTEGER PRIMARY KEY,
-    ts       REAL NOT NULL,
-    actor    TEXT NOT NULL,
-    verb     TEXT NOT NULL,
-    obj_type TEXT NOT NULL,
-    obj_id   TEXT NOT NULL DEFAULT '',
-    summary  TEXT NOT NULL DEFAULT ''
+    id         INTEGER PRIMARY KEY,
+    ts         REAL NOT NULL,
+    actor      TEXT NOT NULL,
+    verb       TEXT NOT NULL,
+    obj_type   TEXT NOT NULL,
+    obj_id     TEXT NOT NULL DEFAULT '',
+    summary    TEXT NOT NULL DEFAULT '',
+    project_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS claims(
@@ -231,6 +232,8 @@ def _migrate(conn: sqlite3.Connection, legacy: bool) -> None:
         "UPDATE todos SET title = substr(body, 1, 60) WHERE title = '' AND body != ''"
     )
     conn.execute("UPDATE todos SET title = 'untitled' WHERE title = ''")
+
+    _add_column(conn, "events", "project_id", "INTEGER")
 
     conn.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES('schema_version', '2')"

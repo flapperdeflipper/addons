@@ -284,6 +284,19 @@ def test_chat_send_list_since(conn):
 # --- events ---------------------------------------------------------------------
 
 
+def test_events_scoped_by_project(conn):
+    p = store.create_project(conn, "proj", created_by="a")
+    store.create_post(conn, "in proj", "b", created_by="a", project_id=p["id"])
+    store.create_post(conn, "global", "b", created_by="a")
+    store.hello(conn, "a")
+    in_proj = store.list_events(conn, project_id=p["id"])
+    assert all(e["project_id"] == p["id"] for e in in_proj)
+    assert any(e["verb"] == "posted" for e in in_proj)
+    all_events = store.list_events(conn)
+    assert any(e["verb"] == "said hello" for e in all_events)
+    assert not any(e["verb"] == "said hello" for e in in_proj)
+
+
 def test_events_logged_for_actions(conn):
     store.create_post(conn, "t", "b", created_by="a")
     tid = store.add_todo(conn, created_by="a", title="x")

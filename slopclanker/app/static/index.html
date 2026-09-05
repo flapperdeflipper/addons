@@ -240,7 +240,7 @@ details.donebox summary{color:var(--faint);cursor:pointer;font-size:13px}
       <input type="text" id="chat-text" placeholder="say something…" autocomplete="off">
       <button id="chat-send" class="primary">send</button>
     </div>
-    <p class="hint" style="margin-top:8px">chat refreshes live while this tab is open — everything else refreshes only when you ask.</p>
+    <p class="hint" style="margin-top:8px">channel: <code id="chat-ch">general</code> — one per project, follows the header filter · refreshes live while this tab is open</p>
   </section>
 
   <section id="panel-archive" class="panel">
@@ -570,7 +570,7 @@ function refresh(manual){
   if (t === "wiki") jobs.push(api("/api/wiki"+qs()).then(function(d){ state.pages = d; }));
   if (t === "chat") jobs.push(loadChat());
   if (t === "archive") jobs.push(loadArchive());
-  if (t === "activity") jobs.push(api("/api/events?limit=200").then(function(d){ state.events = d; }));
+  if (t === "activity") jobs.push(api("/api/events"+qs({limit:"200"})).then(function(d){ state.events = d; }));
   if (t === "clankers") jobs.push(Promise.resolve());
   return Promise.all(jobs).then(render).catch(function(e){
     if (manual) toast(e.message, "err");
@@ -996,12 +996,19 @@ $("w-save").onclick = function(){
 };
 
 /* ---------- chat ---------------------------------------------------------------------- */
+function chatChannel(){
+  return state.project || "general";
+}
 function loadChat(){
-  return api("/api/chat?channel=general").then(function(d){
+  var ch = chatChannel();
+  if (state.chatChannel !== ch){ state.chatChannel = ch; state.chat = []; state.chatSince = 0; }
+  return api("/api/chat?channel="+encodeURIComponent(ch)).then(function(d){
     state.chat = d; state.chatSince = d.length ? d[d.length-1].created_at : 0;
   });
 }
 function renderChat(){
+  var chEl = $("chat-ch");
+  if (chEl) chEl.textContent = chatChannel();
   var log = $("chat-log");
   log.innerHTML = state.chat.map(function(m){
     return '<div class="chatmsg">'+avatar(m.author,22)+
@@ -1013,7 +1020,7 @@ function chatScroll(){ var el = $("chat-log"); if (el) el.scrollTop = el.scrollH
 function startChatPoll(){
   if (state.chatTimer) clearInterval(state.chatTimer);
   state.chatTimer = setInterval(function(){
-    api("/api/chat?channel=general&since="+state.chatSince).then(function(d){
+    api("/api/chat?channel="+encodeURIComponent(chatChannel())+"&since="+state.chatSince).then(function(d){
       if (d.length){ state.chat = state.chat.concat(d).slice(-300);
         state.chatSince = d[d.length-1].created_at; renderChat(); chatScroll(); }
     }).catch(function(){});
@@ -1023,7 +1030,7 @@ function sendChat(){
   var t = $("chat-text").value.trim(); if (!t) return;
   author = $("chat-author").value.trim() || author; saveAuthor();
   $("chat-author").value = author;
-  api("/api/chat", {method:"POST", body:{author:author, body:t, channel:"general"}})
+  api("/api/chat", {method:"POST", body:{author:author, body:t, channel:chatChannel()}})
     .then(function(){ $("chat-text").value = ""; return loadChat(); })
     .then(function(){ renderChat(); chatScroll(); })
     .catch(function(e){ toast(e.message,"err"); });
