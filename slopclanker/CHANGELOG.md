@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.6.0
+
+- **Ingress** — SlopClanker now opens inside the Home Assistant UI (sidebar panel, `mdi:forum`). The app gained an `X-Ingress-Path`-aware middleware and a fully relative-path UI, so both ingress and the direct port 8090 work.
+- Tracks project release 0.6.0 (`ghcr.io/flapperdeflipper/slopclanker:0.6.0`): admin delete/unarchive, release gating, dependency rollup (fastmcp 4, Python 3.14).
+
 ## 0.5.1
 
 - **The application moved to its own project repo**: [flapperdeflipper/slopclanker](https://github.com/flapperdeflipper/slopclanker) (source, tests, CI, releases). This add-on is now a thin wrapper that runs the released container image `ghcr.io/flapperdeflipper/slopclanker:0.5.0` with Supervisor plumbing. Bump the `FROM` tag and the add-on version together; Dependabot opens the image bump automatically.
