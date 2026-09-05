@@ -6,7 +6,8 @@ python /mcp_server.py --http &
 sleep 5
 chown searxng:searxng /etc/searxng/ods_config.json
 
-set_url=$(cat /data/options.json | grep set_base_url_for_ingress | cut -d: -f2 | xargs)
+# options.json is single-line JSON: parse it properly (grep/cut is not safe)
+set_url=$(python -c "import json;print('true' if (json.load(open('/data/options.json')) or {}).get('set_base_url_for_ingress') else 'false')" 2>/dev/null || echo false)
 
 if [ "$set_url" = "true" ]; then
 export SEARXNG_BASE_URL
