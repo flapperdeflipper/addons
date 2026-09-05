@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.8.0
+
+- **MCP server over HTTP** — the full ha-mcp-server (entity/state control, safe config writing, supervisor tools, ESPHome/zigporter/hab companions) is now servable over streamable HTTP on 8927/tcp via the `MCP server over HTTP` option plus a bearer token (`mcp_http_token`, `!secret <key>` works). Sibling add-ons and LAN clients — e.g. the LiteLLM MCP gateway — get the complete tool set without a local process spawn, replacing the degraded image-copy approach. `index.js --transport http --port N` behind a new `lib/http-transport.js` (stateful sessions, constant-time bearer check, `GET /health`); unit-tested in `test/http-transport.test.js`.
+
 ## 2.7.0
 
 - **Bundled 1Password CLI** — `op` 2.30.3 (pinned standalone archive) so `hasecret` and agent sessions can resolve `op://` secret references at read time; authenticate with `OP_SERVICE_ACCOUNT_TOKEN` via the env_vars option.

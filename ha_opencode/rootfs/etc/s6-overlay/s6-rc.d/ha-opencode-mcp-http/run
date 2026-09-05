@@ -1,0 +1,60 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# OpenCode - Optional HTTP MCP server service
+#
+# Serves the add-on's full ha-mcp-server (the same tool set opencode itself
+# uses over stdio) on 8927/tcp for sibling add-ons and LAN clients such as
+# the LiteLLM MCP gateway. Bearer-token authenticated via MCP_HTTP_TOKEN.
+#
+# Deliberately never fails the container: when disabled or misconfigured the
+# service just idles, exactly like the LAN server service.
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NPM_CONFIG_PREFIX="/data/.npm-global"
+export NODE_OPTIONS="--max-old-space-size=512"
+
+if [ -f /data/.env_vars ]; then
+    source /data/.env_vars
+fi
+
+if [ -f /data/.env_vars_discovered ]; then
+    source /data/.env_vars_discovered
+fi
+
+# Keep the Supervisor token process-only. Tools that expect HA_TOKEN receive it
+# from the live environment instead of a persisted /data/.env_vars entry.
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    export HA_TOKEN="${SUPERVISOR_TOKEN}"
+fi
+
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
+export OPENCODE_DISABLE_AUTOUPDATE=true
+
+MCP_HTTP_ENABLED=$(bashio::config 'mcp_http_enabled' 2>/dev/null || echo "false")
+MCP_HTTP_PORT=8927
+
+if ! bashio::var.true "${MCP_HTTP_ENABLED}"; then
+    exec sleep infinity
+fi
+
+MCP_HTTP_TOKEN=$(bashio::config 'mcp_http_token' 2>/dev/null || echo "")
+if ! bashio::var.has_value "${MCP_HTTP_TOKEN}"; then
+    bashio::log.error "MCP server over HTTP is enabled but no token is set."
+    bashio::log.error "Set 'MCP HTTP bearer token' in the add-on Configuration tab (a !secret <key> value works too), then restart."
+    exec sleep infinity
+fi
+
+HOST_PORT=$(bashio::addon.port "${MCP_HTTP_PORT}/tcp" 2>/dev/null || true)
+if bashio::var.has_value "${HOST_PORT}"; then
+    bashio::log.info "MCP over HTTP: mapping ${MCP_HTTP_PORT}/tcp -> host ${HOST_PORT}"
+else
+    bashio::log.warning "MCP over HTTP listens on container port ${MCP_HTTP_PORT}, but no host port is mapped."
+    bashio::log.warning "Map ${MCP_HTTP_PORT}/tcp in the add-on Network settings to reach it from outside."
+fi
+bashio::log.warning "Only map this port on trusted networks. Do not expose it to the internet."
+bashio::log.info "Starting full MCP server over HTTP (bearer authenticated)"
+
+exec node /opt/ha-mcp-server/index.js --transport http --port "${MCP_HTTP_PORT}"

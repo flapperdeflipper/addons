@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "2.7.0"
+version: "2.8.0"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -20,9 +20,11 @@ panel_title: OpenCode
 ports:
   4096/tcp: null
   4097/tcp: null
+  8927/tcp: null
 ports_description:
   4096/tcp: "OpenCode LAN server — only serves traffic when the 'OpenCode LAN server' option is enabled"
   4097/tcp: "OpenChamber LAN web UI (requires interface_mode: openchamber)"
+  8927/tcp: "Full Home Assistant MCP server over HTTP (streamable, bearer token) — only serves traffic when the 'MCP server over HTTP' option is enabled"
 
 # File access - Home Assistant config directory
 map:
@@ -117,6 +119,15 @@ options:
   # Only needed for browser-based clients; the OpenCode CLI does not need this.
   cors_origins: []
 
+  # Serve the add-on's full MCP server (same tools opencode uses over stdio)
+  # over HTTP on 8927/tcp for sibling add-ons and LAN clients — e.g. the
+  # LiteLLM MCP gateway. Keeps companion CLI tools (zigporter, hab, esphome)
+  # working, unlike the image-copy approach. Bearer-token authenticated.
+  mcp_http_enabled: false
+  # Token clients must present as `Authorization: Bearer <token>`.
+  # A !secret <key> value resolves from secrets.yaml at start.
+  mcp_http_token: ""
+
   # --- 6. Model providers ------------------------------------------------
   # PPQ private mode (beta): routes OpenCode through a local encryption proxy
   # for TEE-backed models. Requires a PPQ API key.
@@ -178,6 +189,8 @@ schema:
   enable_server: bool
   cors_origins:
     - str
+  mcp_http_enabled: bool
+  mcp_http_token: password
 
   # --- 6. Model providers ------------------------------------------------
   ppq_private_enabled: bool

@@ -7648,17 +7648,43 @@ Provide complete automation YAML and any required helper entities.`,
 // START SERVER
 // ============================================================================
 
+function argValue(name) {
+  const argv = process.argv.slice(2);
+  const index = argv.indexOf(name);
+  return index !== -1 && index + 1 < argv.length ? argv[index + 1] : null;
+}
+
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  
+  const transportMode = (argValue("--transport") || "stdio").toLowerCase();
+
   sendLog("info", "mcp-server", { 
     action: "started",
     version: "2.8.0",
+    transport: transportMode,
     tools: TOOLS.length,
     resources: RESOURCES.length,
     prompts: PROMPTS.length,
   });
+
+  if (transportMode === "http") {
+    const { startHttpMcpServer } = await import("./lib/http-transport.js");
+    const port = parseInt(argValue("--port") || "8927", 10);
+    const token = process.env.MCP_HTTP_TOKEN;
+    if (!token) {
+      throw new Error("MCP_HTTP_TOKEN is required for --transport http");
+    }
+    await startHttpMcpServer(server, {
+      port,
+      token,
+      log: (level, message) => sendLog(level === "warn" ? "warning" : level, "mcp-http", { message }),
+    });
+    console.error(`Home Assistant MCP server v2.8.0 listening on 0.0.0.0:${port}/mcp (HTTP, bearer authenticated)`);
+    console.error(`Capabilities: Tools (${TOOLS.length}), Resources (${RESOURCES.length}), Prompts (${PROMPTS.length}), Logging`);
+    return;
+  }
+
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
   
   console.error("Home Assistant MCP server v2.8.0 started (Agent Capability Edition)");
   console.error(`Capabilities: Tools (${TOOLS.length}), Resources (${RESOURCES.length}), Prompts (${PROMPTS.length}), Logging`);
