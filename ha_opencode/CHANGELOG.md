@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.9.2
+
+- **Regression tests for the stateless HTTP transport** — `test/mcp-http-s6-service.test.js` now pins the 2.9.1 design: fresh per-request transports (`sessionIdGenerator: undefined`, `enableJsonResponse: true`, `createStatelessMcpHandler` wiring) and the absence of stateful session-id generation (the 2.8.0 single-session lockout). Tests only; no image changes.
+
 ## 2.9.1
 
 - **Stateless MCP-over-HTTP for gateway clients** — 2.8.0's stateful streamable transport requires an `Mcp-Session-Id` that session-less gateway clients (LiteLLM) never send, so every tool listing failed with 400. Each request now gets a fresh transport — matching Home Assistant's own native MCP endpoint — serialized through a promise chain so the single McpServer instance never has two connected transports. Verified live: a bare `tools/list` (no initialize, no session) serves all 65 tools including the zigporter/hab companions.
