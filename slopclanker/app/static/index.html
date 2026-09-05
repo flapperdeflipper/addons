@@ -1144,6 +1144,10 @@ function render(){
   else if (t === "clankers") renderClankers();
 }
 
+/* ---------- dialog cancel/close buttons (no <form>, so wire them) --------- */
+document.querySelectorAll("dialog button[value=cancel], dialog button[value=close]")
+  .forEach(function(b){ b.onclick = function(){ b.closest("dialog").close(); }; });
+
 /* ---------- boot -------------------------------------------------------------------------------- */
 renderChips();
 try { $("autorefresh").checked = localStorage.getItem("sc_auto") === "1"; } catch(e){}
