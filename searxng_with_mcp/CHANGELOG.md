@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.6
+
+- **Rebuild for cosign signing** — no functional changes; rebuilt from master after keyless cosign image signing landed in CI, so this tag publishes with a signature.
+
 ## 2026.9.5
 
 - **Version scheme change** — local versions are now plain semver (`2026.9.5`), bumped past the upstream base tag (noted in a `config.yaml` comment). The old `<upstream>-<patch>` suffix scheme confused Supervisor version handling.
