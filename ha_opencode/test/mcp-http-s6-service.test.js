@@ -37,3 +37,21 @@ describe("MCP over HTTP s6 service", () => {
     assert.match(server, /process\.env\.MCP_HTTP_TOKEN/);
   });
 });
+
+describe("MCP over HTTP stateless transport (2.9.1)", () => {
+  const transport = fs.readFileSync(
+    path.join(ADDON_ROOT, "rootfs", "opt", "ha-mcp-server", "lib", "http-transport.js"),
+    "utf8",
+  );
+
+  it("serves each request through a fresh stateless transport", () => {
+    assert.match(transport, /sessionIdGenerator:\s*undefined/);
+    assert.match(transport, /enableJsonResponse:\s*true/);
+    assert.match(transport, /export function createStatelessMcpHandler/);
+    assert.match(transport, /handle:\s*createStatelessMcpHandler\(mcpServer\)/);
+  });
+
+  it("does not issue stateful session ids (single-session lockout regression)", () => {
+    assert.doesNotMatch(transport, /sessionIdGenerator:\s*\(\)\s*=>/);
+  });
+});
