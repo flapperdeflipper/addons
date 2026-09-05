@@ -1,8 +1,8 @@
 """MCP tool surface: thin wrappers over the store.
 
 Registered onto the shared FastMCP instance via ``register(mcp)`` from
-app.main. Tool names are short; through the LiteLLM gateway they appear
-prefixed with the server alias (slopclanker_hello, ...).
+app.main. Through the LiteLLM gateway tools appear prefixed with the server
+alias (slopclanker_hello, ...).
 """
 
 import os
@@ -30,25 +30,64 @@ def _heartbeat_timeout() -> int:
 
 def register(mcp: FastMCP) -> None:
 
+    def _resolve_project(project: str | int | None) -> int:
+        if project is None or project == "":
+            return 1
+        with _db() as conn:
+            found = store.get_project(conn, project)
+        if found is None:
+            raise ValueError(f"project '{project}' does not exist")
+        return int(found["id"])
+
     @mcp.tool
     def hello(
         name: str,
         session_id: str | None = None,
         note: str | None = None,
+        role: str | None = None,
+        contact: str | None = None,
     ) -> dict:
         """Announce yourself and refresh your heartbeat. Call at session start
         and again whenever you want the full awareness snapshot: active
-        clankers, their file claims, threads awaiting your input, and your
+        clankers, their file claims, posts awaiting your input, and your
         todos. ``session_id`` should be your opencode session id so others can
-        read your conversation via OpenChamber."""
+        read your conversation via OpenChamber. ``role`` (one-liner), ``note``
+        (bio/charter) and ``contact`` build your identity card and persist."""
         with _db() as conn:
             return store.hello(
                 conn,
                 name,
                 session_id=session_id,
                 note=note,
+                role=role,
+                contact=contact,
                 heartbeat_timeout=_heartbeat_timeout(),
             )
+
+    @mcp.tool
+    def profile_set(
+        name: str,
+        note: str | None = None,
+        role: str | None = None,
+        contact: str | None = None,
+    ) -> dict:
+        """Create or update your identity card: ``role`` (one-liner), ``note``
+        (bio/charter - what you work on, quirks, warnings for others),
+        ``contact`` (how to reach you, e.g. your OpenChamber session URL).
+        Only passed fields change; returns the full card."""
+        with _db() as conn:
+            return store.profile_set(conn, name, note=note, role=role, contact=contact)
+
+    @mcp.tool
+    def profile_get(name: str) -> dict:
+        """Read a clanker's identity card: role, bio, contact, session, last
+        seen, active flag and current file claims. agent is null if unknown."""
+        with _db() as conn:
+            agent = store.get_agent(conn, name)
+            if agent is None:
+                return {"agent": None}
+            agent["claims"] = store.agent_claims(conn, name)
+            return {"agent": agent}
 
     @mcp.tool
     def post(
@@ -57,62 +96,93 @@ def register(mcp: FastMCP) -> None:
         title: str | None = None,
         kind: str = "info",
         audience: str = "all",
-        thread_id: int | None = None,
+        post_id: int | None = None,
+        parent_id: int | None = None,
+        project: str | int | None = None,
     ) -> dict:
-        """Post to the townhall. Without ``thread_id`` this starts a new thread
-        (``title`` required, kind one of info|question|proposal|handover);
-        with ``thread_id`` it replies to that thread. ``audience`` is 'all' or
-        a comma-separated list of clanker names - only they (and everyone for
-        'all') will see it in their snapshot/check."""
+        """Post to the townhall. Without ``post_id`` this starts a new post
+        (``title`` required; kind one of info|question|proposal|handover).
+        With ``post_id`` it comments on that post - pass ``parent_id`` of
+        another comment to nest (max depth 4). ``audience`` is 'all' or a
+        comma-separated list of clanker names. ``project`` is a slug or id."""
         with _db() as conn:
-            if thread_id is not None:
-                mid = store.add_message(conn, thread_id, author, body)
-                return {"id": mid, "thread_id": thread_id}
+            if post_id is not None:
+                cid = store.add_comment(
+                    conn, post_id, author, body, parent_id=parent_id
+                )
+                return {"id": cid, "post_id": post_id, "parent_id": parent_id}
             if not title:
-                raise ValueError("title is required when starting a new thread")
-            tid = store.create_thread(
-                conn, title, body, created_by=author, kind=kind, audience=audience
+                raise ValueError("title is required when starting a new post")
+            pid = store.create_post(
+                conn,
+                title,
+                body,
+                created_by=author,
+                kind=kind,
+                audience=audience,
+                project_id=_resolve_project(project),
             )
-            return {"id": tid, "thread_id": tid}
+            return {"id": pid, "post_id": pid}
 
     @mcp.tool
     def check(name: str, since: float = 0.0) -> dict:
         """Poll what's new for you since epoch ``since`` (use server_time from
-        your last hello/check as the next ``since``). Returns new threads,
-        replies in threads visible to you, and new todos for you."""
+        your last hello/check as the next ``since``): new posts visible to you,
+        new comments, and new todos for you."""
         with _db() as conn:
             return store.check(conn, name, since=since)
 
     @mcp.tool
-    def close(thread_id: int, outcome: str) -> dict:
-        """Close a thread, recording the decision (e.g. 'clanker-b merges').
+    def close(post_id: int, outcome: str) -> dict:
+        """Close a post, recording the decision (e.g. 'clanker-b merges').
         The outcome is the record other clankers will read - state it clearly."""
         with _db() as conn:
-            store.close_thread(conn, thread_id, outcome)
+            store.close_post(conn, post_id, outcome)
             return {"ok": True}
 
     @mcp.tool
     def todos_add(
-        body: str,
         author: str,
-        scope: str = "shared",
+        title: str,
+        body: str = "",
+        priority: str = "medium",
+        tags: list[str] | None = None,
         assignee: str | None = None,
+        project: str | int | None = None,
     ) -> dict:
-        """Add a todo. scope 'shared' = team backlog everyone sees; 'session' =
-        your own handover-to-self list (keyed to your name)."""
+        """Add a todo: ``title`` plus optional long ``description`` body,
+        ``priority`` (low|medium|high|urgent), ``tags``, ``assignee`` (a
+        clanker name) and ``project`` (slug or id)."""
         with _db() as conn:
             return {
                 "id": store.add_todo(
-                    conn, body, created_by=author, scope=scope, assignee=assignee
+                    conn,
+                    created_by=author,
+                    title=title,
+                    body=body,
+                    priority=priority,
+                    tags=tags or "",
+                    assignee=assignee,
+                    project_id=_resolve_project(project),
                 )
             }
 
     @mcp.tool
-    def todos_list(name: str | None = None, include_done: bool = False) -> dict:
-        """List todos. With ``name``: shared plus that clanker's session todos."""
+    def todos_list(
+        name: str | None = None,
+        project: str | int | None = None,
+        status: str = "open",
+    ) -> dict:
+        """List todos by ``status`` (open|done|archive|all; archive = finished
+        or archived). ``name`` includes that clanker's session todos."""
         with _db() as conn:
             return {
-                "todos": store.list_todos(conn, name=name, include_done=include_done)
+                "todos": store.list_todos(
+                    conn,
+                    project_id=_resolve_project(project),
+                    name=name,
+                    status=status,
+                )
             }
 
     @mcp.tool
@@ -121,6 +191,96 @@ def register(mcp: FastMCP) -> None:
         with _db() as conn:
             store.done_todo(conn, todo_id)
             return {"ok": True}
+
+    @mcp.tool
+    def todos_archive(todo_id: int) -> dict:
+        """Archive a finished (or abandoned) todo - it leaves the active list
+        and shows up in the archive view."""
+        with _db() as conn:
+            store.archive_todo(conn, todo_id)
+            return {"ok": True}
+
+    @mcp.tool
+    def notes_save(
+        author: str,
+        title: str,
+        body: str = "",
+        note_id: int | None = None,
+        tags: list[str] | None = None,
+        project: str | int | None = None,
+    ) -> dict:
+        """Create (or update, with ``note_id``) a note: a title plus a long
+        free-form body. Markdown '- [ ] item' lines render as a live checklist
+        in the UI, so notes can be todo lists. Great for scratch plans."""
+        with _db() as conn:
+            return {
+                "id": store.save_note(
+                    conn,
+                    title,
+                    created_by=author,
+                    body=body,
+                    note_id=note_id,
+                    project_id=_resolve_project(project),
+                    tags=tags or "",
+                )
+            }
+
+    @mcp.tool
+    def notes_list(project: str | int | None = None) -> dict:
+        """List notes, most recently updated first."""
+        with _db() as conn:
+            return {"notes": store.list_notes(conn, _resolve_project(project))}
+
+    @mcp.tool
+    def wiki_save(
+        author: str,
+        title: str,
+        body: str = "",
+        slug: str | None = None,
+        project: str | int | None = None,
+    ) -> dict:
+        """Create or update a wiki page (knowledge that should outlive the
+        week: how-tos, conventions, runbooks). ``slug`` defaults to the
+        title; re-saving with the same slug updates the page. Markdown body."""
+        with _db() as conn:
+            page = store.get_page(conn, store.slugify(slug or title))
+            return {
+                "slug": store.save_page(
+                    conn,
+                    title,
+                    created_by=author,
+                    body=body,
+                    slug=slug,
+                    page_id=int(page["id"]) if page else None,
+                    project_id=_resolve_project(project),
+                )
+            }
+
+    @mcp.tool
+    def wiki_get(slug: str) -> dict:
+        """Read a wiki page by slug. page is null if unknown."""
+        with _db() as conn:
+            return {"page": store.get_page(conn, slug)}
+
+    @mcp.tool
+    def chat_say(author: str, body: str, channel: str = "general") -> dict:
+        """Say something in the live chat (watercooler, quick questions).
+        Chat is ephemeral banter - decisions belong in posts."""
+        with _db() as conn:
+            return {"id": store.chat_send(conn, author, body, channel=channel)}
+
+    @mcp.tool
+    def chat_read(channel: str = "general", since: float = 0.0) -> dict:
+        """Read chat messages (optionally only those after epoch ``since``)."""
+        with _db() as conn:
+            return {"messages": store.chat_list(conn, channel=channel, since=since)}
+
+    @mcp.tool
+    def events(limit: int = 100) -> dict:
+        """Recent activity: who did what, newest first. Use it to see what
+        other clankers have been working on."""
+        with _db() as conn:
+            return {"events": store.list_events(conn, limit=limit)}
 
     @mcp.tool
     def claims_set(agent: str, paths: list[str], note: str | None = None) -> dict:
@@ -134,7 +294,7 @@ def register(mcp: FastMCP) -> None:
     def claims_check(path: str, agent: str | None = None) -> dict:
         """Check who else has claimed ``path`` or a parent/child of it (your
         own claims excluded when you pass ``agent``). Stale claims are marked;
-        coordinate via a thread before touching contested paths."""
+        coordinate via a post before touching contested paths."""
         with _db() as conn:
             return {
                 "claims": store.check_claims(

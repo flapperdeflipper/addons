@@ -1,4 +1,5 @@
-"""Store domain logic: presence and the awareness snapshot."""
+"""Store domain logic: presence, projects, posts/comments, todos, notes,
+wiki, chat, events, claims."""
 
 import time
 
@@ -13,277 +14,330 @@ def conn(tmp_path):
     return connect(tmp_path / "sc.db")
 
 
+# --- agents / presence --------------------------------------------------
+
+
 def test_hello_registers_agent(conn):
     snap = store.hello(conn, "clanker-a", heartbeat_timeout=900)
     agents = {a["name"]: a for a in snap["agents"]}
     assert "clanker-a" in agents
     assert agents["clanker-a"]["active"] is True
-    assert snap["server_time"] > 0
 
 
-def test_second_agent_sees_first(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    snap = store.hello(conn, "clanker-b", heartbeat_timeout=900)
-    names = {a["name"] for a in snap["agents"]}
-    assert names == {"clanker-a", "clanker-b"}
+def test_hello_persists_profile_fields(conn):
+    store.hello(conn, "clanker-a", role="yaml wrangler", contact="openchamber/x")
+    again = store.hello(conn, "clanker-a", note="second hello")
+    a = {x["name"]: x for x in again["agents"]}["clanker-a"]
+    assert a["role"] == "yaml wrangler"
+    assert a["contact"] == "openchamber/x"
+    assert a["note"] == "second hello"
 
 
-def test_inactive_agent_flagged(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    stale = time.time() - 3600
-    conn.execute("UPDATE agents SET last_seen = ? WHERE name = 'clanker-a'", (stale,))
-    snap = store.hello(conn, "clanker-b", heartbeat_timeout=900)
-    agents = {a["name"]: a for a in snap["agents"]}
-    assert agents["clanker-a"]["active"] is False
-    assert agents["clanker-b"]["active"] is True
+def test_profile_set_partial_update(conn):
+    store.profile_set(conn, "clanker-a", note="bio", role="ops")
+    store.profile_set(conn, "clanker-a", role="new role")
+    agent = store.get_agent(conn, "clanker-a")
+    assert agent["role"] == "new role"
+    assert agent["note"] == "bio"  # untouched
 
 
-def test_hello_updates_note_and_session_but_keeps_started_at(conn):
-    snap1 = store.hello(
-        conn, "clanker-a", session_id="sess-1", note="first", heartbeat_timeout=900
+def test_get_agent_unknown(conn):
+    assert store.get_agent(conn, "nobody") is None
+
+
+# --- projects -----------------------------------------------------------
+
+
+def test_create_and_get_project(conn):
+    p = store.create_project(conn, "Home Assistant", created_by="clanker-a")
+    assert p["slug"] == "home-assistant"
+    assert store.get_project(conn, "home-assistant")["id"] == p["id"]
+    assert store.get_project(conn, p["id"])["id"] == p["id"]
+
+
+def test_project_slug_clash_rejected(conn):
+    store.create_project(conn, "dup", created_by="a")
+    with pytest.raises(ValueError, match="already exists"):
+        store.create_project(conn, "dup", created_by="a")
+
+
+def test_default_project_seeded(conn):
+    assert store.get_project(conn, "general") is not None
+
+
+# --- posts + comments ----------------------------------------------------
+
+
+def test_create_post_stores_body(conn):
+    pid = store.create_post(
+        conn, "Who merges?", "I can.", created_by="a", kind="proposal", audience="b"
     )
-    snap2 = store.hello(
-        conn, "clanker-a", session_id="sess-2", note="second", heartbeat_timeout=900
-    )
-    a1 = {a["name"]: a for a in snap1["agents"]}["clanker-a"]
-    a2 = {a["name"]: a for a in snap2["agents"]}["clanker-a"]
-    assert a2["note"] == "second"
-    assert a2["session_id"] == "sess-2"
-    assert a2["started_at"] == a1["started_at"]
-    assert a2["last_seen"] >= a1["last_seen"]
-
-
-# --- threads -----------------------------------------------------------
-
-
-def test_create_thread_adds_first_message(conn):
-    tid = store.create_thread(
-        conn,
-        "Who merges?",
-        "I can do it.",
-        created_by="clanker-a",
-        kind="proposal",
-        audience="clanker-b",
-    )
-    detail = store.thread_detail(conn, tid)
-    assert detail["title"] == "Who merges?"
+    detail = store.post_detail(conn, pid)
     assert detail["kind"] == "proposal"
     assert detail["status"] == "open"
-    assert len(detail["messages"]) == 1
-    assert detail["messages"][0]["author"] == "clanker-a"
+    assert detail["body"] == "I can."
+    assert detail["comments"] == []
 
 
-def test_add_message_appends(conn):
-    tid = store.create_thread(conn, "t", "b", created_by="clanker-a")
-    store.add_message(conn, tid, "clanker-b", "reply")
-    detail = store.thread_detail(conn, tid)
-    assert [m["body"] for m in detail["messages"]] == ["b", "reply"]
+def test_bad_kind_rejected(conn):
+    with pytest.raises(ValueError, match="kind"):
+        store.create_post(conn, "t", "b", created_by="a", kind="rant")
 
 
-def test_add_message_unknown_thread_raises(conn):
-    with pytest.raises(ValueError):
-        store.add_message(conn, 999, "clanker-a", "hi")
+def test_bad_project_rejected(conn):
+    with pytest.raises(ValueError, match="project"):
+        store.create_post(conn, "t", "b", created_by="a", project_id=999)
 
 
-def test_close_blocks_replies_and_records_outcome(conn):
-    tid = store.create_thread(conn, "t", "b", created_by="clanker-a")
-    store.close_thread(conn, tid, outcome="clanker-b merges")
-    with pytest.raises(ValueError):
-        store.add_message(conn, tid, "clanker-a", "too late")
-    detail = store.thread_detail(conn, tid)
+def _chain(conn, pid, n):
+    """Add n nested comments, each a child of the previous; returns ids."""
+    ids = []
+    parent = None
+    for i in range(n):
+        parent = store.add_comment(conn, pid, f"c{i}", f"lvl{i}", parent_id=parent)
+        ids.append(parent)
+    return ids
+
+
+def test_comment_nesting_to_max_depth(conn):
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    ids = _chain(conn, pid, store.MAX_COMMENT_DEPTH)
+    assert len(ids) == store.MAX_COMMENT_DEPTH
+
+
+def test_comment_beyond_max_depth_rejected(conn):
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    ids = _chain(conn, pid, store.MAX_COMMENT_DEPTH)
+    with pytest.raises(ValueError, match="max comment depth"):
+        store.add_comment(conn, pid, "c", "too deep", parent_id=ids[-1])
+
+
+def test_comment_parent_from_other_post_rejected(conn):
+    p1 = store.create_post(conn, "t1", "b", created_by="a")
+    p2 = store.create_post(conn, "t2", "b", created_by="a")
+    c1 = store.add_comment(conn, p1, "a", "hi")
+    with pytest.raises(ValueError, match="different post"):
+        store.add_comment(conn, p2, "a", "hi", parent_id=c1)
+
+
+def test_comment_on_closed_post_rejected(conn):
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    store.close_post(conn, pid, "done")
+    with pytest.raises(ValueError, match="closed"):
+        store.add_comment(conn, pid, "a", "late")
+
+
+def test_close_post_records_outcome(conn):
+    pid = store.create_post(conn, "t", "b", created_by="a")
+    store.close_post(conn, pid, "merged by b")
+    detail = store.post_detail(conn, pid)
     assert detail["status"] == "closed"
-    assert detail["outcome"] == "clanker-b merges"
-    assert detail["closed_at"] is not None
+    assert detail["outcome"] == "merged by b"
+    with pytest.raises(ValueError, match="already closed"):
+        store.close_post(conn, pid, "again")
 
 
-def test_close_unknown_thread_raises(conn):
-    with pytest.raises(ValueError):
-        store.close_thread(conn, 999, outcome="x")
-
-
-def test_create_thread_rejects_unknown_kind(conn):
-    with pytest.raises(ValueError):
-        store.create_thread(conn, "t", "b", created_by="clanker-a", kind="rant")
-
-
-def test_snapshot_threads_for_me_audience(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.hello(conn, "clanker-b", heartbeat_timeout=900)
-    store.hello(conn, "clanker-c", heartbeat_timeout=900)
-    store.create_thread(
-        conn, "for b", "b please weigh in", created_by="clanker-a", audience="clanker-b"
+def test_list_posts_counts_and_filters(conn):
+    p = store.create_project(conn, "proj", created_by="a")
+    in_proj_id = store.create_post(
+        conn, "in proj", "b", created_by="a", project_id=p["id"]
     )
-    store.create_thread(conn, "for all", "fyi", created_by="clanker-a")
-
-    snap_b = store.snapshot(conn, "clanker-b")
-    titles_b = {t["title"] for t in snap_b["threads_for_me"]}
-    snap_c = store.snapshot(conn, "clanker-c")
-    titles_c = {t["title"] for t in snap_c["threads_for_me"]}
-    snap_a = store.snapshot(conn, "clanker-a")
-
-    assert titles_b == {"for b", "for all"}
-    assert titles_c == {"for all"}
-    assert snap_a["threads_for_me"] == []
+    store.create_post(conn, "closed one", "b", created_by="a")
+    store.close_post(conn, store.list_posts(conn)[0]["id"], "wontfix")
+    open_all = store.list_posts(conn)
+    assert len(open_all) == 1 and open_all[0]["title"] == "in proj"
+    store.add_comment(conn, in_proj_id, "a", "a comment")
+    in_proj = store.list_posts(conn, project_id=p["id"], include_closed=True)
+    assert len(in_proj) == 1
+    assert in_proj[0]["comment_count"] == 1
+    assert in_proj[0]["project_slug"] == "proj"
 
 
-# --- check -------------------------------------------------------------
+# --- todos ---------------------------------------------------------------
 
 
-def test_check_returns_new_threads_and_nothing_after(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.hello(conn, "clanker-b", heartbeat_timeout=900)
-    t0 = time.time()
-    store.create_thread(conn, "fresh", "news", created_by="clanker-a")
-    result = store.check(conn, "clanker-b", since=t0)
-    assert [t["title"] for t in result["threads"]] == ["fresh"]
-    t1 = time.time()
-    result = store.check(conn, "clanker-b", since=t1)
-    assert result["threads"] == [] and result["messages"] == []
-
-
-def test_check_includes_replies_to_my_threads_but_not_my_own_posts(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    tid = store.create_thread(conn, "mine", "question", created_by="clanker-a")
-    t0 = time.time()
-    store.add_message(conn, tid, "clanker-b", "answer")
-    store.add_message(conn, tid, "clanker-a", "thanks")
-    result = store.check(conn, "clanker-a", since=t0)
-    assert [m["body"] for m in result["messages"]] == ["answer"]
-
-
-def test_check_excludes_threads_not_addressed_to_me(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.create_thread(
-        conn, "private", "b only", created_by="clanker-a", audience="clanker-b"
+def test_add_todo_full_fields(conn):
+    tid = store.add_todo(
+        conn,
+        created_by="a",
+        title="ship it",
+        body="long desc",
+        priority="urgent",
+        tags=["ui", "api"],
+        assignee="b",
     )
-    t0 = time.time()
-    result = store.check(conn, "clanker-c", since=t0)
-    assert result["threads"] == []
+    row = store.list_todos(conn)[0]
+    assert row["id"] == tid
+    assert row["priority"] == "urgent"
+    assert row["tags"] == "api,ui"
+    assert row["assignee"] == "b"
 
 
-# --- todos -------------------------------------------------------------
+def test_add_todo_title_falls_back_to_body(conn):
+    store.add_todo(conn, created_by="a", body="a very long description line here")
+    assert store.list_todos(conn)[0]["title"].startswith("a very long")
 
 
-def test_add_shared_todo_and_list(conn):
-    tid = store.add_todo(conn, "bump litellm version", created_by="clanker-a")
-    todos = store.list_todos(conn)
-    assert [t["body"] for t in todos] == ["bump litellm version"]
-    assert todos[0]["scope"] == "shared"
-    assert todos[0]["done"] == 0
-    assert tid == todos[0]["id"]
+def test_bad_priority_rejected(conn):
+    with pytest.raises(ValueError, match="priority"):
+        store.add_todo(conn, created_by="a", title="x", priority="whenever")
 
 
-def test_session_todo_defaults_to_creator_key(conn):
-    store.add_todo(conn, "self reminder", created_by="clanker-a", scope="session")
-    mine = store.list_todos(conn, name="clanker-a")
-    other = store.list_todos(conn, name="clanker-b")
-    assert [t["body"] for t in mine] == ["self reminder"]
-    assert other == []
+def test_todo_lifecycle(conn):
+    tid = store.add_todo(conn, created_by="a", title="x")
+    store.done_todo(conn, tid, actor="a")
+    assert store.list_todos(conn, status="open") == []
+    assert len(store.list_todos(conn, status="done")) == 1
+    store.reopen_todo(conn, tid)
+    assert len(store.list_todos(conn, status="open")) == 1
+    store.archive_todo(conn, tid)
+    assert store.list_todos(conn, status="open") == []
+    archived = store.list_todos(conn, status="archive")
+    assert len(archived) == 1 and archived[0]["archived"] == 1
 
 
-def test_list_todos_name_includes_shared_and_own_session(conn):
-    store.add_todo(conn, "shared one", created_by="clanker-a")
-    store.add_todo(conn, "private one", created_by="clanker-a", scope="session")
-    store.add_todo(conn, "private two", created_by="clanker-b", scope="session")
-    got = store.list_todos(conn, name="clanker-a")
-    assert {t["body"] for t in got} == {"shared one", "private one"}
-
-
-def test_done_todo_marks_idempotent_and_unknown_raises(conn):
-    tid = store.add_todo(conn, "task", created_by="clanker-a")
-    store.done_todo(conn, tid)
-    store.done_todo(conn, tid)  # idempotent
-    todos = store.list_todos(conn, include_done=True)
-    assert todos[0]["done"] == 1
-    assert todos[0]["done_at"] is not None
-    with pytest.raises(ValueError):
-        store.done_todo(conn, 999)
-
-
-def test_add_todo_rejects_bad_scope(conn):
-    with pytest.raises(ValueError):
-        store.add_todo(conn, "x", created_by="clanker-a", scope="global")
-
-
-# --- claims ------------------------------------------------------------
-
-
-def test_set_and_check_claims_exact_and_prefix(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.set_claims(
-        conn, "clanker-a", ["/homeassistant/addons/litellm"], note="version bump"
+def test_list_todos_by_project_and_assignee(conn):
+    p = store.create_project(conn, "proj", created_by="a")
+    store.add_todo(
+        conn, created_by="a", title="p-todo", project_id=p["id"], assignee="b"
     )
-    exact = store.check_claims(conn, "/homeassistant/addons/litellm/run.sh")
-    parent = store.check_claims(conn, "/homeassistant/addons/litellm")
-    child_scope = store.check_claims(conn, "/homeassistant/addons")
-    unrelated = store.check_claims(conn, "/homeassistant/configuration.yaml")
-    assert [c["agent"] for c in exact] == ["clanker-a"]
-    assert [c["agent"] for c in parent] == ["clanker-a"]
-    assert [c["agent"] for c in child_scope] == ["clanker-a"]
-    assert unrelated == []
+    store.add_todo(conn, created_by="a", title="g-todo")
+    assert [t["title"] for t in store.list_todos(conn, project_id=p["id"])] == [
+        "p-todo"
+    ]
+    assert [t["title"] for t in store.list_todos(conn, assignee="b")] == ["p-todo"]
 
 
-def test_check_excludes_own_claims(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.set_claims(conn, "clanker-a", ["/p/x"])
-    assert store.check_claims(conn, "/p/x", agent="clanker-a") == []
-    assert len(store.check_claims(conn, "/p/x")) == 1
+def test_update_todo_fields(conn):
+    tid = store.add_todo(conn, created_by="a", title="x")
+    row = store.update_todo(
+        conn, tid, actor="a", priority="high", tags="one,two", assignee="b"
+    )
+    assert row["priority"] == "high"
+    assert row["tags"] == "one,two"
+    assert row["assignee"] == "b"
 
 
-def test_claims_flagged_stale_when_agent_inactive(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.set_claims(conn, "clanker-a", ["/p/x"])
-    stale = time.time() - 3600
-    conn.execute("UPDATE agents SET last_seen = ? WHERE name = 'clanker-a'", (stale,))
-    got = store.check_claims(conn, "/p/x", agent="clanker-b")
-    assert got[0]["stale"] is True
+def test_update_todo_unknown_field(conn):
+    tid = store.add_todo(conn, created_by="a", title="x")
+    with pytest.raises(ValueError, match="unknown todo field"):
+        store.update_todo(conn, tid, nonsense="x")
 
 
-def test_release_claims(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.set_claims(conn, "clanker-a", ["/p/x", "/p/y"])
-    store.release_claims(conn, "clanker-a", ["/p/x", "/p/never-claimed"])
-    snap = store.snapshot(conn, "clanker-b")
-    assert [c["path"] for c in snap["claims"]] == ["/p/y"]
+# --- notes -----------------------------------------------------------------
 
 
-def test_snapshot_includes_claims_with_staleness(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.hello(conn, "clanker-b", heartbeat_timeout=900)
-    store.set_claims(conn, "clanker-a", ["/p/a"])
-    store.set_claims(conn, "clanker-b", ["/p/b"])
+def test_note_create_update(conn):
+    nid = store.save_note(conn, "deploy notes", created_by="a", body="- [ ] step")
+    store.save_note(
+        conn,
+        "deploy notes v2",
+        created_by="b",
+        body="- [x] step",
+        note_id=nid,
+        tags="ops",
+    )
+    note = store.get_note(conn, nid)
+    assert note["title"] == "deploy notes v2"
+    assert note["tags"] == "ops"
+    notes = store.list_notes(conn)
+    assert len(notes) == 1
+
+
+def test_note_unknown_update_rejected(conn):
+    with pytest.raises(ValueError, match="does not exist"):
+        store.save_note(conn, "x", created_by="a", note_id=99)
+
+
+# --- wiki --------------------------------------------------------------------
+
+
+def test_wiki_slug_auto_and_clash(conn):
+    slug = store.save_page(conn, "Runbook: Backups", created_by="a")
+    assert slug == "runbook-backups"
+    with pytest.raises(ValueError, match="already exists"):
+        store.save_page(conn, "Runbook: Backups", created_by="b")
+
+
+def test_wiki_update_via_get_then_save(conn):
+    store.save_page(conn, "Conventions", created_by="a", body="v1")
+    page = store.get_page(conn, "conventions")
+    store.save_page(
+        conn, "Conventions", created_by="b", body="v2", page_id=int(page["id"])
+    )
+    assert store.get_page(conn, "conventions")["body"] == "v2"
+    assert len(store.list_pages(conn)) == 1
+
+
+# --- chat ----------------------------------------------------------------------
+
+
+def test_chat_send_list_since(conn):
+    store.chat_send(conn, "a", "first")
+    midway = time.time()
+    store.chat_send(conn, "b", "second")
+    assert len(store.chat_list(conn)) == 2
+    fresh = store.chat_list(conn, since=midway)
+    assert [m["body"] for m in fresh] == ["second"]
+
+
+# --- events ---------------------------------------------------------------------
+
+
+def test_events_logged_for_actions(conn):
+    store.create_post(conn, "t", "b", created_by="a")
+    tid = store.add_todo(conn, created_by="a", title="x")
+    store.done_todo(conn, tid, actor="b")
+    events = store.list_events(conn)
+    verbs = [(e["actor"], e["verb"], e["obj_type"]) for e in events]
+    assert ("a", "posted", "post") in verbs
+    assert ("a", "added todo", "todo") in verbs
+    assert ("b", "finished todo", "todo") in verbs
+    assert ("?", "posted", "post") not in verbs
+
+
+# --- awareness --------------------------------------------------------------------
+
+
+def test_check_sees_new_post_comment_todo(conn):
+    t0 = time.time() - 1
+    store.hello(conn, "a")
+    pid = store.create_post(conn, "for b", "body", created_by="a", audience="b")
+    c1 = store.add_comment(conn, pid, "a", "b should answer")
+    store.add_todo(conn, created_by="a", title="b's job", assignee="b")
+    out = store.check(conn, "b", since=t0)
+    assert [p["id"] for p in out["posts"]] == [pid]
+    assert [c["id"] for c in out["comments"]] == [c1]
+    assert len(out["todos"]) == 1
+
+
+def test_check_respects_audience(conn):
+    t0 = time.time() - 1
+    store.create_post(conn, "secret", "b only", created_by="a", audience="b")
+    out = store.check(conn, "c", since=t0)
+    assert out["posts"] == []
+
+
+# --- claims ------------------------------------------------------------------------
+
+
+def test_claims_set_check_release(conn):
+    store.hello(conn, "a")
+    store.set_claims(conn, "a", ["/homeassistant/automations.yaml"], note="editing")
+    conflicts = store.check_claims(conn, "/homeassistant/automations.yaml", agent="b")
+    assert len(conflicts) == 1
+    assert conflicts[0]["agent"] == "a"
+    own = store.check_claims(conn, "/homeassistant/automations.yaml", agent="a")
+    assert own == []
+    store.release_claims(conn, "a", ["/homeassistant/automations.yaml"])
+    assert store.check_claims(conn, "/homeassistant/automations.yaml", agent="b") == []
+
+
+def test_stale_claim_flagged(conn):
+    store.hello(conn, "a")
     conn.execute(
-        "UPDATE agents SET last_seen = ? WHERE name = 'clanker-b'",
-        (time.time() - 9999,),
+        "UPDATE agents SET last_seen = ? WHERE name = 'a'", (time.time() - 9999,)
     )
-    snap = store.snapshot(conn, "clanker-b")
-    flags = {c["path"]: c["stale"] for c in snap["claims"]}
-    assert flags == {"/p/a": False, "/p/b": True}
-
-
-# --- overview (UI) -----------------------------------------------------
-
-
-def test_overview_shape(conn):
-    store.hello(conn, "clanker-a", heartbeat_timeout=900)
-    store.set_claims(conn, "clanker-a", ["/repo/x"])
-    store.create_thread(conn, "hello world", "first", created_by="clanker-a")
-    store.add_todo(conn, "task", created_by="clanker-a")
-    ov = store.overview(conn, heartbeat_timeout=900)
-    assert set(ov) == {"server_time", "agents", "claims", "open_threads", "open_todos"}
-    assert ov["agents"][0]["name"] == "clanker-a"
-    assert ov["agents"][0]["active"] is True
-    assert ov["claims"][0]["path"] == "/repo/x"
-    assert ov["claims"][0]["stale"] is False
-    assert ov["open_threads"][0]["title"] == "hello world"
-    assert ov["open_todos"][0]["body"] == "task"
-
-
-def test_overview_excludes_closed_and_done(conn):
-    tid = store.create_thread(conn, "t", "b", created_by="clanker-a")
-    store.close_thread(conn, tid, outcome="done")
-    todo_id = store.add_todo(conn, "x", created_by="clanker-a")
-    store.done_todo(conn, todo_id)
-    ov = store.overview(conn)
-    assert ov["open_threads"] == []
-    assert ov["open_todos"] == []
+    store.set_claims(conn, "a", ["/x"])
+    conflicts = store.check_claims(conn, "/x", agent="b")
+    assert conflicts[0]["stale"] is True
