@@ -20,6 +20,12 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      # Action releases after 2026.02.1 reference builder container images that
+      # are not published to ghcr.io (docker pull fails: manifest unknown) —
+      # the action itself calls 2026.02.1 the latest release with a builder image.
+      - dependency-name: "home-assistant/builder"
+        versions: [">2026.02.1"]
     commit-message:
       prefix: "ci"
     labels: ["dependencies"]
