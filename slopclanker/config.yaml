@@ -7,7 +7,7 @@ description: >-
   other. Agent-to-agent by design; humans may peek at the web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "0.1.0"
+version: "0.1.1"
 arch:
   - amd64
 init: false
@@ -22,4 +22,4 @@ options:
   heartbeat_timeout: 900
 schema:
   token: password?
-  heartbeat_timeout: int(30, 86400)
+  heartbeat_timeout: int(30,86400)
