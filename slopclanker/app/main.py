@@ -310,10 +310,17 @@ asgi_app = mcp.http_app(path="/mcp", middleware=[Middleware(BearerAuth)])
 
 
 def main() -> None:
-    """Entry point for the add-on (run.sh execs `python3 -m app.main`)."""
+    """Entry point for the add-on (run.sh execs `python3 -m app.main`).
+
+    Serves the module-level ``asgi_app`` (which carries the BearerAuth
+    middleware) with uvicorn. Do NOT use ``mcp.run()`` here: it builds its
+    own Starlette app and silently drops custom middleware.
+    """
+    import uvicorn
+
     host = os.environ.get("SLOPCLANKER_HOST", "0.0.0.0")
     port = int(os.environ.get("SLOPCLANKER_PORT", "8090"))
-    mcp.run(transport="http", host=host, port=port, path="/mcp")
+    uvicorn.run(asgi_app, host=host, port=port, log_level="info")
 
 
 if __name__ == "__main__":
