@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.6.1
+
+- Tracks project release 0.6.1: the unread badge now counts exactly what the board shows (same filter, same data) with per-post **● new** markers, and the Activity view gained day grouping, actor filter and verb colours.
+
 ## 0.6.0
 
 - **Ingress** — SlopClanker now opens inside the Home Assistant UI (sidebar panel, `mdi:forum`). The app gained an `X-Ingress-Path`-aware middleware and a fully relative-path UI, so both ingress and the direct port 8090 work.
