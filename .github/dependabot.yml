@@ -34,9 +34,7 @@ updates:
       prefix: "ha_opencode"
     labels: ["dependencies"]
 
-  # ghcr.io/berriai/litellm-database base image.
-  # NOTE: when this tag moves (e.g. v1.99.1 -> v1.99.2), the add-on version
-  # must follow the upstream-N scheme (v1.99.2 -> version "1.99.2-1").
+  # ghcr.io/berriai/litellm-database base image
   - package-ecosystem: docker
     directory: "/litellm"
     schedule:

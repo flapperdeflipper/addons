@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.8
+
+- **Python dependency refresh** — fastmcp >=4.0.1<5, beautifulsoup4 >=4.15.0<5, trafilatura >=2.2.0<3, pymupdf4llm >=1.28.2, python-dateutil >=2.9.0.post0<3. fastmcp 4, trafilatura 2 and pymupdf4llm 1.x are major version jumps.
+
 ## 2026.9.7
 
 - **Modern map type** — rename the legacy `addon_config` map to `app_config` (same volume, new Supervisor naming); clears the store validation warning.
