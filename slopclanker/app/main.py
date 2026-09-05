@@ -13,14 +13,15 @@ Environment (set by run.sh):
 
 import os
 from collections.abc import Awaitable, Callable
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.responses import FileResponse, JSONResponse
 
 from app import store
 from app.db import connect
@@ -61,7 +62,7 @@ def _api(handler: Callable[[Request], Awaitable[JSONResponse]]) -> Callable[...,
     async def wrapped(request: Request) -> JSONResponse:
         try:
             return await handler(request)
-        except ValueError as err:
+        except (TypeError, ValueError) as err:
             return JSONResponse({"error": str(err)}, status_code=400)
 
     return wrapped
@@ -73,7 +74,7 @@ async def _json_body(request: Request) -> dict:
     except Exception as err:
         raise ValueError("body must be JSON") from err
     if not isinstance(data, dict):
-        raise ValueError("body must be a JSON object")
+        raise TypeError("body must be a JSON object")
     return data
 
 
@@ -88,9 +89,12 @@ async def healthz(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "service": "slopclanker"})
 
 
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
 @mcp.custom_route("/", methods=["GET"])
-async def index(request: Request) -> PlainTextResponse:
-    return PlainTextResponse("SlopClanker townhall. UI lands in v0.1.0; API under /api, MCP under /mcp.")
+async def index(request: Request) -> FileResponse:
+    return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
 
 
 @mcp.custom_route("/api/hello", methods=["POST"])
@@ -107,6 +111,15 @@ async def api_hello(request: Request) -> JSONResponse:
             heartbeat_timeout=_heartbeat_timeout(),
         )
     return JSONResponse(snap)
+
+
+@mcp.custom_route("/api/overview", methods=["GET"])
+@_api
+async def api_overview(request: Request) -> JSONResponse:
+    with _db() as conn:
+        return JSONResponse(
+            store.overview(conn, heartbeat_timeout=_heartbeat_timeout())
+        )
 
 
 @mcp.custom_route("/api/threads", methods=["POST"])
@@ -137,7 +150,6 @@ async def api_list_threads(request: Request) -> JSONResponse:
 @mcp.custom_route("/api/threads/{thread_id:int}", methods=["GET"])
 @_api
 async def api_thread_detail(request: Request) -> JSONResponse:
-    detail = None
     with _db() as conn:
         detail = store.thread_detail(conn, request.path_params["thread_id"])
     if detail is None:
@@ -172,7 +184,9 @@ async def api_close_thread(request: Request) -> JSONResponse:
 async def api_check(request: Request) -> JSONResponse:
     params = request.query_params
     if not params.get("name"):
-        return JSONResponse({"error": "missing required query param: name"}, status_code=400)
+        return JSONResponse(
+            {"error": "missing required query param: name"}, status_code=400
+        )
     try:
         since = float(params.get("since", "0"))
     except ValueError:
@@ -226,9 +240,11 @@ async def api_set_claims(request: Request) -> JSONResponse:
     data = await _json_body(request)
     _require(data, "agent", "paths")
     if not isinstance(data["paths"], list):
-        raise ValueError("paths must be a list")
+        raise TypeError("paths must be a list")
     with _db() as conn:
-        count = store.set_claims(conn, data["agent"], data["paths"], note=data.get("note"))
+        count = store.set_claims(
+            conn, data["agent"], data["paths"], note=data.get("note")
+        )
     return JSONResponse({"claims": count})
 
 
@@ -237,10 +253,14 @@ async def api_set_claims(request: Request) -> JSONResponse:
 async def api_check_claims(request: Request) -> JSONResponse:
     path = request.query_params.get("path")
     if not path:
-        return JSONResponse({"error": "missing required query param: path"}, status_code=400)
+        return JSONResponse(
+            {"error": "missing required query param: path"}, status_code=400
+        )
     with _db() as conn:
         claims = store.check_claims(
-            conn, path, agent=request.query_params.get("agent"),
+            conn,
+            path,
+            agent=request.query_params.get("agent"),
             heartbeat_timeout=_heartbeat_timeout(),
         )
     return JSONResponse(claims)
@@ -252,7 +272,7 @@ async def api_release_claims(request: Request) -> JSONResponse:
     data = await _json_body(request)
     _require(data, "agent", "paths")
     if not isinstance(data["paths"], list):
-        raise ValueError("paths must be a list")
+        raise TypeError("paths must be a list")
     with _db() as conn:
         store.release_claims(conn, data["agent"], data["paths"])
     return JSONResponse({"ok": True})
@@ -282,6 +302,10 @@ class BearerAuth:
         await self.app(scope, receive, send)
 
 
+from app.tools import register as _register_tools
+
+_register_tools(mcp)
+
 asgi_app = mcp.http_app(path="/mcp", middleware=[Middleware(BearerAuth)])
 
 
@@ -294,12 +318,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-def _unused(_value: Any) -> None:  # pragma: no cover - typing helper
-    return None
-
-
-from app.tools import register as _register_tools  # noqa: E402
-
-_register_tools(mcp)

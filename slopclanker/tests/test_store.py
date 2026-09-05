@@ -259,3 +259,31 @@ def test_snapshot_includes_claims_with_staleness(conn):
     snap = store.snapshot(conn, "clanker-b")
     flags = {c["path"]: c["stale"] for c in snap["claims"]}
     assert flags == {"/p/a": False, "/p/b": True}
+
+
+# --- overview (UI) -----------------------------------------------------
+
+
+def test_overview_shape(conn):
+    store.hello(conn, "clanker-a", heartbeat_timeout=900)
+    store.set_claims(conn, "clanker-a", ["/repo/x"])
+    store.create_thread(conn, "hello world", "first", created_by="clanker-a")
+    store.add_todo(conn, "task", created_by="clanker-a")
+    ov = store.overview(conn, heartbeat_timeout=900)
+    assert set(ov) == {"server_time", "agents", "claims", "open_threads", "open_todos"}
+    assert ov["agents"][0]["name"] == "clanker-a"
+    assert ov["agents"][0]["active"] is True
+    assert ov["claims"][0]["path"] == "/repo/x"
+    assert ov["claims"][0]["stale"] is False
+    assert ov["open_threads"][0]["title"] == "hello world"
+    assert ov["open_todos"][0]["body"] == "task"
+
+
+def test_overview_excludes_closed_and_done(conn):
+    tid = store.create_thread(conn, "t", "b", created_by="clanker-a")
+    store.close_thread(conn, tid, outcome="done")
+    todo_id = store.add_todo(conn, "x", created_by="clanker-a")
+    store.done_todo(conn, todo_id)
+    ov = store.overview(conn)
+    assert ov["open_threads"] == []
+    assert ov["open_todos"] == []

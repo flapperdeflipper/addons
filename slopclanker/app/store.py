@@ -14,6 +14,60 @@ def _audience_match(audience: str, name: str) -> bool:
     return name in names
 
 
+def _agents_with_active(
+    conn: sqlite3.Connection, now: float, heartbeat_timeout: int
+) -> tuple[list[dict], dict[str, bool]]:
+    agents: list[dict] = []
+    active_by_name: dict[str, bool] = {}
+    for row in conn.execute("SELECT * FROM agents ORDER BY last_seen DESC"):
+        active = (now - row["last_seen"]) <= heartbeat_timeout
+        active_by_name[row["name"]] = active
+        agents.append(
+            {
+                "name": row["name"],
+                "session_id": row["session_id"],
+                "note": row["note"],
+                "started_at": row["started_at"],
+                "last_seen": row["last_seen"],
+                "active": active,
+            }
+        )
+    return agents, active_by_name
+
+
+def _claims_with_stale(
+    conn: sqlite3.Connection, active_by_name: dict[str, bool]
+) -> list[dict]:
+    return [
+        {
+            "agent": row["agent"],
+            "path": row["path"],
+            "note": row["note"],
+            "claimed_at": row["claimed_at"],
+            "stale": not active_by_name.get(row["agent"], False),
+        }
+        for row in conn.execute("SELECT * FROM claims ORDER BY claimed_at DESC")
+    ]
+
+
+def overview(conn: sqlite3.Connection, heartbeat_timeout: int = 900) -> dict:
+    """Everything the web UI shows: agents, claims, open threads and todos."""
+    now = time.time()
+    agents, active_by_name = _agents_with_active(conn, now, heartbeat_timeout)
+    return {
+        "server_time": now,
+        "agents": agents,
+        "claims": _claims_with_stale(conn, active_by_name),
+        "open_threads": list_threads(conn, include_closed=False),
+        "open_todos": [
+            dict(row)
+            for row in conn.execute(
+                "SELECT * FROM todos WHERE done = 0 ORDER BY created_at DESC"
+            )
+        ],
+    }
+
+
 def hello(
     conn: sqlite3.Connection,
     name: str,
@@ -41,33 +95,8 @@ def hello(
 def snapshot(conn: sqlite3.Connection, me: str, heartbeat_timeout: int = 900) -> dict:
     """Everything an agent should see when it wakes up."""
     now = time.time()
-
-    agents = []
-    active_by_name: dict[str, bool] = {}
-    for row in conn.execute("SELECT * FROM agents ORDER BY last_seen DESC"):
-        active = (now - row["last_seen"]) <= heartbeat_timeout
-        active_by_name[row["name"]] = active
-        agents.append(
-            {
-                "name": row["name"],
-                "session_id": row["session_id"],
-                "note": row["note"],
-                "started_at": row["started_at"],
-                "last_seen": row["last_seen"],
-                "active": active,
-            }
-        )
-
-    claims = [
-        {
-            "agent": row["agent"],
-            "path": row["path"],
-            "note": row["note"],
-            "claimed_at": row["claimed_at"],
-            "stale": not active_by_name.get(row["agent"], False),
-        }
-        for row in conn.execute("SELECT * FROM claims ORDER BY claimed_at DESC")
-    ]
+    agents, active_by_name = _agents_with_active(conn, now, heartbeat_timeout)
+    claims = _claims_with_stale(conn, active_by_name)
 
     threads_for_me = [
         dict(row)
@@ -333,11 +362,12 @@ def set_claims(
             (agent, path.rstrip("/"), note, now),
         )
     conn.commit()
-    return int(
+    count = int(
         conn.execute(
             "SELECT COUNT(*) AS c FROM claims WHERE agent = ?", (agent,)
         ).fetchone()["c"]
     )
+    return count
 
 
 def check_claims(

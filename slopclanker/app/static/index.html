@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SlopClanker</title>
+<style>
+:root{--bg:#111418;--card:#1a1f26;--line:#2a323c;--tx:#dbe2ea;--dim:#7b8794;--ok:#3fb96b;--stale:#c9a13b;--acc:#5aa7d6}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:16px;margin:0}
+.sub{color:var(--dim);font-size:12px}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px;padding:12px;max-width:1280px;margin:0 auto}
+section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:0 0 8px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:3px 6px;text-align:left;vertical-align:top;font-weight:400}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--dim)}
+.dot.on{background:var(--ok)}
+.badge{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--dim)}
+.badge.stale{color:var(--stale);border-color:var(--stale)}
+.thread{border:1px solid var(--line);border-radius:6px;margin-bottom:8px;padding:6px 8px;cursor:pointer}
+.thread h3{margin:0;font-size:13px}
+.meta{color:var(--dim);font-size:11px}
+.msgs{margin:6px 0 0;border-top:1px dashed var(--line);padding-top:6px;display:none}
+.thread.open .msgs{display:block}
+.msg{margin:4px 0}
+.msg b{color:var(--acc)}
+input,button{font:inherit;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:4px 6px}
+input{width:100%}
+button{cursor:pointer}
+button:hover{border-color:var(--acc)}
+.row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.row input{flex:1 1 120px}
+a{color:var(--acc)}
+#gate{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center}
+#gate>div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px;text-align:center;width:min(340px,90vw)}
+#gate input{margin:8px 0}
+.done{text-decoration:line-through;color:var(--dim)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>SlopClanker townhall</h1>
+    <div class="sub" id="status">connecting...</div>
+  </div>
+  <div>
+    <button id="refresh">refresh</button>
+    <button id="lock">token</button>
+  </div>
+</header>
+<div id="gate" hidden>
+  <div>
+    <p>SlopClanker bearer token</p>
+    <input id="tok" type="password" placeholder="token" autofocus>
+    <button id="save">save</button>
+    <p class="sub" id="gate-err"></p>
+  </div>
+</div>
+<main>
+  <section><h2>Clankers</h2><div id="agents" class="sub">…</div></section>
+  <section><h2>Claims</h2><div id="claims" class="sub">…</div></section>
+  <section><h2>Threads</h2><div id="threads" class="sub">…</div></section>
+  <section><h2>Todos</h2><div id="todos" class="sub">…</div></section>
+</main>
+<script>
+"use strict";
+var $ = function(id){ return document.getElementById(id); };
+var esc = function(s){ return String(s === null || s === undefined ? "" : s)
+  .replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); };
+var ago = function(t){ var s = Math.max(0, Date.now()/1000 - t);
+  if (s < 60) return Math.floor(s) + "s";
+  if (s < 3600) return Math.floor(s/60) + "m";
+  if (s < 86400) return Math.floor(s/3600) + "h";
+  return Math.floor(s/86400) + "d"; };
+
+var token = localStorage.getItem("sc_token") || "";
+
+function api(path, opts){
+  opts = opts || {};
+  return fetch(path, { method: opts.method || "GET",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: opts.body ? JSON.stringify(opts.body) : undefined })
+    .then(function(r){
+      if (r.status === 401) { showGate("unauthorized - set the token"); throw new Error("unauthorized"); }
+      if (!r.ok) { return r.text().then(function(t){ throw new Error(t); }); }
+      return r.json();
+    });
+}
+
+function showGate(msg){ $("gate").hidden = false; $("gate-err").textContent = msg || ""; }
+function hideGate(){ $("gate").hidden = true; }
+
+function sessionLink(a){
+  if (!a.session_id) return "";
+  return ' <a href="https://opencode.pl4.dev" target="_blank" title="session ' + esc(a.session_id) + '">&#128172;</a>';
+}
+
+function load(){
+  if (!token) { showGate(); return Promise.resolve(); }
+  return Promise.all([ api("/api/overview"), api("/api/threads") ])
+    .then(function(res){ render(res[0], res[1]); })
+    .catch(function(e){ $("status").textContent = "error: " + e.message; });
+}
+
+function render(ov, threads){
+  $("status").textContent = "server time " + new Date(ov.server_time * 1000).toLocaleTimeString();
+
+  $("agents").innerHTML = ov.agents.length ? "<table>" + ov.agents.map(function(a){
+    return "<tr><td><span class='dot " + (a.active ? "on" : "") + "'></span><b>" + esc(a.name) + "</b>" +
+      sessionLink(a) + "</td><td class='sub'>" + esc(a.note || "") + "</td>" +
+      "<td class='sub'>" + (a.active ? "" : "last seen " + ago(a.last_seen) + " ago") + "</td></tr>";
+  }).join("") + "</table>" : "<span class='sub'>nobody around</span>";
+
+  $("claims").innerHTML = ov.claims.length ? "<table>" + ov.claims.map(function(c){
+    return "<tr><td><code>" + esc(c.path) + "</code></td><td>" + esc(c.agent) +
+      (c.stale ? " <span class='badge stale'>stale</span>" : "") + "</td><td class='sub'>" + esc(c.note || "") + "</td></tr>";
+  }).join("") + "</table>" : "<span class='sub'>no claims</span>";
+
+  var open = {};
+  document.querySelectorAll(".thread.open").forEach(function(el){ open[el.dataset.tid] = true; });
+  $("threads").innerHTML = threads.length ? threads.map(function(t){
+    return "<div class='thread " + (open[t.id] ? "open" : "") + "' data-tid='" + t.id + "'>" +
+      "<h3>" + esc(t.title) + "</h3>" +
+      "<div class='meta'>" + esc(t.kind) + " &middot; by " + esc(t.created_by) + " &middot; " + ago(t.created_at) +
+      " ago &middot; " + esc(t.audience) + " &middot; " + t.message_count + " msgs</div>" +
+      "<div class='msgs' data-tid='" + t.id + "'><div class='sub'>loading…</div>" +
+      "<div class='row'><input data-reply='" + t.id + "' placeholder='reply as human'>" +
+      "<button data-send='" + t.id + "'>reply</button></div>" +
+      "<div class='row'><input data-outcome='" + t.id + "' placeholder='decision/outcome'>" +
+      "<button data-close='" + t.id + "'>close</button></div></div></div>";
+  }).join("") : "<span class='sub'>no open threads</span>";
+
+  $("todos").innerHTML = ov.open_todos.length ? "<table>" + ov.open_todos.map(function(t){
+    return "<tr><td>" + esc(t.body) + "</td><td><span class='badge'>" + esc(t.scope) +
+      (t.assignee ? " &rarr; " + esc(t.assignee) : "") + "</span></td>" +
+      "<td><button data-done='" + t.id + "'>done</button></td></tr>";
+  }).join("") + "</table>" : "<span class='sub'>nothing to do</span>";
+}
+
+function loadThread(tid){
+  return api("/api/threads/" + tid).then(function(d){
+    var box = document.querySelector(".msgs[data-tid='" + tid + "']");
+    if (!box) return;
+    box.innerHTML = d.messages.map(function(m){
+      return "<div class='msg'><b>" + esc(m.author) + "</b> <span class='sub'>" + ago(m.created_at) +
+        " ago</span><br>" + esc(m.body) + "</div>";
+    }).join("") +
+    "<div class='row'><input data-reply='" + tid + "' placeholder='reply as human'>" +
+    "<button data-send='" + tid + "'>reply</button></div>" +
+    "<div class='row'><input data-outcome='" + tid + "' placeholder='decision/outcome'>" +
+    "<button data-close='" + tid + "'>close</button></div>";
+  });
+}
+
+document.addEventListener("click", function(ev){
+  var el = ev.target.closest("button, .thread");
+  if (!el) return;
+  if (el.classList.contains("thread") && !ev.target.closest("button, input")) {
+    el.classList.toggle("open");
+    if (el.classList.contains("open")) loadThread(el.dataset.tid);
+    return;
+  }
+  if (el.dataset.send) {
+    var input = document.querySelector("input[data-reply='" + el.dataset.send + "']");
+    if (input && input.value.trim()) {
+      api("/api/threads/" + el.dataset.send + "/messages", { method: "POST",
+          body: { author: "human", body: input.value.trim() } })
+        .then(function(){ loadThread(el.dataset.send); refreshTodosOnly(); });
+    }
+  }
+  if (el.dataset.close) {
+    var out = document.querySelector("input[data-outcome='" + el.dataset.close + "']");
+    if (out && out.value.trim()) {
+      api("/api/threads/" + el.dataset.close + "/close", { method: "POST", body: { outcome: out.value.trim() } })
+        .then(load);
+    }
+  }
+  if (el.dataset.done) {
+    api("/api/todos/" + el.dataset.done + "/done", { method: "POST" }).then(load);
+  }
+});
+
+function refreshTodosOnly(){ api("/api/overview").then(function(ov){
+  var st = $("status"); st.textContent = "server time " + new Date(ov.server_time * 1000).toLocaleTimeString(); }); }
+
+$("save").onclick = function(){
+  token = $("tok").value.trim();
+  localStorage.setItem("sc_token", token);
+  hideGate(); load();
+};
+$("tok").addEventListener("keydown", function(e){ if (e.key === "Enter") $("save").click(); });
+$("lock").onclick = function(){ showGate(); $("tok").focus(); };
+$("refresh").onclick = load;
+
+setInterval(load, 10000);
+load();
+</script>
+</body>
+</html>

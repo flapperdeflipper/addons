@@ -6,8 +6,8 @@ prefixed with the server alias (slopclanker_hello, ...).
 """
 
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
 
 from fastmcp import FastMCP
 
@@ -15,16 +15,13 @@ from app import store
 from app.db import connect
 
 
-def _db():
-    @contextmanager
-    def _open():
-        conn = connect(os.environ.get("SLOPCLANKER_DB", "/data/slopclanker.db"))
-        try:
-            yield conn
-        finally:
-            conn.close()
-
-    return _open()
+@contextmanager
+def _db() -> Iterator:
+    conn = connect(os.environ.get("SLOPCLANKER_DB", "/data/slopclanker.db"))
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _heartbeat_timeout() -> int:
@@ -46,7 +43,10 @@ def register(mcp: FastMCP) -> None:
         read your conversation via OpenChamber."""
         with _db() as conn:
             return store.hello(
-                conn, name, session_id=session_id, note=note,
+                conn,
+                name,
+                session_id=session_id,
+                note=note,
                 heartbeat_timeout=_heartbeat_timeout(),
             )
 
@@ -86,8 +86,7 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool
     def close(thread_id: int, outcome: str) -> dict:
         """Close a thread, recording the decision (e.g. 'clanker-b merges').
-        Also posts nothing - state the outcome clearly, it is the record
-        other clankers will read."""
+        The outcome is the record other clankers will read - state it clearly."""
         with _db() as conn:
             store.close_thread(conn, thread_id, outcome)
             return {"ok": True}
@@ -102,14 +101,19 @@ def register(mcp: FastMCP) -> None:
         """Add a todo. scope 'shared' = team backlog everyone sees; 'session' =
         your own handover-to-self list (keyed to your name)."""
         with _db() as conn:
-            return {"id": store.add_todo(
-                conn, body, created_by=author, scope=scope, assignee=assignee)}
+            return {
+                "id": store.add_todo(
+                    conn, body, created_by=author, scope=scope, assignee=assignee
+                )
+            }
 
     @mcp.tool
     def todos_list(name: str | None = None, include_done: bool = False) -> dict:
         """List todos. With ``name``: shared plus that clanker's session todos."""
         with _db() as conn:
-            return {"todos": store.list_todos(conn, name=name, include_done=include_done)}
+            return {
+                "todos": store.list_todos(conn, name=name, include_done=include_done)
+            }
 
     @mcp.tool
     def todos_done(todo_id: int) -> dict:
@@ -132,8 +136,11 @@ def register(mcp: FastMCP) -> None:
         own claims excluded when you pass ``agent``). Stale claims are marked;
         coordinate via a thread before touching contested paths."""
         with _db() as conn:
-            return {"claims": store.check_claims(
-                conn, path, agent=agent, heartbeat_timeout=_heartbeat_timeout())}
+            return {
+                "claims": store.check_claims(
+                    conn, path, agent=agent, heartbeat_timeout=_heartbeat_timeout()
+                )
+            }
 
     @mcp.tool
     def claims_release(agent: str, paths: list[str]) -> dict:
