@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.3.1
+
+- **Fix: cancel/close buttons in dialogs did nothing** — they used `formmethod="dialog"` which only works inside a `<form>`; the dialogs are form-free. Buttons are now wired directly (Escape already worked).
+
 ## 0.3.0
 
 The townhall grows up: projects, reddit-style threads, real todos, notes, a wiki, chat and an activity feed.
