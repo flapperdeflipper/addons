@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.6.2
+
+- **Bundled rsync** — directory syncing for addon-source syncs and skills staging.
+
 ## 2.6.1
 
 - **Bundled PyYAML** — system python3 can parse YAML directly (`python3-yaml`), so ad-hoc session scripts no longer fail with `ModuleNotFoundError: No module named 'yaml'`.
