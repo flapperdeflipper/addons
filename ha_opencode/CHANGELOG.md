@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.9.0
+
+- **Bundled cosign** — sigstore's `cosign` v3.1.3 (pinned GitHub release, version-asserted) for OCI image signing and verification from agent sessions, matching the keyless signing the add-on repository's CI now applies to every published image.
+
 ## 2.8.1
 
 - **Fixed MCP-over-HTTP never starting with a token set** — `ha-opencode-mcp-http` read `mcp_http_token` into a shell variable but never exported it, so the exec'd `node --transport http` saw no `MCP_HTTP_TOKEN` and exited at startup (Supervisor-side `!secret <key>` resolution was already correct). Regression-tested in `test/mcp-http-s6-service.test.js`.
