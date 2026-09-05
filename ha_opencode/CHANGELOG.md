@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.9.3
+
+- **hab builder stage on Go 1.27** — the hab companion CLI is now compiled from golang:1.27-trixie (was 1.24); runtime image unchanged.
+
 ## 2.9.2
 
 - **Regression tests for the stateless HTTP transport** — `test/mcp-http-s6-service.test.js` now pins the 2.9.1 design: fresh per-request transports (`sessionIdGenerator: undefined`, `enableJsonResponse: true`, `createStatelessMcpHandler` wiring) and the absence of stateful session-id generation (the 2.8.0 single-session lockout). Tests only; no image changes.

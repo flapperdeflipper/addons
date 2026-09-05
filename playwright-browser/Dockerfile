@@ -6,7 +6,7 @@
 # the HA Supervisor's build_from regex and the single-segment image path
 # convention reject images like "mcr.microsoft.com/playwright". CI builds this
 # with a plain docker build, so no build.yaml is needed.
-FROM mcr.microsoft.com/playwright:v1.62.1-noble
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends jq curl nginx && \
