@@ -46,6 +46,9 @@ if ! bashio::var.has_value "${MCP_HTTP_TOKEN}"; then
     bashio::log.error "Set 'MCP HTTP bearer token' in the add-on Configuration tab (a !secret <key> value works too), then restart."
     exec sleep infinity
 fi
+# index.js reads process.env.MCP_HTTP_TOKEN: without this export the exec'd
+# node never sees the token and exits at startup.
+export MCP_HTTP_TOKEN
 
 HOST_PORT=$(bashio::addon.port "${MCP_HTTP_PORT}/tcp" 2>/dev/null || true)
 if bashio::var.has_value "${HOST_PORT}"; then
