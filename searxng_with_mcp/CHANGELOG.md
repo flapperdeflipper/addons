@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.5
+
+- **Version scheme change** — local versions are now plain semver (`2026.9.5`), bumped past the upstream base tag (noted in a `config.yaml` comment). The old `<upstream>-<patch>` suffix scheme confused Supervisor version handling.
+- **Fixed ingress CSS** — `run.sh` parsed `set_base_url_for_ingress` with `grep | cut`, which silently fails on the Supervisor's single-line `options.json`, so `SEARXNG_BASE_URL` was never set and the ingress UI lost its stylesheet. Option parsing now uses python/json.
+
 ## 2026.9.4-15b0c8ef3-1
 
 - **GitHub code search via `!secret`** — new `github_token` option accepts an HA-style `!secret github_token` value; the Supervisor resolves it against secrets.yaml and the add-on injects the authenticated `github code` engine (shortcut `ghc`) into settings.yml at every start, between managed markers. Token values never appear in the file the user edits and are never logged.
