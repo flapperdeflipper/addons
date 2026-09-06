@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.0.1
+
+- Pins upstream 1.0.1: cutover fix — legacy 0.x databases stamped `schema_version='2'` in an incompatible schema, which defeated 1.0.0's freshness check on first boot (first authenticated request failed). v1 marker is now `'3'` plus an `identities`-table check; the legacy DB is correctly renamed aside.
+
 ## 1.0.0
 
 - Tracks project release [v1.0.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.0.0):
