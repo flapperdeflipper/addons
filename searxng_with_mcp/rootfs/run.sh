@@ -37,6 +37,11 @@ export GHC_TOKEN GITLAB_ENGINE
 # Inject/update the managed engines block (github code + gitlab) in
 # settings.yml. Optional functionality - never blocks the add-on.
 python /secrets_engines.py || echo "[WARN] managed engines patch failed - searxng continues"
+
+# SearXNG allows only the html output format by default; the MCP endpoint
+# queries with format=json, which 403s until json is listed in
+# search.formats. Idempotent; never blocks the add-on.
+python /search_formats.py || echo "[WARN] search formats patch failed - searxng continues"
 unset GHC_TOKEN GITLAB_ENGINE
 
 if [ ! -f /etc/searxng/custom.sh ]; then
