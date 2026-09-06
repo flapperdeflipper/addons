@@ -8,7 +8,7 @@ description: >-
   get a full web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "1.0.0"
+version: "1.0.1"
 arch:
   - amd64
 init: false
