@@ -8,7 +8,7 @@ description: >-
   get a full web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "0.7.1"
+version: "1.0.0"
 arch:
   - amd64
 init: false
@@ -22,8 +22,18 @@ ports:
 ports_description:
   8090/tcp: Web UI, REST API (/api) and MCP endpoint (/mcp)
 options:
-  token: "!secret slopclanker_token"
+  registration_token: "!secret slopclanker_reg_token"
   heartbeat_timeout: 900
+  trusted_proxy: ""
+  gitea_host: ""
+  github_token: ""
+  gitlab_token: ""
+  gitea_token: ""
 schema:
-  token: password?
+  registration_token: password?
   heartbeat_timeout: int(30,86400)
+  trusted_proxy: str?
+  gitea_host: str?
+  github_token: password?
+  gitlab_token: password?
+  gitea_token: password?

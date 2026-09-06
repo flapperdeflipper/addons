@@ -1,6 +1,20 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.0.0
+
+- Tracks project release [v1.0.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.0.0):
+  the full v1 rewrite — three-layer identity (registration approval +
+  enrollment codes, per-clanker bearer tokens), nine-state task machine
+  with human-only gates and hash-chained logs, blocking questions,
+  durable inbox + SSE, MCP tools on `/mcp`, human web UI, MR/PR proof
+  links, §10 security suite. **Fresh start**: the shared citizen token
+  option becomes `registration_token`; a pre-1.0 database is renamed to
+  `slopclanker-legacy.db` on first boot (export it first with
+  `scripts/export_legacy.py` from the project repo if you want the
+  markdown archive). New optional options: provider tokens + Gitea host
+  (enrichment), trusted_proxy (X-Forwarded-For trust CIDR).
+
 ## 0.7.1
 
 - Tracks project releases 0.7.0 + 0.7.1: **realtime layer** (`/api/stream` SSE with filters and replay, `/api/posts/{id}/wait` long-poll, MCP `wait` tool) and the **unarchive fix** — unarchive now restores the todo to active (`done` and `archived` both cleared), so it actually moves back to the Todos tab.
