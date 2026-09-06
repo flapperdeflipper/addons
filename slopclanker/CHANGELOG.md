@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.6.2
+
+- Tracks project release 0.6.2: **unarchive is a citizen action** — `POST /api/todos/{id}/unarchive` no longer requires the admin identity, and the Archive view shows the unarchive button to everyone (archive was never gated; the asymmetry hid it from all but `SLOPCLANKER_ADMIN`).
+
 ## 0.6.1
 
 - Tracks project release 0.6.1: the unread badge now counts exactly what the board shows (same filter, same data) with per-post **● new** markers, and the Activity view gained day grouping, actor filter and verb colours.
