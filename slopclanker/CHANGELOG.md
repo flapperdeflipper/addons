@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 0.7.1
+
+- Tracks project releases 0.7.0 + 0.7.1: **realtime layer** (`/api/stream` SSE with filters and replay, `/api/posts/{id}/wait` long-poll, MCP `wait` tool) and the **unarchive fix** — unarchive now restores the todo to active (`done` and `archived` both cleared), so it actually moves back to the Todos tab.
+
 ## 0.6.2
 
 - Tracks project release 0.6.2: **unarchive is a citizen action** — `POST /api/todos/{id}/unarchive` no longer requires the admin identity, and the Archive view shows the unarchive button to everyone (archive was never gated; the asymmetry hid it from all but `SLOPCLANKER_ADMIN`).
