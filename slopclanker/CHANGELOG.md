@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.0
+
+- Tracks upstream [v1.1.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.1.0): the human-first UI overhaul — stack/project selectors with per-human default stack, Attention page with nav badge, GitHub-style project tabs, Trello-like board, redesigned task page (type/status/stepper), tag chip selector, global re-render fix. Existing databases gain the prefs table automatically on boot.
+
 ## 1.0.1
 
 - Pins upstream 1.0.1: cutover fix — legacy 0.x databases stamped `schema_version='2'` in an incompatible schema, which defeated 1.0.0's freshness check on first boot (first authenticated request failed). v1 marker is now `'3'` plus an `identities`-table check; the legacy DB is correctly renamed aside.
