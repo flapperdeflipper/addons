@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.0
+
+- Tracks upstream [v1.2.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.0): Settings page (default stack + default project landing preferences per identity, change-own-password) and admin user management (People & enrollment: user accounts with inline role changes and password resets; clankers listed separately).
+
 ## 1.1.0
 
 - Tracks upstream [v1.1.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.1.0): the human-first UI overhaul — stack/project selectors with per-human default stack, Attention page with nav badge, GitHub-style project tabs, Trello-like board, redesigned task page (type/status/stepper), tag chip selector, global re-render fix. Existing databases gain the prefs table automatically on boot.
