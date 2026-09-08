@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.2
+
+- Tracks upstream [v1.2.1](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.1): **fixes login 404 through the ingress panel** — the web UI now prefixes its API/SSE requests with the ingress base path. Together with 1.2.1 (explicit `ingress_port: 8090`) the HA sidebar panel is fully functional.
+
 ## 1.2.1
 
 - **Fixed: ingress showed 502 since forever.** `ingress: true` was declared without `ingress_port`, so the Supervisor assigned a dynamic ingress port (8099) while the app listens on 8090 — ingress hit a closed port. `ingress_port: 8090` is now declared explicitly. The host port mapping (`8090/tcp`) is unchanged, so direct/API/MCP access keeps working.
