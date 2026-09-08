@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- **Fix**: renewal exchange rejected with "Invalid request format" - the Claude token endpoint requires the OAuth `state` to equal the PKCE code verifier (as the CLI does), not an independent random state.
+
 ## 1.0.2
 
 - **Fix**: image namespace is `flapperdeflipper/addon-claude-usage-proxy` (CI publishes under the GitHub org, not `fliphess/`).
