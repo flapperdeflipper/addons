@@ -1,5 +1,5 @@
 name: "SearXNG w/ MCP"
-version: "2026.9.8"
+version: "2026.9.9"
 slug: searxng_with_mcp
 description: >-
   SearXNG is a metasearch engine. Adds OvertliDS/mcp-searxng-enhanced endpoint
