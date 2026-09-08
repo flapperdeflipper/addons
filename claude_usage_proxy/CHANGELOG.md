@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- **Fix**: image namespace is `flapperdeflipper/addon-claude-usage-proxy` (CI publishes under the GitHub org, not `fliphess/`).
+
 ## 1.0.1
 
 - **Fix**: option schema must not use spaces inside `int(min,max)` - the Supervisor rejected the add-on's config with `int(1, 65535)?`.

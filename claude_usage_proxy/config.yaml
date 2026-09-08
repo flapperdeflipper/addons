@@ -3,8 +3,8 @@ name: Claude Usage Proxy
 slug: claude_usage_proxy
 description: Central Claude usage poller - browser token renewal, MQTT metrics for the displays.
 url: https://github.com/flapperdeflipper/addons/tree/main/claude_usage_proxy
-image: fliphess/addon-claude-usage-proxy
-version: 1.0.1
+image: flapperdeflipper/addon-claude-usage-proxy
+version: 1.0.2
 
 arch:
   - amd64
