@@ -125,6 +125,8 @@ class ClaudeUsageProxy:
         self.last_ok = 0.0
 
         self.pkce: tuple[str, float] | None = None  # (verifier, created); state == verifier
+        self._disc_err_msg = ""
+        self._disc_err_at = 0.0
         self.client: mqtt.Client | None = None
         self.mqtt_connected = False
 
@@ -328,9 +330,17 @@ class ClaudeUsageProxy:
 
     # --- MQTT ---------------------------------------------------------------
 
+    def _disc_error(self, msg: str) -> None:
+        # The poll loop retries every 5s; only repeat a discovery error every 30s.
+        now = time.time()
+        if msg != self._disc_err_msg or now - self._disc_err_at > 30:
+            LOG.error("%s", msg)
+            self._disc_err_msg, self._disc_err_at = msg, now
+
     def _supervisor_mqtt(self):
         token = os.environ.get("SUPERVISOR_TOKEN", "")
         if not token:
+            self._disc_error("SUPERVISOR_TOKEN is not set; cannot query the supervisor mqtt service")
             return None
         req = urllib.request.Request(
             "http://supervisor/services/mqtt",
@@ -339,10 +349,18 @@ class ClaudeUsageProxy:
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.load(resp)["data"]
+            LOG.info(
+                "supervisor mqtt service: %s:%s (user=%s)",
+                data.get("host"), data.get("port"), data.get("username"),
+            )
             return data["host"], int(data["port"]), data.get("username"), data.get("password")
+        except urllib.error.HTTPError as e:
+            # Error bodies carry no credentials - safe to log.
+            body = e.read().decode(errors="replace")[:200]
+            self._disc_error(f"supervisor /services/mqtt returned http {e.code}: {body}")
         except Exception as e:  # noqa: BLE001
-            LOG.warning("supervisor mqtt service discovery failed: %s", e)
-            return None
+            self._disc_error(f"supervisor /services/mqtt request failed: {e}")
+        return None
 
     def _connect_mqtt(self) -> None:
         creds = self._supervisor_mqtt()
@@ -516,6 +534,12 @@ class ClaudeUsageProxy:
 class Handler(BaseHTTPRequestHandler):
     proxy: ClaudeUsageProxy  # bound at serve time
 
+    def _base(self) -> str:
+        # HA Ingress (both /api/hassio_ingress/<token> and /app/<slug>)
+        # forwards the public prefix in X-Ingress-Path. Absolute paths like
+        # "/renew" would escape it and 404 against the HA frontend.
+        return self.headers.get("X-Ingress-Path", "")
+
     def do_GET(self) -> None:  # noqa: N802 - http.server API
         path = urllib.parse.urlparse(self.path).path
         if path in ("/", "/index.html"):
@@ -526,7 +550,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - http.server API
         path = urllib.parse.urlparse(self.path).path
-        if path != "/renew":
+        if not path.endswith("/renew"):
             self.send_error(404)
             return
         length = int(self.headers.get("Content-Length", 0))
@@ -536,7 +560,7 @@ class Handler(BaseHTTPRequestHandler):
         if not ok:
             msg = "error: " + msg
         self.send_response(303)
-        self.send_header("Location", "/?msg=" + urllib.parse.quote(msg))
+        self.send_header("Location", self._base() + "/?msg=" + urllib.parse.quote(msg))
         self.end_headers()
 
     def _page(self, flash: str = "") -> None:
@@ -598,7 +622,7 @@ class Handler(BaseHTTPRequestHandler):
  <li>Copy the <code>code#state</code> shown on the callback page.</li>
  <li>Paste it below.</li>
 </ol>
-<form method="post" action="/renew">
+<form method="post" action="{html.escape(self._base())}/renew">
  <textarea name="code" rows="3" placeholder="code#state" autofocus></textarea>
  <input type="submit" value="Exchange and take over">
 </form>

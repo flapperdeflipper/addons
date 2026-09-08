@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4
+
+- **Fix**: Ingress URLs - the renewal form posted to an absolute path that escaped the Ingress prefix (both `/api/hassio_ingress/...` and `/app/...`) and 404'd; internal links now honour `X-Ingress-Path`.
+- **Diagnostics**: MQTT service discovery failures were silent; the add-on now reports whether `SUPERVISOR_TOKEN` exists and what `/services/mqtt` answers (throttled to once per 30s).
+- **Add**: store icon + logo (Claude asterisk).
+
 ## 1.0.3
 
 - **Fix**: renewal exchange rejected with "Invalid request format" - the Claude token endpoint requires the OAuth `state` to equal the PKCE code verifier (as the CLI does), not an independent random state.
