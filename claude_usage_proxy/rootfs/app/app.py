@@ -69,6 +69,20 @@ def _as_int(value, default: int, lo: int | None = None, hi: int | None = None) -
     return n
 
 
+def supervisor_token() -> str:
+    token = os.environ.get("SUPERVISOR_TOKEN", "")
+    if token:
+        return token
+    # The base image's s6-overlay runs CMD as a legacy service, which does not
+    # inherit the Docker environment; s6 writes it to this directory instead
+    # (one file per variable, with a trailing newline).
+    try:
+        with open("/run/s6/container_environment/SUPERVISOR_TOKEN") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
 def load_options() -> dict:
     raw: dict = {}
     try:
@@ -338,7 +352,7 @@ class ClaudeUsageProxy:
             self._disc_err_msg, self._disc_err_at = msg, now
 
     def _supervisor_mqtt(self):
-        token = os.environ.get("SUPERVISOR_TOKEN", "")
+        token = supervisor_token()
         if not token:
             self._disc_error("SUPERVISOR_TOKEN is not set; cannot query the supervisor mqtt service")
             return None
