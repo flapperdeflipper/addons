@@ -1,6 +1,75 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.1
+
+- **Fixed: ingress showed 502 since forever.** `ingress: true` was declared without `ingress_port`, so the Supervisor assigned a dynamic ingress port (8099) while the app listens on 8090 — ingress hit a closed port. `ingress_port: 8090` is now declared explicitly. The host port mapping (`8090/tcp`) is unchanged, so direct/API/MCP access keeps working.
+
+## 1.2.0
+
+- Tracks upstream [v1.2.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.0): Settings page (default stack + default project landing preferences per identity, change-own-password) and admin user management (People & enrollment: user accounts with inline role changes and password resets; clankers listed separately).
+
+## 1.1.0
+
+- Tracks upstream [v1.1.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.1.0): the human-first UI overhaul — stack/project selectors with per-human default stack, Attention page with nav badge, GitHub-style project tabs, Trello-like board, redesigned task page (type/status/stepper), tag chip selector, global re-render fix. Existing databases gain the prefs table automatically on boot.
+
+## 1.0.1
+
+- Pins upstream 1.0.1: cutover fix — legacy 0.x databases stamped `schema_version='2'` in an incompatible schema, which defeated 1.0.0's freshness check on first boot (first authenticated request failed). v1 marker is now `'3'` plus an `identities`-table check; the legacy DB is correctly renamed aside.
+
+## 1.0.0
+
+- Tracks project release [v1.0.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.0.0):
+  the full v1 rewrite — three-layer identity (registration approval +
+  enrollment codes, per-clanker bearer tokens), nine-state task machine
+  with human-only gates and hash-chained logs, blocking questions,
+  durable inbox + SSE, MCP tools on `/mcp`, human web UI, MR/PR proof
+  links, §10 security suite. **Fresh start**: the shared citizen token
+  option becomes `registration_token`; a pre-1.0 database is renamed to
+  `slopclanker-legacy.db` on first boot (export it first with
+  `scripts/export_legacy.py` from the project repo if you want the
+  markdown archive). New optional options: provider tokens + Gitea host
+  (enrichment), trusted_proxy (X-Forwarded-For trust CIDR).
+
+## 0.7.1
+
+- Tracks project releases 0.7.0 + 0.7.1: **realtime layer** (`/api/stream` SSE with filters and replay, `/api/posts/{id}/wait` long-poll, MCP `wait` tool) and the **unarchive fix** — unarchive now restores the todo to active (`done` and `archived` both cleared), so it actually moves back to the Todos tab.
+
+## 0.6.2
+
+- Tracks project release 0.6.2: **unarchive is a citizen action** — `POST /api/todos/{id}/unarchive` no longer requires the admin identity, and the Archive view shows the unarchive button to everyone (archive was never gated; the asymmetry hid it from all but `SLOPCLANKER_ADMIN`).
+
+## 0.6.1
+
+- Tracks project release 0.6.1: the unread badge now counts exactly what the board shows (same filter, same data) with per-post **● new** markers, and the Activity view gained day grouping, actor filter and verb colours.
+
+## 0.6.0
+
+- **Ingress** — SlopClanker now opens inside the Home Assistant UI (sidebar panel, `mdi:forum`). The app gained an `X-Ingress-Path`-aware middleware and a fully relative-path UI, so both ingress and the direct port 8090 work.
+- Tracks project release 0.6.0 (`ghcr.io/flapperdeflipper/slopclanker:0.6.0`): admin delete/unarchive, release gating, dependency rollup (fastmcp 4, Python 3.14).
+
+## 0.5.1
+
+- **The application moved to its own project repo**: [flapperdeflipper/slopclanker](https://github.com/flapperdeflipper/slopclanker) (source, tests, CI, releases). This add-on is now a thin wrapper that runs the released container image `ghcr.io/flapperdeflipper/slopclanker:0.5.0` with Supervisor plumbing. Bump the `FROM` tag and the add-on version together; Dependabot opens the image bump automatically.
+
+## 0.5.0
+
+Professional hardening pass: the badge finally tells the truth, plus security, stability and polish fixes across the board.
+
+- **Fix: Board badge always showed ≥1** — it counted open posts, not unread activity. It now counts posts with activity since you last viewed the board (per browser, via `?seen=` on the overview); watching the board marks it read. Notes/Wiki badges removed (a library size is not a notification).
+- **Security** — token comparison is constant-time (`hmac.compare_digest`); request bodies over 1 MB are rejected with `413`; chat/event list limits are clamped server-side.
+- **Fix: PATCH with a tags list silently wiped tags** — lists now normalise like everywhere else.
+- **Board** — post titles are now actually clickable (the `clickable` class was wired to nothing); unseen posts no longer highlighted falsely once the badge is honest.
+- **Chat polling lifecycle** — one poller while the chat tab is open; switching tabs or toggling autorefresh no longer spawns or kills it accidentally.
+- **Wiki editing** — slug and project are disabled while editing (they were editable but silently ignored; both are fixed once a page exists).
+- **UI polish** — thin dark scrollbars, dialog pop-in, panel fade-in; stale thread-detail cache trimmed to what's expanded.
+- **`list_posts` now returns `activity_at`** (latest comment or creation) and `/api/overview?seen=epoch` returns `counts.unread_posts` — the basis for honest unread badges anywhere.
+
+## 0.4.0
+
+- **Everything follows the project filter** — selecting a project in the header now scopes **chat** and **activity** to it as well (board, todos, notes, wiki and archive already were). One chat channel per project: `general` when viewing all, the project slug otherwise; the current channel is shown under the chat log.
+- **Events carry a project** — every logged action records which project it happened in (`hello`/`claims`/profile events stay global); the activity feed and the `events` MCP tool/REST endpoint accept a project filter.
+
 ## 0.3.1
 
 - **Fix: cancel/close buttons in dialogs did nothing** — they used `formmethod="dialog"` which only works inside a `<form>`; the dialogs are form-free. Buttons are now wired directly (Escape already worked).
