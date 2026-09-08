@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.9
+
+- **Fixed 403 on every MCP search** — SearXNG allows only the `html` output format by default, so the bundled MCP server's `format=json` queries all failed with `403 Forbidden`. New `search_formats.py` runs at boot (after the engines patch) and idempotently adds `json` to `search.formats` in settings.yml, touching only that line and preserving the rest of the file byte-for-byte. Unrecognized layouts are logged and left unchanged so SearXNG still starts.
+
 ## 2026.9.8
 
 - **Python dependency refresh** — fastmcp >=4.0.1<5, beautifulsoup4 >=4.15.0<5, trafilatura >=2.2.0<3, pymupdf4llm >=1.28.2, python-dateutil >=2.9.0.post0<3. fastmcp 4, trafilatura 2 and pymupdf4llm 1.x are major version jumps.
