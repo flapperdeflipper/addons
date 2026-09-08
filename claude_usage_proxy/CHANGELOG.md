@@ -2,7 +2,7 @@
 
 ## 1.0.5
 
-- **Fix**: read `SUPERVISOR_TOKEN` from `/run/s6/container_environment/` when the environment is missing - the base image's s6-overlay runs CMD as a legacy service without the Docker env, which silently broke MQTT service discovery.
+- **Fix**: find the Supervisor token under both `SUPERVISOR_TOKEN` and the legacy `HASSIO_TOKEN` name, in the environment or in s6's `/run/s6/container_environment/` - the base image's s6-overlay runs CMD without the Docker env, which silently broke MQTT service discovery.
 
 ## 1.0.4
 

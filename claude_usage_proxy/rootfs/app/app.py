@@ -70,17 +70,23 @@ def _as_int(value, default: int, lo: int | None = None, hi: int | None = None) -
 
 
 def supervisor_token() -> str:
-    token = os.environ.get("SUPERVISOR_TOKEN", "")
-    if token:
-        return token
-    # The base image's s6-overlay runs CMD as a legacy service, which does not
-    # inherit the Docker environment; s6 writes it to this directory instead
-    # (one file per variable, with a trailing newline).
-    try:
-        with open("/run/s6/container_environment/SUPERVISOR_TOKEN") as f:
-            return f.read().strip()
-    except OSError:
-        return ""
+    # Depending on Supervisor generation the token arrives as SUPERVISOR_TOKEN
+    # or the legacy HASSIO_TOKEN; depending on the base image's s6-overlay it
+    # lands in the environment or only in container_environment files. Try
+    # both names in both places.
+    for name in ("SUPERVISOR_TOKEN", "HASSIO_TOKEN"):
+        token = os.environ.get(name, "")
+        if token:
+            return token
+    for name in ("SUPERVISOR_TOKEN", "HASSIO_TOKEN"):
+        try:
+            with open(f"/run/s6/container_environment/{name}") as f:
+                token = f.read().strip()
+            if token:
+                return token
+        except OSError:
+            continue
+    return ""
 
 
 def load_options() -> dict:
