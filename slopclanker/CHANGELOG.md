@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.3
+
+- Tracks upstream [v1.2.2](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.2): **fixes the dead "+ new stack/project…" click on empty installs** (the create option was pre-selected and a pre-selected option fires no change event) and serves the web UI with `Cache-Control: no-cache` so browsers never run a stale build.
+
 ## 1.2.2
 
 - Tracks upstream [v1.2.1](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.1): **fixes login 404 through the ingress panel** — the web UI now prefixes its API/SSE requests with the ingress base path. Together with 1.2.1 (explicit `ingress_port: 8090`) the HA sidebar panel is fully functional.
