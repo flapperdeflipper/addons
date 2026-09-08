@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+
+- **Fix**: find the Supervisor token under both `SUPERVISOR_TOKEN` and the legacy `HASSIO_TOKEN` name, in the environment or in s6's `/run/s6/container_environment/` - the base image's s6-overlay runs CMD without the Docker env, which silently broke MQTT service discovery.
+
 ## 1.0.4
 
 - **Fix**: Ingress URLs - the renewal form posted to an absolute path that escaped the Ingress prefix (both `/api/hassio_ingress/...` and `/app/...`) and 404'd; internal links now honour `X-Ingress-Path`.
