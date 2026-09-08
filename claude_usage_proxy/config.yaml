@@ -4,7 +4,7 @@ slug: claude_usage_proxy
 description: Central Claude usage poller - browser token renewal, MQTT metrics for the displays.
 url: https://github.com/flapperdeflipper/addons/tree/main/claude_usage_proxy
 image: fliphess/addon-claude-usage-proxy
-version: 1.0.0
+version: 1.0.1
 
 arch:
   - amd64
@@ -31,10 +31,10 @@ options:
   mqtt_username: ""
   mqtt_password: ""
 schema:
-  poll_interval: int(10, 3600)
+  poll_interval: int(10,3600)
   topic_prefix: str
   discovery: bool
   mqtt_host: str?
-  mqtt_port: int(1, 65535)?
+  mqtt_port: int(1,65535)?
   mqtt_username: str?
   mqtt_password: password?
