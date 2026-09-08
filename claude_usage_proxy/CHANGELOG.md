@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- **Fix**: option schema must not use spaces inside `int(min,max)` - the Supervisor rejected the add-on's config with `int(1, 65535)?`.
+
 ## 1.0.0
 
 - **Initial release.** Central Claude usage poller replacing the per-device OAuth flow of the ESPHome `claude_usage` component.
