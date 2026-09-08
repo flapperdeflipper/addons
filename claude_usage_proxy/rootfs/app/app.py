@@ -124,7 +124,7 @@ class ClaudeUsageProxy:
         self.week_reset_epoch = 0
         self.last_ok = 0.0
 
-        self.pkce: tuple[str, str, float] | None = None  # (verifier, state, created)
+        self.pkce: tuple[str, float] | None = None  # (verifier, created); state == verifier
         self.client: mqtt.Client | None = None
         self.mqtt_connected = False
 
@@ -221,14 +221,15 @@ class ClaudeUsageProxy:
     def begin_authorize(self) -> str:
         """Build the authorization URL; one pending PKCE pair at a time."""
         now = time.time()
-        if self.pkce is None or now - self.pkce[2] > PKCE_MAX_AGE:
-            verifier = b64url(secrets.token_bytes(32))
-            challenge = b64url(hashlib.sha256(verifier.encode()).digest())
-            state = b64url(secrets.token_bytes(16))
-            self.pkce = (verifier, state, now)
-        else:
-            verifier, state, _ = self.pkce
-            challenge = b64url(hashlib.sha256(verifier.encode()).digest())
+        if self.pkce is None or now - self.pkce[1] > PKCE_MAX_AGE:
+            self.pkce = (b64url(secrets.token_bytes(32)), now)
+        verifier, _ = self.pkce
+        challenge = b64url(hashlib.sha256(verifier.encode()).digest())
+        # The Claude CLI sends the PKCE verifier as the OAuth state and the
+        # token endpoint enforces that binding - a separate random state is
+        # rejected with "Invalid request format". Match the CLI exactly
+        # (same as esphome/scripts/mint-device-token.py).
+        state = verifier
         params = {
             "code": "true",
             "client_id": CLIENT_ID,
@@ -249,8 +250,8 @@ class ClaudeUsageProxy:
             return False, "Nothing pasted - copy the code from the callback page."
         if self.pkce is None:
             return False, "No pending authorization - reload this page and try again."
-        verifier, expected, _ = self.pkce
-        if state and state != expected:
+        verifier, _ = self.pkce
+        if state and state != verifier:
             return False, "State mismatch - the link expired or was regenerated. Reload and retry."
         status, data = 0, {}
         for url in TOKEN_URLS:
@@ -260,7 +261,7 @@ class ClaudeUsageProxy:
                 body={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "state": state or expected,
+                    "state": state or verifier,
                     "redirect_uri": REDIRECT_URI,
                     "client_id": CLIENT_ID,
                     "code_verifier": verifier,
