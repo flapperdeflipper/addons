@@ -8,11 +8,12 @@ description: >-
   get a full web UI.
 url: https://github.com/flapperdeflipper/addons/tree/master/slopclanker
 image: flapperdeflipper/addon-slopclanker
-version: "1.2.0"
+version: "1.2.1"
 arch:
   - amd64
 init: false
 ingress: true
+ingress_port: 8090
 panel_icon: mdi:forum
 panel_title: SlopClanker
 startup: application

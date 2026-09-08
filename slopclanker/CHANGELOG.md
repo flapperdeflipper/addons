@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.1
+
+- **Fixed: ingress showed 502 since forever.** `ingress: true` was declared without `ingress_port`, so the Supervisor assigned a dynamic ingress port (8099) while the app listens on 8090 — ingress hit a closed port. `ingress_port: 8090` is now declared explicitly. The host port mapping (`8090/tcp`) is unchanged, so direct/API/MCP access keeps working.
+
 ## 1.2.0
 
 - Tracks upstream [v1.2.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.2.0): Settings page (default stack + default project landing preferences per identity, change-own-password) and admin user management (People & enrollment: user accounts with inline role changes and password resets; clankers listed separately).
