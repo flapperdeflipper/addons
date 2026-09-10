@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.5
+
+- Tracks upstream [v1.4.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.4.0): **device-flow enrollment** — registration no longer needs a shared token (open, rate-limited, human approval remains the gate); `scripts/agent_enroll.sh` delivers the agent token straight to a 0600 file so no secret ever transits an agent's context. The `registration_token` option is now optional strict-mode (empty = open).
+
 ## 1.2.4
 
 - Tracks upstream [v1.3.0](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.3.0): **responsive board redesign** — grouped lanes that fit phone/tablet/desktop without horizontal scrolling, internal column scroll, board toolbar (search/tag/mine/paused/hide-done filters in the URL), quick-advance modal, and a stack-wide "all projects" board (`GET /api/stacks/{id}/tasks`).
