@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.7
+
+- Tracks upstream [v1.4.3](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.4.3): **custom searchable selector dropdowns** — replaces the native select popups that cannot scroll back up with long project lists; type-to-filter, keyboard navigation, grouped by stack, slug-URL highlighting fix.
+
 ## 1.2.6
 
 - Tracks upstream [v1.4.2](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.4.2): **slugs are real** — slug-based routes (`#/project/<slug>/board`) with id fallback, slug editing in the project/stack modals, slug-first navigation; inline SVG favicon; legacy 0.x archive + cutover tooling removed. Includes v1.4.1 (home empty-state fix after first stack).
