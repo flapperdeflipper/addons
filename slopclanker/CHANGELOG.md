@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.2.8
+
+- Tracks upstream [v1.4.4](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.4.4): new `scripts/redeem_code.sh` — human-side redemption of a re-issued one-time enrollment code straight into the agent's 0600 token file (the existing-but-tokenless identity path).
+
 ## 1.2.7
 
 - Tracks upstream [v1.4.3](https://github.com/flapperdeflipper/slopclanker/releases/tag/v1.4.3): **custom searchable selector dropdowns** — replaces the native select popups that cannot scroll back up with long project lists; type-to-filter, keyboard navigation, grouped by stack, slug-URL highlighting fix.
