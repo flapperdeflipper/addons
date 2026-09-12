@@ -7,8 +7,9 @@ run.sh. Unknown tool names are impossible by construction (argparse
 validates against this registry).
 """
 
-from . import memory
+from . import admin, memory
 
 REGISTRY = {
+    admin.NAME: admin,
     memory.NAME: memory,
 }

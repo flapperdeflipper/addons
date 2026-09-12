@@ -32,6 +32,12 @@ class LitellmClient:
             path += "?key_prefix=" + urllib.parse.quote(key_prefix, safe=":")
         return path
 
+    def with_key(self, api_key):
+        """Return a clone authenticating as api_key (self when empty)."""
+        if not api_key:
+            return self
+        return LitellmClient(self.base_url, api_key, self.timeout)
+
     def request(self, method, path, body=None):
         if not self.api_key:
             return 0, "no API key: set LITELLM_MASTER_KEY or LITELLM_MEMORY_KEY"

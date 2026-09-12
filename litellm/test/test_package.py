@@ -70,9 +70,57 @@ class StubClient:
     def error(self, status, detail):
         return "error (HTTP %s): %s" % (status, detail)
 
+    def with_key(self, api_key):
+        return self if not api_key else self
+
+
+class StubAdminClient(StubClient):
+    """Answers the admin endpoints the admin module calls."""
+
+    def __init__(self):
+        super().__init__()
+        self.posts = []
+
+    def request(self, method, path, body=None):
+        self.requests.append((method, path, body))
+        if method == "GET" and path.startswith("/v1/tool/list"):
+            wanted = path.split("input_policy=", 1)[1] if "input_policy=" in path else ""
+            rows = [
+                {"tool_name": "a", "input_policy": "untrusted", "output_policy": "untrusted", "call_count": 3},
+                {"tool_name": "b", "input_policy": "trusted", "output_policy": "untrusted", "call_count": 4},
+            ]
+            if wanted:
+                rows = [r for r in rows if r["input_policy"] == wanted]
+            return 200, {"tools": rows, "total": len(rows)}
+        if method == "POST" and path == "/v1/tool/policy":
+            self.posts.append(body)
+            return 200, {"tool_name": body.get("tool_name"), "updated": True}
+        if method == "GET" and path == "/v1/models":
+            return 200, {"data": [{"id": "stub-model-a"}, {"id": "stub-model-b"}]}
+        if method == "GET" and path == "/key/list":
+            return 200, {"keys": [{"key_alias": "home-assist-2", "token": "hash", "expires": None, "blocked": False}]}
+        if method == "GET" and path.startswith("/spend/logs/ui"):
+            return 200, {
+                "data": [
+                    {"startTime": "t1", "model_group": "stub-model-a", "metadata": {"status": "success"}},
+                    {
+                        "startTime": "t2",
+                        "model_group": "stub-model-a",
+                        "metadata": {
+                            "status": "failure",
+                            "user_api_key_alias": "home-assist-2",
+                            "error_information": {"error_message": "400: Violated tool policy " + "x" * 400},
+                        },
+                    },
+                ],
+                "total": 2,
+            }
+        return super().request(method, path, body)
+
 
 def test_registry_and_registration():
     assert "memory" in REGISTRY, "memory tool must be registered"
+    assert "admin" in REGISTRY, "admin tool must be registered"
     server, client = StubServer(), StubClient({"opencode:probe": "v"})
     REGISTRY["memory"].register(server, client)
     assert sorted(server.tools) == ["memory_delete", "memory_get", "memory_list", "memory_set"]
@@ -96,6 +144,76 @@ def test_tool_behaviour():
     server.tools["memory_delete"]("opencode:new")
     assert "opencode:new" not in client.store
     assert server.tools["memory_delete"]("opencode:new") == "not found: opencode:new"
+
+
+def test_admin_registration_and_catalog():
+    import json
+
+    server, client = StubServer(), StubAdminClient()
+    REGISTRY["admin"].register(server, client)
+    expected = [
+        "admin_failed_requests",
+        "admin_keys",
+        "admin_models",
+        "admin_tool_policy_list",
+        "admin_tool_policy_set",
+    ]
+    assert sorted(server.tools) == expected
+
+    policies = json.loads(server.tools["admin_tool_policy_list"]())
+    assert policies["total"] == 2 and policies["tools"][0]["tool"] == "a"
+    filtered = json.loads(server.tools["admin_tool_policy_list"]("trusted"))
+    assert filtered["total"] == 1 and filtered["tools"][0]["tool"] == "b"
+    assert "invalid input_policy" in server.tools["admin_tool_policy_list"]("bogus")
+
+    models = json.loads(server.tools["admin_models"]())
+    assert models["models"] == ["stub-model-a", "stub-model-b"], "ids must extract in order"
+    assert models["total"] == 2
+
+
+def test_admin_tool_policy_set_validation_and_post():
+    import json
+
+    server, client = StubServer(), StubAdminClient()
+    REGISTRY["admin"].register(server, client)
+    set_policy = server.tools["admin_tool_policy_set"]
+
+    assert "provide input_policy" in set_policy("a")
+    assert "invalid input_policy" in set_policy("a", input_policy="bogus")
+    assert "invalid output_policy" in set_policy("a", output_policy="bogus")
+    assert not client.posts, "invalid calls must not reach the proxy"
+
+    resp = json.loads(set_policy("a", input_policy="untrusted"))
+    assert resp["updated"] is True
+    assert client.posts == [{"tool_name": "a", "input_policy": "untrusted"}]
+
+    set_policy("b", input_policy="blocked", team_id="t1")
+    assert client.posts[-1] == {"tool_name": "b", "input_policy": "blocked", "team_id": "t1"}
+
+
+def test_admin_keys_never_leak_tokens():
+    import json
+
+    server, client = StubServer(), StubAdminClient()
+    REGISTRY["admin"].register(server, client)
+    out = server.tools["admin_keys"]()
+    assert "hash" not in out and "token" not in out, "token values must never be returned"
+    keys = json.loads(out)
+    assert keys["keys"][0]["alias"] == "home-assist-2"
+
+
+def test_admin_failed_requests_filters_and_truncates():
+    import json
+
+    server, client = StubServer(), StubAdminClient()
+    REGISTRY["admin"].register(server, client)
+    out = server.tools["admin_failed_requests"](24)
+    summary = json.loads(out)
+    assert summary["scanned"] == 2 and summary["shown"] == 1
+    failure = summary["failures"][0]
+    assert failure["key"] == "home-assist-2" and failure["model"] == "stub-model-a"
+    assert len(failure["error"]) < 400 and "[truncated]" in failure["error"]
+    assert "start_date=" in client.requests[-1][1] and "page_size=100" in client.requests[-1][1]
 
 
 def test_cli():
