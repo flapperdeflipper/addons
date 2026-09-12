@@ -82,6 +82,13 @@ def main(argv=None):
     if not api_key:
         print("WARNING: no API key in environment; tools will fail until one is set", file=sys.stderr)
 
+    auth_token = config.auth_token() if args.transport == "streamable-http" else None
+    if args.transport == "streamable-http" and not auth_token:
+        print(
+            "WARNING: no API key in environment; serving WITHOUT client authentication",
+            file=sys.stderr,
+        )
+
     from .litellm_client import LitellmClient
     from .mcp_compat import ServerRunner
 
@@ -95,7 +102,13 @@ def main(argv=None):
         print("litellm-mcp serving over stdio - tools: %s" % ", ".join(args.tools), file=sys.stderr)
     else:
         print(
-            "litellm-mcp serving on %s:%s/mcp - tools: %s" % (args.host, args.port, ", ".join(args.tools)),
+            "litellm-mcp serving on %s:%s/mcp - tools: %s - auth: %s"
+            % (
+                args.host,
+                args.port,
+                ", ".join(args.tools),
+                "bearer token required" if auth_token else "UNAUTHENTICATED",
+            ),
             file=sys.stderr,
         )
-    runner.run(args.transport)
+    runner.run(args.transport, auth_token=auth_token)

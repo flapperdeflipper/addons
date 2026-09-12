@@ -1,0 +1,229 @@
+#!/usr/bin/env node
+// mcp-mqtt — minimal MCP stdio server exposing the MQTT broker through Home
+// Assistant's own MQTT connection (Supervisor core API), so every opencode
+// session can publish, inspect and clear broker topics. No MQTT credentials
+// are handled: the add-on's SUPERVISOR_TOKEN authenticates against core
+// (passed explicitly via the {env:SUPERVISOR_TOKEN} entry in opencode-ha.json).
+// No MCP SDK dependency (hand-rolled JSON-RPC over stdio).
+//
+// Tools:
+//   mqtt_publish(topic, payload, retain?, qos?)   publish a message
+//   mqtt_listen(topic, duration_seconds?)         subscribe + collect messages
+//                                                 (retained arrive immediately,
+//                                                 so this reads broker state)
+//   mqtt_clear_retained(topics)                   empty-payload clear per topic
+"use strict";
+const readline = require("node:readline");
+
+const CORE = process.env.HA_CORE_API || "http://supervisor/core/api";
+const CORE_WS = process.env.HA_CORE_WS || "ws://supervisor/core/api/websocket";
+const TOKEN = process.env.SUPERVISOR_TOKEN || "";
+if (!TOKEN) {
+  console.error("SUPERVISOR_TOKEN is not set; mcp-mqtt must run inside the opencode add-on");
+  process.exit(1);
+}
+
+const MAX_EVENTS = 500;
+
+const TOOLS = [
+  {
+    name: "mqtt_publish",
+    description:
+      "Publish a message to an MQTT topic via Home Assistant's broker connection. Publishing an empty payload with retain=true clears a retained message on that topic.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Exact MQTT topic" },
+        payload: { type: "string", description: "Message payload (empty string clears a retained message when retain=true)" },
+        retain: { type: "boolean", description: "Broker retains the message for future subscribers (default false)" },
+        qos: { type: "integer", enum: [0, 1, 2], description: "QoS level (default 0)" },
+      },
+      required: ["topic", "payload"],
+    },
+  },
+  {
+    name: "mqtt_listen",
+    description:
+      "Subscribe to an MQTT topic filter and collect messages for a few seconds. Retained messages arrive immediately, so this reads current broker state (e.g. 'homeassistant/#' for discovery, or a device's topics). Use MQTT wildcards # and +.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Topic filter, wildcards allowed (e.g. home/alarm/#)" },
+        duration_seconds: { type: "integer", minimum: 1, maximum: 60, description: "How long to listen (default 5)" },
+      },
+      required: ["topic"],
+    },
+  },
+  {
+    name: "mqtt_clear_retained",
+    description:
+      "Clear retained messages by publishing an empty retained payload to each exact topic. Use mqtt_listen first to enumerate topics (e.g. stale MQTT discovery under homeassistant/).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topics: {
+          anyOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } },
+          ],
+          description: "One exact topic or a list of exact topics (no wildcards)",
+        },
+      },
+      required: ["topics"],
+    },
+  },
+];
+
+async function restPublish(topic, payload, retain, qos) {
+  const res = await fetch(`${CORE}/services/mqtt/publish`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ topic, payload, retain: !!retain, qos: qos || 0 }),
+  });
+  if (!res.ok) throw new Error(`core api ${res.status}: ${(await res.text()).slice(0, 200)}`);
+}
+
+// One websocket per listen call: connect, auth, subscribe, collect, close.
+function wsListen(topic, durationSeconds) {
+  return new Promise((resolve, reject) => {
+    const events = [];
+    const ws = new WebSocket(CORE_WS, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const timer = setTimeout(() => finish("timeout"), durationSeconds * 1000);
+    let subId = null;
+    let done = false;
+
+    function finish(reason) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try {
+        ws.close();
+      } catch {}
+      resolve({ reason, events });
+    }
+
+    ws.onmessage = (ev) => {
+      let m;
+      try {
+        m = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      if (m.type === "auth_required") {
+        ws.send(JSON.stringify({ type: "auth", access_token: TOKEN }));
+      } else if (m.type === "auth_invalid") {
+        finish("auth_invalid");
+        reject(new Error("core websocket auth rejected the supervisor token"));
+      } else if (m.type === "auth_ok") {
+        subId = 1;
+        ws.send(JSON.stringify({ id: subId, type: "mqtt/subscribe", topic }));
+      } else if (m.type === "result" && m.id === subId && m.success === false) {
+        reject(new Error(`mqtt/subscribe failed: ${JSON.stringify(m.error || {})}`));
+        finish("subscribe_failed");
+      } else if (m.type === "event" && m.event && m.event.topic !== undefined) {
+        events.push(m.event);
+        if (events.length >= MAX_EVENTS) finish("event_limit");
+      }
+    };
+    ws.onerror = (e) => {
+      if (!done) reject(new Error(`websocket error: ${e.message || e.type}`));
+      finish("error");
+    };
+  });
+}
+
+const handlers = {
+  mqtt_publish: async (a) => {
+    await restPublish(a.topic, String(a.payload ?? ""), a.retain, a.qos);
+    const bytes = Buffer.byteLength(String(a.payload ?? ""), "utf8");
+    return `published ${bytes} byte(s) to ${a.topic}${a.retain ? " (retained)" : ""}`;
+  },
+
+  mqtt_listen: async (a) => {
+    const duration = Math.min(Math.max(a.duration_seconds || 5, 1), 60);
+    const { reason, events } = await wsListen(String(a.topic), duration);
+    if (!events.length) return `no messages on ${a.topic} in ${duration}s (${reason})`;
+    const lines = events.map(
+      (e) => `${e.topic} | ${e.payload}${e.retain ? " | retained" : ""}`
+    );
+    return `${lines.length} message(s) in ${duration}s (${reason}):\n${lines.join("\n")}`;
+  },
+
+  mqtt_clear_retained: async (a) => {
+    const list = Array.isArray(a.topics) ? a.topics : [a.topics];
+    let ok = 0;
+    const failed = [];
+    for (const t of list) {
+      if (typeof t !== "string" || !t.trim()) {
+        failed.push(`${t}: invalid topic`);
+        continue;
+      }
+      try {
+        await restPublish(t.trim(), "", true, 0);
+        ok++;
+      } catch (err) {
+        failed.push(`${t}: ${err.message}`);
+      }
+    }
+    return `cleared retained on ${ok}/${list.length} topic(s)${failed.length ? `\nfailed:\n${failed.join("\n")}` : ""}`;
+  },
+};
+
+let queue = Promise.resolve(); // serialize tool calls: one websocket / ordered effects at a time
+
+const rl = readline.createInterface({ input: process.stdin });
+function send(obj) {
+  process.stdout.write(JSON.stringify(obj) + "\n");
+}
+
+rl.on("line", (line) => {
+  line = line.trim();
+  if (!line) return;
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch {
+    return;
+  }
+  const { id, method, params } = msg;
+  if (method === "initialize") {
+    send({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        protocolVersion: params?.protocolVersion || "2025-06-18",
+        capabilities: { tools: {} },
+        serverInfo: { name: "mqtt", version: "1.0.0" },
+      },
+    });
+  } else if (method === "notifications/initialized") {
+    // notification — no response
+  } else if (method === "ping") {
+    send({ jsonrpc: "2.0", id, result: {} });
+  } else if (method === "tools/list") {
+    send({ jsonrpc: "2.0", id, result: { tools: TOOLS } });
+  } else if (method === "tools/call") {
+    const name = params?.name;
+    const args = params?.arguments || {};
+    queue = queue
+      .then(() => {
+        const h = handlers[name];
+        if (!h) throw new Error(`unknown tool ${name}`);
+        return h(args);
+      })
+      .then((text) =>
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: { content: [{ type: "text", text: String(text) }] },
+        })
+      )
+      .catch((err) =>
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: { content: [{ type: "text", text: `error: ${err.message}` }], isError: true },
+        })
+      );
+  }
+});

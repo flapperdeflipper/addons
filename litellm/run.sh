@@ -23,6 +23,9 @@
 #                              file is kept next to it as a .bak copy).
 #   /data/litellm/master_key   Fallback master key, auto-generated ONLY when
 #                              the master_key option is empty/unresolvable.
+#   /data/litellm/mcp_server.log
+#                              Standalone litellm-mcp log, truncated at each
+#                              start (mcp_memory option).
 set -e
 
 DATA_DIR=/data/litellm
@@ -33,10 +36,12 @@ CONFIG_DIR=/homeassistant/litellm
 CONFIG_FILE=${CONFIG_DIR}/config.yaml
 FALLBACK_CONFIG=${DATA_DIR}/config.yaml
 KEY_FILE=${DATA_DIR}/master_key
+
 SECRETS_FILE=/homeassistant/secrets.yaml
 PORT=4000
 
-# Prefer the venv python from the LiteLLM image (has PyYAML guaranteed).
+# Prefer the venv python from the LiteLLM image (has PyYAML guaranteed, and
+# the mcp SDK for the standalone server).
 PY=/app/.venv/bin/python3
 command -v "${PY}" >/dev/null 2>&1 || PY=python3
 
@@ -83,6 +88,9 @@ def resolve(key_name):
     return '', False
 
 print('RESET_CONFIG=' + q('true' if opts.get('reset_config') else 'false'))
+
+# Standalone litellm-mcp server (memory tools over streamable HTTP, port 4001).
+print('MCP_MEMORY=' + q('true' if opts.get('mcp_memory', True) else 'false'))
 
 # Master key: option value is a secrets.yaml KEY NAME.
 mk_name = opts.get('master_key') or ''
@@ -233,6 +241,49 @@ else
 fi
 
 ## --------------------------------------------------------------- mcp server ------
+
+# Standalone litellm-mcp server (memory tools) on port 4001, for direct MCP
+# clients (opencode, claude code, ...) that should NOT go through the LLM
+# gateway's aggregated /mcp endpoint. The proxy keeps spawning its own stdio
+# instance for model tool calls - this one is separate.
+#
+# Client auth: the server enforces a bearer token (config.auth_token()), which
+# defaults to LITELLM_MEMORY_KEY and falls back to LITELLM_MASTER_KEY - the
+# same secret the server itself uses upstream, so no new secret is introduced
+# and holders of the key could hit the proxy directly anyway.
+#
+# MCP_ARGS: tool modules to enable. 'memory' is the standalone default; the
+# 'admin' module needs the master key upstream and stays gateway-only.
+if [ "${MCP_MEMORY}" = "true" ]; then
+    if [ -z "${LITELLM_MEMORY_KEY:-}" ] && [ -z "${LITELLM_MASTER_KEY:-}" ]; then
+        echo "[WARN] mcp_memory enabled but no LITELLM_MEMORY_KEY/LITELLM_MASTER_KEY in the environment - standalone MCP server not started"
+    else
+        MCP_ARGS="memory"
+        MCP_LOG="${DATA_DIR}/mcp_server.log"
+        : > "${MCP_LOG}"
+        (
+            # set -e must not kill the babysitter: a crashed server has to
+            # be restarted, not take the loop (and its parent) down.
+            set +e
+            cd /mcp_servers
+            while true; do
+                echo "[$(date '+%Y-%m-%d %H:%M:%S')] starting litellm-mcp (${MCP_ARGS}) on port 4001" >> "${MCP_LOG}"
+                "${PY}" -m litellm_mcp ${MCP_ARGS} \
+                    --transport streamable-http --host 0.0.0.0 --port 4001 >> "${MCP_LOG}" 2>&1
+                rc=$?
+                echo "[$(date '+%Y-%m-%d %H:%M:%S')] litellm-mcp exited (rc=${rc}); restarting in 5s" >> "${MCP_LOG}"
+                if [ "${rc}" -eq 0 ]; then
+                    sleep 3600
+                else
+                    sleep 5
+                fi
+            done
+        ) &
+        echo "[INFO] litellm-mcp (memory) serving on port 4001 - bearer auth required - log: ${MCP_LOG}"
+    fi
+else
+    echo "[INFO] mcp_memory disabled - standalone MCP server not started"
+fi
 
 ## ------------------------------------------------------------------ start ----
 

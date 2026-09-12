@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.10.0
+
+- **Bundled `mqtt` MCP server** — `/usr/local/bin/mcp-mqtt` (no dependencies beyond node) exposes `mqtt_publish`, `mqtt_listen` (subscribe + collect; retained messages arrive immediately, so it doubles as broker-state reads, wildcards allowed, up to 60s) and `mqtt_clear_retained` through Home Assistant's own MQTT connection (Supervisor core API + websocket). No broker credentials are handled. Wired into the generated base config next to the `homeassistant` server, gated by the **MCP integration** option, explicitly disabled for the read-only session. Structural + behavioral tests in `test/mcp-mqtt.test.js` (the tool list is asserted by actually spawning the server).
+
 ## 2.9.3
 
 - **hab builder stage on Go 1.27** — the hab companion CLI is now compiled from golang:1.27-trixie (was 1.24); runtime image unchanged.

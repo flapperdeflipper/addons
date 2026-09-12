@@ -5,7 +5,7 @@ description: LiteLLM proxy - an OpenAI-compatible LLM gateway (DeepSeek, Z.ai, .
 url: https://github.com/flapperdeflipper/addons/tree/master/litellm
 
 image: flapperdeflipper/addon-litellm
-version: "1.99.1-9"
+version: "1.99.2"
 
 init: false
 startup: application
@@ -20,13 +20,16 @@ map:
 
 ports:
   4000/tcp: 4000
+  4001/tcp: 4001
 ports_description:
   4000/tcp: LiteLLM OpenAI-compatible API
+  4001/tcp: Standalone litellm-mcp server (memory tools, bearer auth)
 
 options:
   master_key: ""
   reset_config: false
   env_vars: []
+  mcp_memory: true
 schema:
   master_key: str?
   reset_config: bool
@@ -34,3 +37,4 @@ schema:
     - name: "match(^[A-Z_][A-Z0-9_]*$)"
       secret: str?
       value: password?
+  mcp_memory: bool
