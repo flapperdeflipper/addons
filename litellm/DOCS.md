@@ -98,17 +98,26 @@ agents get durable cross-session memory. Enabled by the `mcp_memory` option
 (per project), `user:<topic>` (personal preferences). Entries are scoped by
 the API key's user/team on the LiteLLM side.
 
-**Registering clients** - the endpoint is `http://<ha-host>:4001/mcp`:
+**Registering clients** - the endpoint is `http://<ha-host>:4001/mcp` and
+every client must send `Authorization: Bearer <token>` (see Auth below):
 
 - opencode add-on: merge into its `opencode_config` option
   `"litellm-memory": { "type": "remote", "url": "http://<ha-host>:4001/mcp", "enabled": true }`
-- claude code: `claude mcp add --transport http litellm-memory http://<ha-host>:4001/mcp`
-- llama.cpp / anything MCP-capable: same URL
+  and inject the header at runtime with a plugin (like the bundled
+  `litellm-key.js` pattern) instead of pasting the token into the option
+- claude code: `claude mcp add --transport http litellm-memory http://<ha-host>:4001/mcp --header "Authorization: Bearer <token>"`
+- llama.cpp / anything MCP-capable: same URL + header
 
-**Auth**: the server calls the proxy on localhost with the master key
-resolved by run.sh. To use a scoped virtual key instead, add `LITELLM_MEMORY_KEY`
+**Auth**: both directions use the same key, so no new secret is needed. The
+server calls the proxy on localhost with the master key resolved by run.sh;
+to use a scoped virtual key instead, add `LITELLM_MEMORY_KEY`
 to `env_vars` (name `LITELLM_MEMORY_KEY`, secret = a key holding that virtual
-key) - it takes precedence.
+key) - it takes precedence. Clients authenticate to the server with that same
+token (constant-time check, `WWW-Authenticate: Bearer` challenge on 401);
+override with `LITELLM_MCP_AUTH_TOKEN` if you ever want a dedicated one.
+With no key in the environment at all the server refuses nothing - it starts
+**unauthenticated** and says so loudly in the log; do not expose port 4001
+that way.
 
 **Discovering tools**: every deployment registers a `registry_list` tool
 that reports all available modules (name, description, enabled state) — ask

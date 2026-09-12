@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.99.2
+
+- **Standalone memory MCP server is real** — run.sh now launches `litellm-mcp memory` on **port 4001** (streamable HTTP, `mcp_memory` option, default on, supervised restart loop, log at `/data/litellm/mcp_server.log`), matching what DOCS.md and the Dockerfile `EXPOSE` already promised. Direct MCP clients (opencode, claude code) no longer need the LLM gateway's aggregated `/mcp` endpoint, which would hand them every registered tool server (65 ha-mcp tools, playwright, docs, search) instead of just memory.
+- **Bearer-token client auth for standalone serving** — `mcp_compat.BearerAuthMiddleware` wraps the SDK server's own ASGI app, so every route sits behind a constant-time token check. The token defaults to the upstream API key (`LITELLM_MEMORY_KEY`, else `LITELLM_MASTER_KEY` — override with `LITELLM_MCP_AUTH_TOKEN`): no new secret, and key holders could hit the proxy directly anyway. Unauthenticated serving is only possible when no key exists at all (loud warning). Gateway stdio spawns are unchanged.
+- **cli startup line reports auth state** — `litellm-mcp serving on host:port/mcp - tools: ... - auth: bearer token required|UNAUTHENTICATED`.
+
 ## 1.99.1-9
 
 - **`litellm_mcp` package: `admin` module for configuring the proxy** — five admin MCP tools served alongside `memory`: `admin_tool_policy_list` / `admin_tool_policy_set` (inspect and change tool trust policies; changes take effect immediately, no proxy restart), `admin_models` (deployed model list), `admin_keys` (virtual-key metadata only — token values are never returned) and `admin_failed_requests` (bounded summary of recent failure causes, e.g. guardrail blocks, over the last N hours). Enable by adding `admin` to the `litellm_mcp` args in `/homeassistant/litellm/config.yaml`; authenticates with `LITELLM_MASTER_KEY` via the new `LitellmClient.with_key()` clone helper, since these endpoints need admin rights the memory key does not have.

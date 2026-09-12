@@ -14,6 +14,7 @@ PKG_ROOT = os.path.join(ROOT, "mcp_servers")
 sys.path.insert(0, PKG_ROOT)
 
 from litellm_mcp.litellm_client import LitellmClient, truncate  # noqa: E402
+from litellm_mcp.mcp_compat import BearerAuthMiddleware, asgi_app  # noqa: E402
 from litellm_mcp.cli import register_builtin
 from litellm_mcp.tools import REGISTRY  # noqa: E402
 
@@ -248,6 +249,128 @@ def test_client_paths_and_truncate():
     assert client.base_url == "http://x"
     assert client.entry_path("opencode:a:b") == "/v1/memory/opencode:a:b"
     assert client.list_path("opencode:") == "/v1/memory?key_prefix=opencode:"
+
+
+class _RecordingApp:
+    """ASGI app stub: records that it ran."""
+
+    def __init__(self):
+        self.called = False
+
+    async def __call__(self, scope, receive, send):
+        self.called = True
+
+
+def _run_middleware(mw, scope):
+    """Drive the middleware with stub ASGI app/send; return sent events."""
+    import asyncio
+
+    sent = []
+
+    async def send(event):
+        sent.append(event)
+
+    async def receive():
+        return {"type": "http.request"}
+
+    asyncio.run(mw(scope, receive, send))
+    return sent
+
+
+def test_bearer_auth_accepts_exact_token():
+    app = _RecordingApp()
+    mw = BearerAuthMiddleware(app, "sekret")
+    scope = {"type": "http", "headers": [(b"authorization", b"Bearer sekret")]}
+    sent = _run_middleware(mw, scope)
+    assert app.called, "valid token must reach the app"
+    assert not sent, "middleware must not answer on pass-through"
+
+
+def test_bearer_auth_rejects_missing_wrong_and_malformed():
+    cases = (
+        [],
+        [(b"authorization", b"Bearer wrong")],
+        [(b"authorization", b"sekret")],
+        [(b"authorization", b"bearer sekret")],
+        [(b"authorization", b"Bearer sekret ")],
+    )
+    for headers in cases:
+        app = _RecordingApp()
+        mw = BearerAuthMiddleware(app, "sekret")
+        sent = _run_middleware(mw, {"type": "http", "headers": headers})
+        assert not app.called, "request must be rejected: %r" % (headers,)
+        start = sent[0]
+        assert start["status"] == 401, headers
+        names = {k for k, _ in start["headers"]}
+        assert b"www-authenticate" in names, "401 must challenge"
+        assert b"unauthorized" in sent[1]["body"]
+
+
+def test_bearer_auth_passes_non_http_scopes():
+    app = _RecordingApp()
+    mw = BearerAuthMiddleware(app, "sekret")
+    _run_middleware(mw, {"type": "lifespan"})
+    assert app.called, "non-http scopes are not authenticated"
+
+
+def test_asgi_app_accessor_order():
+    class OnlyStreamable:
+        def streamable_http_app(self):
+            return "streamable-app"
+
+    class OnlySse:
+        def sse_app(self):
+            return "sse-app"
+
+    class Neither:
+        pass
+
+    assert asgi_app(OnlyStreamable()) == "streamable-app"
+    assert asgi_app(OnlySse()) == "sse-app"
+    assert asgi_app(Neither()) is None
+
+
+def test_config_auth_token_derives_from_api_key():
+    import importlib
+
+    import litellm_mcp.config as config
+
+    saved = {k: os.environ.get(k) for k in
+             ("LITELLM_MCP_AUTH_TOKEN", "LITELLM_MEMORY_KEY", "LITELLM_MASTER_KEY")}
+    for k in saved:
+        os.environ.pop(k, None)
+
+    def reload_and_check(expected):
+        got = importlib.reload(config).auth_token()
+        assert got == expected, (got, expected)
+
+    try:
+        reload_and_check("")
+        os.environ["LITELLM_MASTER_KEY"] = "sk-master"
+        reload_and_check("sk-master")
+        os.environ["LITELLM_MEMORY_KEY"] = "sk-memory"
+        reload_and_check("sk-memory")
+        os.environ["LITELLM_MCP_AUTH_TOKEN"] = "sk-dedicated"
+        reload_and_check("sk-dedicated")
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        importlib.reload(config)
+
+
+def test_run_sh_launches_standalone_server():
+    """run.sh must implement what DOCS.md promises (the 1.99.2 fix)."""
+    run_sh = open(os.path.join(ROOT, "run.sh")).read()
+    assert "streamable-http" in run_sh and "--port 4001" in run_sh, "standalone server launch"
+    assert "mcp_memory" in run_sh, "option read"
+    assert "mcp_server.log" in run_sh, "documented log location"
+    assert "while true" in run_sh, "supervised restart loop"
+    # starter config heredoc must be untouched by the launcher work
+    assert "deepseek/deepseek-v4-pro" in run_sh and "coding/paas/v4" in run_sh
+    assert "ollama:11434" in run_sh
 
 
 if __name__ == "__main__":
