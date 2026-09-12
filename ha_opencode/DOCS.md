@@ -20,6 +20,7 @@ at `/usr/share/doc/ha-opencode/NOTICE` and in this repository's
 - **Ingress Support**: Access directly from the Home Assistant sidebar
 - **Provider Agnostic**: Works with Anthropic, OpenAI, Google, and 70+ other AI providers
 - **MCP Integration**: Deep Home Assistant integration with Tools, Resources, Prompts, and Intelligence
+- **MQTT Tools**: Built-in `mqtt` MCP server (`mqtt_publish`, `mqtt_listen`, `mqtt_clear_retained`) riding Home Assistant's own broker connection - no MQTT credentials needed
 - **Certified Runtime**: Runs the pinned OpenCode build tested with this add-on; runtime upgrades arrive through add-on releases
 - **On-Demand Skills**: Loads detailed Home Assistant procedures only when a task needs them
 - **Read-Only Session**: Offers a separate terminal session for investigation without write or control capabilities
@@ -94,6 +95,18 @@ OpenChamber's own built-in update check is disabled in this add-on. OpenChamber 
 | **Native MCP API ID** | `assist` | Applies only when the native bridge is on. The default `assist` targets `/api/mcp/assist`; leave empty to use the configured `/api/mcp` endpoint. |
 | **Install briefing** | `true` | Give OpenCode a generated summary of your installation — version, areas, entity counts, configuration layout — so it does not rediscover them each session. See [Home Context](#home-context). |
 | **Decision notes** | `true` | Let OpenCode carry lasting decisions between sessions, recorded only when you approve each one. See [Decision notes](#decision-notes). |
+
+#### MQTT MCP server
+
+Every session gets the bundled `mqtt` MCP server (follows the **MCP integration** option; disabled in the read-only session). It speaks to the broker through Home Assistant's own MQTT connection via the Supervisor API, so no broker credentials are involved:
+
+| Tool | Purpose |
+|------|---------|
+| `mqtt_publish(topic, payload, retain?, qos?)` | Publish a message; empty payload + `retain` clears a retained topic |
+| `mqtt_listen(topic, duration_seconds?)` | Subscribe and collect messages for a few seconds - retained messages arrive immediately, so this also reads current broker state (e.g. `homeassistant/#` discovery) |
+| `mqtt_clear_retained(topics)` | Clear retained messages by exact topic (one or a list) |
+
+`mqtt_listen` runs up to 60s, so be patient when debugging traffic. The server is `/usr/local/bin/mcp-mqtt` in the image, wired by the generated base config - no `opencode_config` entry needed.
 
 ### Access Control
 

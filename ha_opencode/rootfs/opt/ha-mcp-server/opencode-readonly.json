@@ -39,6 +39,9 @@
     },
     "homeassistant_native": {
       "enabled": false
+    },
+    "mqtt": {
+      "enabled": false
     }
   },
   "permission": {

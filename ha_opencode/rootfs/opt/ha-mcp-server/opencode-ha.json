@@ -59,6 +59,15 @@
         "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
         "HA_NATIVE_MCP_API_ID": "assist"
       }
+    },
+    "mqtt": {
+      "type": "local",
+      "command": ["node", "/usr/local/bin/mcp-mqtt"],
+      "enabled": true,
+      "timeout": 65000,
+      "environment": {
+        "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}"
+      }
     }
   },
   "lsp": {
