@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.99.1-9
+
+- **`litellm_mcp` package: `admin` module for configuring the proxy** — five admin MCP tools served alongside `memory`: `admin_tool_policy_list` / `admin_tool_policy_set` (inspect and change tool trust policies; changes take effect immediately, no proxy restart), `admin_models` (deployed model list), `admin_keys` (virtual-key metadata only — token values are never returned) and `admin_failed_requests` (bounded summary of recent failure causes, e.g. guardrail blocks, over the last N hours). Enable by adding `admin` to the `litellm_mcp` args in `/homeassistant/litellm/config.yaml`; authenticates with `LITELLM_MASTER_KEY` via the new `LitellmClient.with_key()` clone helper, since these endpoints need admin rights the memory key does not have.
+- **Test fixtures de-coupled from the live gateway** — admin-module tests use neutral stub model names (`stub-model-a/b`) and assert extraction behavior, not real config values.
+
 ## 1.99.1-8
 
 - **Rebuild for cosign signing** — no functional changes; rebuilt from master after keyless cosign image signing landed in CI, so this tag publishes with a signature.
