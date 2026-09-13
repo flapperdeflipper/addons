@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.11.0
+
+- **`session-cleanup` companion tool** — `/usr/local/bin/session-cleanup` (python3, stdlib-only) classifies stored opencode sessions as `archived`, `superseded` (a child session took over via continue/fork/compact) or `stale` (no activity beyond `--min-age-days`, default 30) and removes them. Analysis reads the session database strictly read-only; deletion goes only through the local opencode server API (`DELETE /session/{id}`) — the database is never written directly. `--apply` exports each session's transcript to markdown first, shared sessions and explicit `--keep` ids are never deleted, and `--json` gives agents a machine-readable report for the decision-preservation step described in the `session-cleanup` skill. Regression tests in `test/session-cleanup.test.js` (fixture sqlite DB + fixture API server) pin classification, API-only deletion, transcript export and fail-closed behavior when the server is down.
+
 ## 2.10.0
 
 - **Bundled `mqtt` MCP server** — `/usr/local/bin/mcp-mqtt` (no dependencies beyond node) exposes `mqtt_publish`, `mqtt_listen` (subscribe + collect; retained messages arrive immediately, so it doubles as broker-state reads, wildcards allowed, up to 60s) and `mqtt_clear_retained` through Home Assistant's own MQTT connection (Supervisor core API + websocket). No broker credentials are handled. Wired into the generated base config next to the `homeassistant` server, gated by the **MCP integration** option, explicitly disabled for the read-only session. Structural + behavioral tests in `test/mcp-mqtt.test.js` (the tool list is asserted by actually spawning the server).

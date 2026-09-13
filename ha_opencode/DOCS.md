@@ -33,6 +33,7 @@ at `/usr/share/doc/ha-opencode/NOTICE` and in this repository's
 - **Serial Device Access**: Optionally map selected host serial devices into the add-on for USB flashing and adapter inspection workflows
 - **Optional LAN Server Mode**: Attach from another computer on your local network using the OpenCode CLI
 - **Startup Hooks**: Optional persistent shell scripts that run at add-on startup
+- **Session Cleanup**: `session-cleanup` companion tool that classifies stored sessions (archived / superseded / stale) and removes them via the opencode API after exporting transcripts
 
 ## Configuration
 
