@@ -228,10 +228,8 @@ class HelperFunctions:
     def format_text_with_trafilatura(html_content: str, timeout: int) -> str:
         extracted_text = trafilatura.extract(
             html_content,
-            favor_readability=True,
             include_comments=False,
             include_tables=True,
-            timeout=timeout,
         )
 
         if not extracted_text:

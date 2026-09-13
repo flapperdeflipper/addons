@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.10
+
+- **Fixed crash scraping search results** — `trafilatura.extract()` was called with `favor_readability` and `timeout` kwargs that no longer exist in trafilatura 2.x (2.0 removed the `**kwargs` catch-all that had silently swallowed them on 1.x). Every content scrape by `searxng_search_web` and `searxng_get_website` failed with `TypeError: extract() got an unexpected keyword argument`. Both dead kwargs dropped; `include_comments`/`include_tables` are valid on 2.x and unchanged.
+
 ## 2026.9.9
 
 - **Fixed 403 on every MCP search** — SearXNG allows only the `html` output format by default, so the bundled MCP server's `format=json` queries all failed with `403 Forbidden`. New `search_formats.py` runs at boot (after the engines patch) and idempotently adds `json` to `search.formats` in settings.yml, touching only that line and preserving the rest of the file byte-for-byte. Unrecognized layouts are logged and left unchanged so SearXNG still starts.
