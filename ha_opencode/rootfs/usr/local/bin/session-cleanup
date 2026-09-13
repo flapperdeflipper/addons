@@ -1,0 +1,399 @@
+#!/usr/bin/env python3
+"""session-cleanup — classify and remove stored opencode sessions.
+
+Sessions pile up in the opencode database (every terminal, headless run and
+OpenChamber conversation). This tool classifies them three ways:
+
+  archived    the user finished it in the UI (time_archived is set)
+  superseded  a child session took over — opencode leaves the parent behind
+              when a session is continued, forked or compacted, and the child
+              carries the context forward
+  stale       no activity for more than --min-age-days (default 30)
+
+Analysis reads the sqlite database READ-ONLY. Deletion is never a database
+write: it goes through the local opencode server API (DELETE /session/{id}),
+which owns the database and its cascades. Before deleting, each session's
+transcript is exported to markdown so nothing disappears unreviewed — the
+calling agent is expected to extract durable decisions (slopclanker notes,
+LiteLLM memory, HA decision notes) BEFORE running --apply. See the
+session-cleanup skill for the full workflow.
+
+Dry-run by default; pass --apply to delete. Shared sessions are never deleted,
+and --keep protects ids explicitly (pass your own session id when an agent
+runs this).
+
+Usage:
+  session-cleanup                          # report (dry run)
+  session-cleanup --json                   # machine-readable report
+  session-cleanup --apply                  # export + delete eligible
+  session-cleanup --apply --only ses_X     # restrict to specific ids
+  session-cleanup --apply --keep ses_Y     # protect ids (repeat both flags)
+
+Exit codes: 0 ok or nothing eligible, 1 deletions failed, 2 usage/error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import re
+import sqlite3
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+DEFAULT_DB = "/data/.local/share/opencode/opencode.db"
+DEFAULT_API = "http://127.0.0.1:4096"
+DEFAULT_EXPORT_ROOT = "/data/.local/share/opencode/session-archive"
+HTTP_TIMEOUT = 15
+
+REASON_ARCHIVED = "archived"
+REASON_SUPERSEDED = "superseded"
+REASON_STALE = "stale"
+
+
+def eprint(*args: object) -> None:
+    print(*args, file=sys.stderr)
+
+
+def ms_to_iso(ms: int) -> str:
+    return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+
+def ro_connect(db_path: str) -> sqlite3.Connection:
+    return sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+
+
+def load_sessions(db_path: str) -> list[dict]:
+    """One row per session with the aggregates the classifier needs."""
+    con = ro_connect(db_path)
+    try:
+        rows = con.execute(
+            """
+            SELECT s.id,
+                   s.slug,
+                   s.parent_id,
+                   s.title,
+                   s.directory,
+                   s.time_created,
+                   s.time_updated,
+                   s.time_archived,
+                   EXISTS(SELECT 1 FROM session_share sh WHERE sh.session_id = s.id),
+                   EXISTS(SELECT 1 FROM session c WHERE c.parent_id = s.id),
+                   (SELECT MAX(m.time_created) FROM message m WHERE m.session_id = s.id),
+                   (SELECT COUNT(*) FROM message m WHERE m.session_id = s.id),
+                   (SELECT COUNT(*) FROM part p WHERE p.session_id = s.id
+                     AND json_extract(p.data, '$.type') = 'tool')
+            FROM session s
+            """
+        ).fetchall()
+    finally:
+        con.close()
+
+    sessions = []
+    for (
+        sid, slug, parent_id, title, directory, created, updated, archived,
+        shared, has_child, last_msg, msg_count, tool_count,
+    ) in rows:
+        sessions.append({
+            "id": sid,
+            "slug": slug or "session",
+            "parent_id": parent_id,
+            "title": title or "",
+            "directory": directory or "",
+            "created": created,
+            "updated": updated,
+            "last_activity": max(updated, last_msg or 0),
+            "archived": archived is not None,
+            "shared": bool(shared),
+            "has_child": bool(has_child),
+            "messages": msg_count,
+            "tool_calls": tool_count,
+        })
+    return sessions
+
+
+def superseded_ids(db_path: str) -> set[str]:
+    """Ids of sessions for which some child session is newer (it took over)."""
+    con = ro_connect(db_path)
+    try:
+        rows = con.execute(
+            """
+            SELECT c.parent_id
+            FROM session c JOIN session p ON p.id = c.parent_id
+            WHERE c.parent_id IS NOT NULL
+              AND c.time_updated > p.time_updated
+            """
+        ).fetchall()
+    finally:
+        con.close()
+    return {r[0] for r in rows}
+
+
+def classify(sessions: list[dict], superseded: set[str], args: argparse.Namespace) -> tuple[list[dict], dict]:
+    """Split sessions into (eligible, counts). Eligible sorted oldest first."""
+    now_ms = int(time.time() * 1000)
+    keep = set(args.keep or [])
+
+    eligible: list[dict] = []
+    counts = {
+        "total": len(sessions),
+        "eligible": 0,
+        "kept_shared": 0,
+        "kept_explicit": 0,
+        "kept_young": 0,
+        "kept_superseded_recent": 0,
+    }
+
+    for s in sessions:
+        s["age_days"] = round((now_ms - s["last_activity"]) / 86400000, 1)
+        if s["shared"]:
+            s["verdict"] = "kept: shared"
+            counts["kept_shared"] += 1
+            continue
+        if s["id"] in keep:
+            s["verdict"] = "kept: explicit"
+            counts["kept_explicit"] += 1
+            continue
+        if args.only is not None and s["id"] not in set(args.only):
+            s["verdict"] = "kept: not selected"
+            continue
+
+        if s["archived"] and args.archived:
+            s["reason"] = REASON_ARCHIVED
+        elif s["id"] in superseded and not s["archived"]:
+            if s["age_days"] <= args.min_age_days and not args.superseded_any_age:
+                s["verdict"] = "kept: superseded but recent"
+                counts["kept_superseded_recent"] += 1
+                continue
+            s["reason"] = REASON_SUPERSEDED
+        elif s["age_days"] > args.min_age_days:
+            s["reason"] = REASON_STALE
+        else:
+            s["verdict"] = "kept: recent"
+            counts["kept_young"] += 1
+            continue
+
+        eligible.append(s)
+        counts["eligible"] += 1
+
+    eligible.sort(key=lambda s: s["last_activity"])
+    return eligible, counts
+
+
+# --- HTTP (the only sanctioned write path) ----------------------------------
+
+# No proxies for the local opencode server — an ambient http_proxy would
+# otherwise hijack 127.0.0.1 calls and break the tool in proxied containers.
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def api(method: str, url: str) -> tuple[int, str]:
+    req = urllib.request.Request(url, method=method)
+    try:
+        with _OPENER.open(req, timeout=HTTP_TIMEOUT) as resp:
+            return resp.status, resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as err:
+        body = err.read().decode("utf-8", "replace") if err.fp else str(err)
+        return err.code, body
+    except OSError as err:
+        # URLError, TimeoutError, ConnectionError — every way the server can
+        # be unreachable without speaking HTTP first.
+        raise ConnectionError(f"opencode server unreachable at {url}: {err}") from err
+
+
+def api_alive(base: str) -> bool:
+    try:
+        status, _ = api("GET", f"{base}/session/status")
+        return status == 200
+    except ConnectionError:
+        return False
+
+
+def fetch_messages(base: str, sid: str) -> list[dict] | None:
+    """Transcript parts, or None when the server has none (HTTP 404).
+    Real failures raise — an export that might have content must not be
+    skipped silently, but a session with no transcript is fine to delete."""
+    status, body = api("GET", f"{base}/session/{sid}/message")
+    if status == 404:
+        return None
+    if status != 200:
+        raise RuntimeError(f"GET message for {sid} -> HTTP {status}")
+    data = json.loads(body)
+    return data if isinstance(data, list) else []
+
+
+def export_markdown(session: dict, messages: list[dict], directory: Path) -> Path:
+    """Render a transcript the way sessions_get would show it: role, time,
+    text, [tool: name] markers. Reasoning and other part types are skipped."""
+    safe = re.sub(r"[^a-zA-Z0-9._-]+", "-", session["title"])[:40].strip("-") or "untitled"
+    path = directory / f"{session['slug']}-{session['id']}-{safe}.md"
+
+    lines = [
+        f"# {session['title'] or session['id']}",
+        "",
+        f"- id: `{session['id']}`",
+        f"- directory: `{session['directory']}`",
+        f"- created: {ms_to_iso(session['created'])} UTC",
+        f"- last activity: {ms_to_iso(session['last_activity'])} UTC",
+        f"- messages: {session['messages']} ({session['tool_calls']} tool calls)",
+        f"- deleted because: {session.get('reason', 'n/a')}",
+        "",
+    ]
+    for msg in messages:
+        info = msg.get("info", {})
+        role = info.get("role", "?")
+        when = ms_to_iso(info.get("time", {}).get("created", 0))
+        lines.append(f"## [{when}] {role}")
+        lines.append("")
+        for part in msg.get("parts", []):
+            ptype = part.get("type")
+            if ptype == "text" and part.get("text"):
+                lines.append(part["text"])
+            elif ptype == "tool":
+                lines.append(f"`[tool: {part.get('tool', '?')}]`")
+        lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
+def delete_session(base: str, sid: str) -> str | None:
+    """None on success, error description otherwise."""
+    status, body = api("DELETE", f"{base}/session/{sid}")
+    if status == 200:
+        return None
+    return f"HTTP {status}: {body[:200]}"
+
+
+# --- Output ------------------------------------------------------------------
+
+def human_report(eligible: list[dict], counts: dict, args: argparse.Namespace) -> None:
+    print(f"opencode session database: {args.db}")
+    print(
+        f"total {counts['total']} · eligible {counts['eligible']} · kept: "
+        f"{counts['kept_shared']} shared, {counts['kept_young']} recent, "
+        f"{counts['kept_superseded_recent']} recent-superseded, "
+        f"{counts['kept_explicit']} explicit"
+    )
+    if not eligible:
+        print("\nNothing eligible for cleanup.")
+        return
+    print(f"\nEligible for deletion (min age {args.min_age_days}d, oldest first):")
+    print(f"  {'ID':<28} {'AGE':>7}  {'MSGS':>5}  {'REASON':<11} TITLE")
+    for s in eligible:
+        title = (s["title"][:58] + "…") if len(s["title"]) > 59 else s["title"]
+        print(f"  {s['id']:<28} {s['age_days']:>6}d  {s['messages']:>5}  {s['reason']:<11} {title}")
+    if not args.apply:
+        print("\nDry run — pass --apply to export transcripts and delete these sessions.")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="session-cleanup",
+        description="Classify and remove stored opencode sessions (dry-run by default).",
+    )
+    parser.add_argument("--apply", action="store_true", help="export transcripts and delete eligible sessions")
+    parser.add_argument("--min-age-days", type=float, default=30, metavar="N", help="staleness threshold in days (default: 30)")
+    parser.add_argument("--no-archived", dest="archived", action="store_false", help="never delete archived sessions")
+    parser.add_argument("--superseded-any-age", action="store_true", help="delete superseded parents even when recent")
+    parser.add_argument("--keep", action="append", default=[], metavar="ses_ID", help="never delete this id (repeatable)")
+    parser.add_argument("--only", action="append", metavar="ses_ID", help="only consider this id (repeatable; protections still apply)")
+    parser.add_argument("--no-export", dest="export", action="store_false", help="skip transcript export when applying")
+    parser.add_argument("--export-root", default=DEFAULT_EXPORT_ROOT, metavar="DIR", help=f"export directory root (default: {DEFAULT_EXPORT_ROOT})")
+    parser.add_argument("--json", action="store_true", help="machine-readable output")
+    parser.add_argument("--db", default=DEFAULT_DB, metavar="PATH", help=f"opencode database path (default: {DEFAULT_DB})")
+    parser.add_argument("--api", default=DEFAULT_API, metavar="URL", help=f"opencode server base URL (default: {DEFAULT_API})")
+    args = parser.parse_args(argv)
+
+    if not Path(args.db).is_file():
+        eprint(f"session-cleanup: no opencode database at {args.db}")
+        return 2
+
+    try:
+        sessions = load_sessions(args.db)
+        superseded = superseded_ids(args.db)
+    except sqlite3.Error as err:
+        eprint(f"session-cleanup: cannot read {args.db}: {err}")
+        return 2
+
+    eligible, counts = classify(sessions, superseded, args)
+
+    report = {
+        "db": args.db,
+        "api": args.api,
+        "min_age_days": args.min_age_days,
+        "apply": args.apply,
+        "counts": counts,
+        "eligible": [
+            {
+                "id": s["id"], "title": s["title"], "directory": s["directory"],
+                "reason": s["reason"], "age_days": s["age_days"],
+                "messages": s["messages"], "tool_calls": s["tool_calls"],
+                "updated": ms_to_iso(s["last_activity"]),
+            }
+            for s in eligible
+        ],
+    }
+
+    if not args.apply or not eligible:
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            human_report(eligible, counts, args)
+        return 0
+
+    if not api_alive(args.api):
+        eprint(
+            f"session-cleanup: opencode server not reachable at {args.api} — "
+            "deletion must go through the API, the database is never written directly. "
+            "Start the add-on server (or pass --api) and retry."
+        )
+        return 2
+
+    export_dir = None
+    if args.export:
+        stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        export_dir = Path(args.export_root) / f"cleanup-{stamp}"
+        export_dir.mkdir(parents=True, exist_ok=True)
+
+    deleted, failed = [], []
+    for s in eligible:
+        export_path = None
+        try:
+            if export_dir is not None:
+                messages = fetch_messages(args.api, s["id"])
+                if messages is not None:
+                    export_path = export_markdown(s, messages, export_dir)
+        except (RuntimeError, ConnectionError, OSError, json.JSONDecodeError) as err:
+            eprint(f"session-cleanup: export failed for {s['id']}: {err} — keeping session")
+            failed.append({"id": s["id"], "error": f"export: {err}"})
+            continue
+        error = delete_session(args.api, s["id"])
+        if error is None:
+            deleted.append({"id": s["id"], "title": s["title"], "export": str(export_path) if export_path else None})
+        else:
+            failed.append({"id": s["id"], "error": error})
+
+    if args.json:
+        report["deleted"] = deleted
+        report["failed"] = failed
+        report["export_dir"] = str(export_dir) if export_dir else None
+        print(json.dumps(report, indent=2))
+    else:
+        for d in deleted:
+            print(f"deleted  {d['id']}  {d['title'][:50]}")
+            if d["export"]:
+                print(f"         export: {d['export']}")
+        for f in failed:
+            print(f"FAILED   {f['id']}  {f['error']}")
+        if export_dir is not None:
+            print(f"\nTranscripts exported to: {export_dir}")
+        print(f"Deleted {len(deleted)} session(s), {len(failed)} failure(s).")
+    return 0 if not failed else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
