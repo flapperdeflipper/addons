@@ -78,9 +78,11 @@ export const TOOL_PROFILES = Object.freeze({
 
 export const TOOL_PROFILE_NAMES = Object.freeze(Object.keys(TOOL_PROFILES));
 
-export function normalizeToolProfile(value) {
+export function normalizeToolProfile(value, { fallback = "full", onInvalid = null } = {}) {
   const normalized = String(value ?? "").trim().toLowerCase();
-  return TOOL_PROFILES[normalized] ? normalized : "full";
+  if (TOOL_PROFILES[normalized]) return normalized;
+  if (normalized && onInvalid) onInvalid(normalized);
+  return fallback;
 }
 
 export function getToolProfile(value) {

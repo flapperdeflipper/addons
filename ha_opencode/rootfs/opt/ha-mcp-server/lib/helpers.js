@@ -133,3 +133,37 @@ export function createResourceLink(uri, name, description, options = {}) {
   }
   return link;
 }
+
+/**
+ * Redact bulky or credential-bearing tool arguments before they are written
+ * to the add-on log. Mirrors the ESPHome arg redactor's field treatment:
+ * large text payloads become char counts, secret-shaped fields become flags.
+ */
+const SENSITIVE_ARG_FIELDS = new Set([
+  "password", "token", "api_key", "access_token", "refresh_token",
+  "client_secret", "secret", "psk", "key",
+]);
+
+export function redactToolArgsForLog(args) {
+  const redact = (value) => {
+    if (Array.isArray(value)) {
+      return { array_length: value.length };
+    }
+    if (!value || typeof value !== "object") return value;
+    const safe = {};
+    for (const [field, fieldValue] of Object.entries(value)) {
+      if (field === "content" || field === "file_content" || field === "yaml_config" || field === "config") {
+        safe[`${field}_chars`] = typeof fieldValue === "string" ? fieldValue.length : null;
+      } else if (field === "lines") {
+        safe.lines_count = Array.isArray(fieldValue) ? fieldValue.length : null;
+      } else if (SENSITIVE_ARG_FIELDS.has(field)) {
+        safe[`has_${field}`] = fieldValue !== undefined && fieldValue !== null && fieldValue !== "";
+      } else {
+        safe[field] = redact(fieldValue);
+      }
+    }
+    return safe;
+  };
+  if (!args || typeof args !== "object") return args;
+  return redact(args);
+}
