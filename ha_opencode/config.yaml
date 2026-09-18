@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "2.12.0"
+version: "2.13.0"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -19,11 +19,9 @@ panel_icon: mdi:robot
 panel_title: OpenCode
 ports:
   4096/tcp: null
-  4097/tcp: null
   8927/tcp: null
 ports_description:
   4096/tcp: "OpenCode LAN server — only serves traffic when the 'OpenCode LAN server' option is enabled"
-  4097/tcp: "OpenChamber LAN web UI (requires interface_mode: openchamber)"
   8927/tcp: "Full Home Assistant MCP server over HTTP (streamable, bearer token) — only serves traffic when the 'MCP server over HTTP' option is enabled"
 
 # File access - Home Assistant config directory
@@ -62,10 +60,7 @@ udev: false
 # explicitly marked beta in the Configuration tab and documentation.
 options:
   # --- 1. Presentation ---------------------------------------------------
-  # Interface served through Home Assistant Ingress.
-  # terminal is the classic ttyd shell; openchamber is the OpenChamber web UI.
-  interface_mode: "terminal"
-  # Terminal appearance. No effect when interface_mode is openchamber.
+  # Terminal appearance.
   terminal_theme: "breeze"
   font_size: 14
   cursor_style: "block"
@@ -115,6 +110,13 @@ options:
   # Optional LAN server mode for remote OpenCode clients.
   # Warning: If you map 4096/tcp in Network settings, this exposes an OpenCode server on your LAN.
   enable_server: false
+  # Basic-auth username for the LAN server. Empty means 'opencode', the
+  # OpenCode server's built-in default.
+  server_username: ""
+  # Basic-auth password for the LAN server. Required when the LAN server is
+  # enabled; the service refuses to start without one.
+  # A !secret <key> value resolves from secrets.yaml at start.
+  server_password: null
   # Browser origin(s) allowed to call the LAN server directly (CORS).
   # Only needed for browser-based clients; the OpenCode CLI does not need this.
   cors_origins: []
@@ -144,12 +146,6 @@ options:
   serial_devices: []
 
   # --- 8. Advanced -------------------------------------------------------
-  # Optional LAN access to the OpenChamber web UI (only used when
-  # interface_mode is openchamber). Serves OpenChamber at the root path on a
-  # mappable network port so reverse proxies / tunnels can point straight at it.
-  # Warning: If you map 4097/tcp in Network settings, this exposes the
-  # OpenChamber UI on your LAN with no Home Assistant Ingress auth in front.
-  enable_openchamber_lan: false
   # Environment variables to inject into the container
   env_vars: []
   # Custom OpenCode configuration (JSON)
@@ -160,7 +156,6 @@ options:
 
 schema:
   # --- 1. Presentation ---------------------------------------------------
-  interface_mode: list(terminal|openchamber)
   terminal_theme: list(breeze|catppuccin_mocha|catppuccin_latte|dracula|nord|tokyo_night|one_dark|solarized_dark|solarized_light|gruvbox_dark)
   font_size: int(10,24)
   cursor_style: list(block|underline|bar)
@@ -187,6 +182,8 @@ schema:
 
   # --- 5. Network exposure -----------------------------------------------
   enable_server: bool
+  server_username: password?
+  server_password: password
   cors_origins:
     - str
   mcp_http_enabled: bool
@@ -203,7 +200,6 @@ schema:
     - device(subsystem=tty)?
 
   # --- 8. Advanced -------------------------------------------------------
-  enable_openchamber_lan: bool
   env_vars:
     - name: str
       value: str
