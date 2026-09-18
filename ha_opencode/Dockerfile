@@ -1,6 +1,6 @@
 # Global ARGs (available in FROM instructions)
 ARG BUILD_FROM=ghcr.io/home-assistant/base-debian:trixie
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.21.0
 
 # Home Assistant does not publish a Node-specific Debian base. Keep its s6 and
 # Bashio runtime as the final base, and copy an exact official Node toolchain in.
@@ -39,15 +39,15 @@ ARG TTYD_VERSION=1.7.7
 # can run, and it changes only through a tested add-on release. build.yaml
 # carries the same value and is what CI reads; the two are asserted equal by
 # test/runtime-contract.test.js so a half-done bump cannot ship.
-ARG OPENCODE_VERSION=1.18.25
-ARG OPENCHAMBER_VERSION=1.21.0
-ARG PPQ_PROXY_VERSION=0.1.0
-ARG TSX_VERSION=4.20.6
-ARG YQ_VERSION=v4.53.3
+ARG OPENCODE_VERSION=1.18.31
+ARG OPENCHAMBER_VERSION=1.24.1
+ARG PPQ_PROXY_VERSION=0.6.0
+ARG TSX_VERSION=4.23.13
+ARG YQ_VERSION=v4.53.6
 # 1Password CLI, for op:// secret references resolved by hasecret at read
 # time. Standalone archive from 1Password's distribution cache (not in Debian
 # repos), same pinned-release pattern as yq/ttyd above.
-ARG OP_CLI_VERSION=2.30.3
+ARG OP_CLI_VERSION=2.39.0
 # sigstore cosign, for OCI image signing/verification from agent sessions —
 # the same tool CI uses to keyless-sign the published add-on images. Static
 # Go binary from GitHub releases (not in Debian repos), same pinned-release
@@ -67,6 +67,10 @@ ENV NODE_ENV=production \
 # Carried into every process in the container. Shell code reads it via
 # /usr/local/lib/opencode/channel.sh; Node code reads process.env.ADDON_CHANNEL.
 ENV ADDON_CHANNEL=${ADDON_CHANNEL}
+
+# HA config dir helpers (hasecret et al.) live in /homeassistant/bin, mounted
+# at runtime; prepend it so every shell and agent resolves them unqualified.
+ENV PATH="/homeassistant/bin:${PATH}"
 
 RUN case "${BUILD_ARCH}" in amd64|aarch64) ;; *) echo "Unsupported BUILD_ARCH: ${BUILD_ARCH:-unset}" >&2; exit 1;; esac
 
