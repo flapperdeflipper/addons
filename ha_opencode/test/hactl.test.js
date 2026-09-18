@@ -53,8 +53,19 @@ describe("hactl image install", () => {
 describe("hactl instance wiring", () => {
   const init = read(ROOTFS, "etc", "s6-overlay", "s6-rc.d", "init-opencode", "run");
 
+  it("targets HA Core's real origin, not the Supervisor proxy", () => {
+    // The Supervisor /core proxy rejects the long-lived token for REST and
+    // breaks hactl's WebSocket auth, so the init service discovers the host
+    // gateway from /proc/net/route and probes Core before writing .env.
+    assert.match(init, /\/proc\/net\/route/);
+    assert.match(init, /curl -fsS -m 3 -o \/dev\/null -H "Authorization: Bearer \$\{ACCESS_TOKEN\}"/);
+    assert.match(init, /"http:\/\/\$\{CORE_GW\}:8123\/api\/config"/);
+    assert.match(init, /printf 'HA_URL=%s\\nHA_TOKEN=%s\\n' "\$\{HA_CORE_URL\}" "\$\{ACCESS_TOKEN\}" > \/data\/hactl\/\.env/);
+    assert.match(init, /HA_CORE_URL="http:\/\/supervisor\/core"/);
+    assert.match(init, /falling back to the Supervisor proxy/);
+  });
+
   it("writes the .env from the access token option, tightly scoped", () => {
-    assert.match(init, /printf 'HA_URL=http:\/\/supervisor\/core\\nHA_TOKEN=%s\\n' "\$\{ACCESS_TOKEN\}" > \/data\/hactl\/\.env/);
     assert.match(init, /chmod 700 \/data\/hactl/);
     assert.match(init, /chmod 600 \/data\/hactl\/\.env/);
     // Written under umask 077 so no other mode can leak in.
