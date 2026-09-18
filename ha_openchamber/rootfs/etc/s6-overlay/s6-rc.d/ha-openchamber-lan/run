@@ -1,0 +1,65 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# OpenChamber - LAN web UI proxy (mappable port 4097/tcp)
+#
+# Publishes the OpenChamber web UI at the root path on a mappable network port
+# so reverse proxies and tunnels can point straight at it. There is no Home
+# Assistant Ingress session in front of this port, so this instance accepts any
+# remote address — and compensates with HTTP Basic authentication enforced by
+# the proxy itself, using the same credentials OpenChamber uses towards the
+# OpenCode server. The Ingress listener on 8099 stays authentication-free
+# (Home Assistant's login covers it).
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NODE_OPTIONS="--max-old-space-size=768"
+
+OPENCODE_USERNAME=$(bashio::config 'opencode_username' 2>/dev/null || echo "")
+OPENCODE_PASSWORD=$(bashio::config 'opencode_password' 2>/dev/null || echo "")
+
+if ! bashio::var.has_value "${OPENCODE_PASSWORD}"; then
+    bashio::log.error "OpenChamber LAN proxy needs the basic-auth password to protect the mapped port."
+    exec sleep infinity
+fi
+
+# Match OpenCode's own default: an unset username authenticates as 'opencode'.
+LAN_BASIC_USER="${OPENCODE_USERNAME}"
+if ! bashio::var.has_value "${LAN_BASIC_USER}"; then
+    LAN_BASIC_USER="opencode"
+fi
+
+OPENCHAMBER_INTERNAL_PORT=3010
+OPENCHAMBER_LAN_PORT=4097
+
+export OPENCHAMBER_INGRESS_HOST="0.0.0.0"
+export OPENCHAMBER_INGRESS_PORT="${OPENCHAMBER_LAN_PORT}"
+export OPENCHAMBER_UPSTREAM_HOST="127.0.0.1"
+export OPENCHAMBER_UPSTREAM_PORT="${OPENCHAMBER_INTERNAL_PORT}"
+# No Home Assistant Ingress session guards this port, so accept LAN clients...
+export OPENCHAMBER_ALLOW_ANY_REMOTE="true"
+# ...but demand basic auth from every request, WebSocket upgrades included.
+export OPENCHAMBER_BASIC_USER="${LAN_BASIC_USER}"
+export OPENCHAMBER_BASIC_PASSWORD="${OPENCODE_PASSWORD}"
+
+HOST_PORT=$(bashio::addon.port "${OPENCHAMBER_LAN_PORT}" 2>/dev/null || true)
+
+if bashio::var.has_value "${HOST_PORT}"; then
+    bashio::log.info "Home Assistant port mapping: ${OPENCHAMBER_LAN_PORT}/tcp -> ${HOST_PORT}"
+    bashio::log.info "Open the UI at: http://<home-assistant-host>:${HOST_PORT}/ (basic auth: user '${LAN_BASIC_USER}')"
+else
+    bashio::log.info "No host port mapped for ${OPENCHAMBER_LAN_PORT}/tcp; the LAN proxy only serves inside the container."
+    bashio::log.info "Map ${OPENCHAMBER_LAN_PORT}/tcp in the add-on Network settings to expose the UI to reverse proxies."
+fi
+
+# Wait for the OpenChamber upstream (owned by the ha-openchamber service) to be
+# ready before starting the LAN proxy, so early LAN requests do not 502.
+for _ in $(seq 1 240); do
+    if curl -fsS --max-time 2 "http://127.0.0.1:${OPENCHAMBER_INTERNAL_PORT}/health" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+done
+
+exec node /usr/local/bin/openchamber-ingress-proxy.js

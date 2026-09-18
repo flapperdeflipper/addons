@@ -1,8 +1,10 @@
-// Component tests for the OpenChamber ingress proxy's provider OAuth loopback
-// bridge (issue #54). They spawn the proxy directly with fake upstream and OAuth
-// listeners; the devcontainer acceptance harness covers Home Assistant Core Ingress.
+// Component tests for the OpenChamber ingress proxy: provider OAuth loopback
+// bridge (ported from ha_opencode, issue #54), remote allowlist, disconnected
+// clients, and the LAN-instance HTTP Basic authentication gate. They spawn the
+// proxy directly with fake upstream and OAuth listeners; the devcontainer
+// acceptance harness covers Home Assistant Core Ingress.
 //
-// Run with: node --test ha_opencode/test/openchamber-ingress-proxy.test.js
+// Run with: node --test ha_openchamber/test/openchamber-ingress-proxy.test.js
 //
 // This directory is outside rootfs/, so it is not copied into the add-on image.
 
@@ -16,7 +18,6 @@ const os = require("node:os");
 const path = require("node:path");
 
 const PROXY_SCRIPT = path.join(__dirname, "..", "rootfs", "usr", "local", "bin", "openchamber-ingress-proxy.js");
-const STABLE_PROXY_SCRIPT = path.join(__dirname, "..", "..", "ha_opencode", "rootfs", "usr", "local", "bin", "openchamber-ingress-proxy.js");
 const INGRESS_PATH = "/api/hassio_ingress/abc123";
 
 function freePort() {
@@ -645,8 +646,152 @@ describe("openchamber ingress proxy: disconnected clients", () => {
   });
 });
 
-describe("openchamber ingress proxy: release parity", () => {
-  it("ships the tested proxy implementation in both channels", () => {
-    assert.equal(fs.readFileSync(PROXY_SCRIPT, "utf8"), fs.readFileSync(STABLE_PROXY_SCRIPT, "utf8"));
+describe("openchamber ingress proxy: basic authentication (LAN instance)", () => {
+  let proxy;
+  let proxyPort;
+  let upstream;
+  let upstreamPort;
+
+  const startProxy = async (user, password) => {
+    if (proxy) {
+      proxy.kill();
+      proxy = null;
+    }
+
+    proxyPort = await freePort();
+    const env = {
+      ...process.env,
+      OPENCHAMBER_INGRESS_HOST: "127.0.0.1",
+      OPENCHAMBER_INGRESS_PORT: String(proxyPort),
+      OPENCHAMBER_UPSTREAM_HOST: "127.0.0.1",
+      OPENCHAMBER_UPSTREAM_PORT: String(upstreamPort),
+      OPENCHAMBER_ALLOW_ANY_REMOTE: "true",
+    };
+    if (user !== undefined) env.OPENCHAMBER_BASIC_USER = user;
+    if (password !== undefined) env.OPENCHAMBER_BASIC_PASSWORD = password;
+    proxy = spawn(process.execPath, [PROXY_SCRIPT], { env, stdio: ["ignore", "pipe", "pipe"] });
+    proxy.stderr.resume();
+
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("proxy did not start")), 10000);
+      proxy.stdout.on("data", (chunk) => {
+        if (String(chunk).includes("listening")) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+      proxy.once("error", reject);
+    });
+    proxy.stdout.resume();
+  };
+
+  before(async () => {
+    upstream = http.createServer((req, res) => {
+      const payload = Buffer.from("ok");
+      res.writeHead(200, { "content-type": "text/plain", "content-length": String(payload.length) });
+      res.end(payload);
+    });
+    upstream.on("upgrade", (req, socket) => {
+      // End the socket after the handshake so the proxied tunnel tears down
+      // cleanly and no piped handle outlives the suite.
+      socket.end("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n");
+    });
+    upstreamPort = await freePort();
+    await listen(upstream, upstreamPort);
+  });
+
+  after(async () => {
+    if (proxy) proxy.kill();
+    await close(upstream);
+  });
+
+  const basicAuthHeader = (user, password) =>
+    `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
+
+  it("rejects unauthenticated requests with 401 and a WWW-Authenticate challenge", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const response = await request(proxyPort, { method: "GET", path: "/api/provider" });
+
+    assert.equal(response.statusCode, 401);
+    assert.match(response.headers["www-authenticate"], /^Basic realm="OpenChamber"/);
+  });
+
+  it("rejects wrong credentials", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const response = await request(proxyPort, {
+      method: "GET",
+      path: "/api/provider",
+      headers: { authorization: basicAuthHeader("opencode", "wrong") },
+    });
+
+    assert.equal(response.statusCode, 401);
+  });
+
+  it("proxies requests with correct credentials", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const response = await request(proxyPort, {
+      method: "GET",
+      path: "/api/provider",
+      headers: { authorization: basicAuthHeader("opencode", "secret-pass") },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ok");
+  });
+
+  it("protects the canned update-check endpoint too", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const response = await request(proxyPort, { method: "POST", path: "/__ha_openchamber_update_check" });
+
+    assert.equal(response.statusCode, 401);
+  });
+
+  it("rejects WebSocket upgrades without credentials", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const received = await new Promise((resolve, reject) => {
+      const client = net.connect(proxyPort, "127.0.0.1", () => {
+        client.write(
+          "GET /socket HTTP/1.1\r\nHost: test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n"
+          + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+        );
+      });
+      client.once("data", (chunk) => { client.destroy(); resolve(String(chunk)); });
+      client.once("error", reject);
+    });
+
+    assert.match(received, /^HTTP\/1\.1 401 Unauthorized/);
+    assert.match(received, /WWW-Authenticate: Basic realm="OpenChamber"/);
+  });
+
+  it("forwards WebSocket upgrades with correct credentials", async () => {
+    await startProxy("opencode", "secret-pass");
+
+    const received = await new Promise((resolve, reject) => {
+      const client = net.connect(proxyPort, "127.0.0.1", () => {
+        client.write(
+          "GET /socket HTTP/1.1\r\nHost: test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n"
+          + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+          + `Authorization: ${basicAuthHeader("opencode", "secret-pass")}\r\n\r\n`,
+        );
+      });
+      client.once("data", (chunk) => { client.destroy(); resolve(String(chunk)); });
+      client.once("error", reject);
+    });
+
+    assert.match(received, /^HTTP\/1\.1 101/);
+  });
+
+  it("does not require auth when no credentials are configured (Ingress instance)", async () => {
+    await startProxy(undefined, undefined);
+
+    const response = await request(proxyPort, { method: "GET", path: "/api/provider" });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ok");
   });
 });

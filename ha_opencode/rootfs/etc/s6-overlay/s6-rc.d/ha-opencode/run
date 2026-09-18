@@ -35,12 +35,6 @@ bashio::log.info "=============================================="
 bashio::log.info "  OpenCode Terminal (ttyd + ingress)"
 bashio::log.info "=============================================="
 
-INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
-if [ "${INTERFACE_MODE}" != "terminal" ]; then
-    bashio::log.info "Interface mode is '${INTERFACE_MODE}'; terminal ingress service is inactive."
-    exec sleep infinity
-fi
-
 # ==============================================================================
 # Set Node.js memory limit (hardcoded for stability)
 # ==============================================================================
