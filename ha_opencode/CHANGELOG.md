@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.13.0
+
+- **Toolchain bumps** — opencode-ai 1.18.31 (was 1.18.25), @openchamber/web 1.24.1 (was 1.21.0), ppq-private-mode 0.6.0 (was 0.1.0), tsx 4.23.13 (was 4.20.6), yq v4.53.6 (was v4.53.3), 1Password CLI 2.39.0 (was 2.30.3), Node runtime 24.21.0 (was 24.15.0). ttyd 1.7.7, cosign v3.1.3, hactl 2026.9.0 and hab 1.6.4 are already the latest releases and stay pinned. build.yaml kept in sync; the runtime-contract tests assert the pins match.
+- **`/homeassistant/bin` on PATH** — image-level `ENV PATH` prepends the HA config dir's bin (mounted at runtime; `hasecret` and friends), so shells and agents resolve them without full paths.
+
 ## 2.12.0
 
 - **Bundled `hactl` CLI** — `hactl` 2026.9.0 (pinned GitHub release, version-asserted), a Home Assistant control CLI designed for LLM agents: token-capped output (500 tokens by default, `--tokens` estimates), progressive manual delivery over stderr to agent harnesses (`hactl rtfm` prints it on demand), and config writes that are dry-run by default behind `--confirm` with HA-side `validate_config`, automatic backup and rollback. The init service auto-writes `/data/hactl/.env` (chmod 600, stale file removed when the option is unset) pointing at HA Core's real origin — the host gateway, discovered from `/proc/net/route` and probe-verified, because the Supervisor `/core` proxy rejects the long-lived token and breaks hactl's WebSocket auth (Supervisor-proxy fallback logs a warning) — plus the add-on's `access_token`, and exports `HACTL_DIR=/data/hactl` into every session; a `profile.d` wrapper turns unconfigured use into setup instructions while keeping `rtfm`/`version`/`help` available. With the hactl-companion add-on installed (external repo `hemm-ems/hactl-companion`), hactl can also create/update/delete entities the HA API does not expose. Wiring validated live against a Supervised install (companion discovered via Ingress). Structural regression tests in `test/hactl.test.js`.
