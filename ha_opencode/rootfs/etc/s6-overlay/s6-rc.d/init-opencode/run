@@ -243,6 +243,40 @@ else
 fi
 
 # ==============================================================================
+# Auto-configure hactl CLI instance directory
+# hactl reads a .env (HA_URL/HA_TOKEN) from HACTL_DIR. hactl needs HA Core's
+# real origin: the Supervisor /core proxy rejects the long-lived access token
+# for REST and breaks hactl's WebSocket auth, so point it at the host gateway
+# (where Core listens on a Supervised install) and verify with a probe before
+# writing. The access_token option is the owner long-lived token hactl's
+# companion discovery requires. A stale .env from a previous token is removed
+# so nothing outdated lingers on disk.
+# ==============================================================================
+
+mkdir -p /data/hactl
+chmod 700 /data/hactl
+if [ -n "${ACCESS_TOKEN}" ]; then
+    CORE_GW=$(python3 -c 'import struct;[print(".".join(map(str,struct.pack("<L",int(l.split()[2],16))))) for l in open("/proc/net/route") if len(l.split())>2 and l.split()[1]=="00000000"]' 2>/dev/null | head -1)
+    if [ -n "${CORE_GW}" ] \
+        && curl -fsS -m 3 -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "http://${CORE_GW}:8123/api/config"; then
+        HA_CORE_URL="http://${CORE_GW}:8123"
+        bashio::log.info "hactl configured against HA Core at ${HA_CORE_URL}"
+    else
+        HA_CORE_URL="http://supervisor/core"
+        bashio::log.warning "hactl: HA Core not reachable on the host gateway - falling back to the Supervisor proxy (companion discovery and WebSocket features will not work)"
+    fi
+    umask 077
+    printf 'HA_URL=%s\nHA_TOKEN=%s\n' "${HA_CORE_URL}" "${ACCESS_TOKEN}" > /data/hactl/.env
+    chmod 600 /data/hactl/.env
+    bashio::log.info "hactl configured (/data/hactl/.env)"
+else
+    rm -f /data/hactl/.env
+    bashio::log.warning "No HA Core access token configured (hactl will not work)"
+fi
+printf 'export HACTL_DIR=/data/hactl\n' >> "${ENV_VARS_FILE}"
+
+# ==============================================================================
 # Export PPQ API key for the internal private-mode proxy
 # ==============================================================================
 

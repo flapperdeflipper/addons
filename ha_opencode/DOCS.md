@@ -622,6 +622,27 @@ Run `hab --help` or `hab <command> --help` for complete documentation.
 
 ---
 
+## hactl CLI
+
+The app bundles [hactl](https://github.com/hemm-ems/hactl), a Home Assistant control CLI designed for LLM agents. Output is capped at 500 tokens by default (`--tokens` prints estimates, `--tokensmax=N` raises the cap), the agent-facing manual arrives progressively on stderr (`hactl rtfm` prints it on demand), and config writes are dry-run by default — `--confirm` applies them after HA-side `validate_config`, with automatic backup and `hactl auto rollback`.
+
+The instance is pre-configured: the init service writes `/data/hactl/.env` from the **Home Assistant access token** option (the same long-lived owner token as ESPHome/screenshot) and points `HACTL_DIR` there in every session. `HA_URL` targets HA Core's real origin (host gateway, probe-verified; the Supervisor proxy rejects the long-lived token and breaks hactl's WebSocket auth). Without the token option, a shell wrapper prints setup instructions instead of a cryptic failure.
+
+```bash
+hactl health                      # version, state, recorder, error count, companion state
+hactl auto ls --failing           # automations with recent trace errors
+hactl trace show trc:a7           # why a run stopped (stable ids from auto show)
+hactl ent anomalies sensor.x      # outlier scan; ent who <id> = actor history
+hactl log --errors --warnings --unique   # condensed error log
+hactl auto apply -f f.yaml <id>   # dry-run diff; repeat with --confirm to write
+```
+
+With the [hactl-companion](https://github.com/hemm-ems/hactl-companion) add-on installed (external repository), hactl can additionally create/update/delete what the HA API does not expose (template entities, helpers, config blocks) and reload/check config — verified live against this install's companion. Use it for multi-step diagnosis sweeps and validated config edits; prefer the MCP tools for single live lookups and service calls, `hab` for registry/dashboard administration, and `zigporter` for renames (hactl does not cascade references).
+
+Run `hactl rtfm` for the full manual.
+
+---
+
 ## Home Assistant MCP Integration
 
 The app includes an enhanced MCP (Model Context Protocol) server that provides deep integration between OpenCode and Home Assistant. This is a comprehensive implementation featuring **Tools**, **Resources**, **Prompts**, and an **Intelligence Layer**.
