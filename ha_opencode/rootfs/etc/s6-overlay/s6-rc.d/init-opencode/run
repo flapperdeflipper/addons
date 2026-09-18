@@ -243,6 +243,28 @@ else
 fi
 
 # ==============================================================================
+# Auto-configure hactl CLI instance directory
+# hactl reads a .env (HA_URL/HA_TOKEN) from HACTL_DIR. Reuse the add-on's
+# long-lived access token — the owner token hactl's companion discovery
+# requires. Inside the Supervisor environment http://supervisor/core proxies
+# to HA Core (same mechanism as zigporter/hab). A stale .env from a previous
+# token is removed so nothing outdated lingers on disk.
+# ==============================================================================
+
+mkdir -p /data/hactl
+chmod 700 /data/hactl
+if [ -n "${ACCESS_TOKEN}" ]; then
+    umask 077
+    printf 'HA_URL=http://supervisor/core\nHA_TOKEN=%s\n' "${ACCESS_TOKEN}" > /data/hactl/.env
+    chmod 600 /data/hactl/.env
+    bashio::log.info "hactl configured (/data/hactl/.env)"
+else
+    rm -f /data/hactl/.env
+    bashio::log.warning "No HA Core access token configured (hactl will not work)"
+fi
+printf 'export HACTL_DIR=/data/hactl\n' >> "${ENV_VARS_FILE}"
+
+# ==============================================================================
 # Export PPQ API key for the internal private-mode proxy
 # ==============================================================================
 
