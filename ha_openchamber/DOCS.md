@@ -17,13 +17,13 @@ OpenCode process and stores no sessions of its own.
   - **LAN** (`4097/tcp`, mappable): accepts any remote address but enforces
     HTTP Basic auth at the proxy — including WebSocket upgrades — with the
     same credentials OpenChamber uses towards the OpenCode server.
-- OpenChamber is pinned (`@openchamber/web` 1.21.0) and Ingress-patched at
+- OpenChamber is pinned (`@openchamber/web` 1.24.1) and Ingress-patched at
   image build time. Its built-in self-update is disabled and reports no update;
   update OpenChamber by updating this add-on.
 
 ## Requirements
 
-This add-on depends on the **OpenCode add-on** (ha_opencode 2.13.0+):
+This add-on depends on the **OpenCode add-on** (ha_opencode 2.14.0+):
 
 1. In the OpenCode add-on's Configuration tab, turn on **OpenCode LAN server**
    and set its **LAN server username/password** options

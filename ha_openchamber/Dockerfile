@@ -1,6 +1,6 @@
 # Global ARGs (available in FROM instructions)
 ARG BUILD_FROM=ghcr.io/home-assistant/base-debian:trixie
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.21.0
 
 # Home Assistant does not publish a Node-specific Debian base. Keep its s6 and
 # Bashio runtime as the final base, and copy an exact official Node toolchain in.
@@ -17,7 +17,7 @@ ARG NODE_VERSION
 # is Ingress-patched at build time (see /opt/openchamber/patch-ingress.js), so
 # it changes only through a tested add-on release. build.yaml carries the same
 # value and is what CI reads.
-ARG OPENCHAMBER_VERSION=1.21.0
+ARG OPENCHAMBER_VERSION=1.24.1
 
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
