@@ -1,0 +1,124 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# OpenChamber - Web UI server
+#
+# Runs OpenChamber in external-server mode: it never spawns its own OpenCode
+# process but attaches to the OpenCode add-on's LAN server (4096/tcp on the
+# Docker host) with the shared basic-auth credentials. Sessions shown in the
+# UI are therefore exactly the ones the OpenCode add-on owns.
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NODE_OPTIONS="--max-old-space-size=768"
+
+OPENCODE_USERNAME=$(bashio::config 'opencode_username' 2>/dev/null || echo "")
+OPENCODE_PASSWORD=$(bashio::config 'opencode_password' 2>/dev/null || echo "")
+OPENCODE_HOST_OPT=$(bashio::config 'opencode_host' 2>/dev/null || echo "")
+OPENCODE_PORT=$(bashio::config 'opencode_port' 2>/dev/null || echo "4096")
+
+if ! bashio::var.has_value "${OPENCODE_PASSWORD}"; then
+    bashio::log.error "OpenChamber needs the OpenCode server's basic-auth password."
+    bashio::log.error "Set 'OpenCode server password' in the Configuration tab (a !secret <key> value works too), then restart."
+    exec sleep infinity
+fi
+
+# ==============================================================================
+# Resolve the OpenCode server origin
+# ------------------------------------------------------------------------------
+# An explicit option wins. Otherwise discover the default-route gateway: add-on
+# containers reach the Docker host there, and the OpenCode add-on's published
+# 4096/tcp port (docker-proxy) listens on that host. Same discovery pattern as
+# the hactl init in the OpenCode add-on.
+# ==============================================================================
+if bashio::var.has_value "${OPENCODE_HOST_OPT}"; then
+    OPENCODE_ORIGIN="${OPENCODE_HOST_OPT}"
+    bashio::log.info "Using configured OpenCode server address ${OPENCODE_ORIGIN}"
+else
+    DEFAULT_GW=""
+    while read -r _iface _dest _gw _rest; do
+        if [ "${_dest}" = "00000000" ] && [ -n "${_gw}" ]; then
+            DEFAULT_GW="$((16#${_gw:6:2})).$((16#${_gw:4:2})).$((16#${_gw:2:2})).$((16#${_gw:0:2}))"
+            break
+        fi
+    done < /proc/net/route
+    if [ -z "${DEFAULT_GW}" ]; then
+        bashio::log.error "Could not discover the Docker host gateway from /proc/net/route."
+        bashio::log.error "Set 'OpenCode server address' explicitly in the Configuration tab, then restart."
+        exec sleep infinity
+    fi
+    OPENCODE_ORIGIN="http://${DEFAULT_GW}"
+    bashio::log.info "Auto-discovered Docker host gateway ${DEFAULT_GW} as the OpenCode server address."
+fi
+
+# ==============================================================================
+# Wait (bounded) for the OpenCode server. OpenChamber retries on its own once
+# running, so a timeout is a warning, not a failure — but the wait keeps the
+# boot logs honest about the dependency instead of showing an immediate
+# "waiting for server" UI.
+# ==============================================================================
+AUTH_ARGS=(-u "opencode:${OPENCODE_PASSWORD}")
+if bashio::var.has_value "${OPENCODE_USERNAME}"; then
+    AUTH_ARGS=(-u "${OPENCODE_USERNAME}:${OPENCODE_PASSWORD}")
+fi
+
+bashio::log.info "Waiting for the OpenCode server at ${OPENCODE_ORIGIN}:${OPENCODE_PORT} ..."
+SERVER_READY=false
+for _ in $(seq 1 60); do
+    if curl -fsS --max-time 3 "${AUTH_ARGS[@]}" \
+        "${OPENCODE_ORIGIN}:${OPENCODE_PORT}/global/health" >/dev/null 2>&1; then
+        SERVER_READY=true
+        break
+    fi
+    sleep 2
+done
+
+if bashio::var.true "${SERVER_READY}"; then
+    bashio::log.info "OpenCode server is reachable."
+else
+    bashio::log.warning "OpenCode server did not answer within 120 seconds; starting OpenChamber anyway (it keeps retrying)."
+    bashio::log.warning "Check that the OpenCode add-on runs with 'OpenCode LAN server' enabled, ${OPENCODE_PORT}/tcp mapped in its Network settings, and the same basic-auth credentials configured."
+fi
+
+# External-server mode: never spawn an OpenCode process (upstream documents
+# OPENCODE_HOST + OPENCODE_SKIP_START for this) and authenticate every API call
+# with the shared credentials. An unset username falls back to OpenCode's
+# default 'opencode' on both sides.
+export OPENCODE_HOST="${OPENCODE_ORIGIN}:${OPENCODE_PORT}"
+export OPENCODE_SKIP_START="true"
+export OPENCODE_SERVER_PASSWORD="${OPENCODE_PASSWORD}"
+if bashio::var.has_value "${OPENCODE_USERNAME}"; then
+    export OPENCODE_SERVER_USERNAME="${OPENCODE_USERNAME}"
+fi
+
+export OPENCHAMBER_DATA_DIR="/data/.config/openchamber"
+export OPENCHAMBER_HOST="127.0.0.1"
+export OPENCHAMBER_SKIP_API_COMPRESSION=true
+export OPENCHAMBER_COMPRESS_API=false
+# Neutralize OpenChamber's built-in self-update. OpenChamber is pinned and
+# Ingress-patched at image build time, so an in-place upgrade cannot persist or
+# stay patched and only hangs the UI on "Waiting for server...". Point the
+# update-check API at the canned "no update" endpoint served by the Ingress
+# proxy on 8099, so both the update notification and the update-install action
+# report no update available.
+export OPENCHAMBER_UPDATE_API_URL="http://127.0.0.1:8099/__ha_openchamber_update_check"
+
+mkdir -p "${OPENCHAMBER_DATA_DIR}"
+
+OPENCHAMBER_INTERNAL_PORT=3010
+OPENCHAMBER_BIN="/usr/local/bin/openchamber"
+
+bashio::log.info "=============================================="
+bashio::log.info "  OpenChamber server (attaching to ${OPENCODE_HOST})"
+bashio::log.info "=============================================="
+
+cd /data
+
+# This must stay the service's direct child. The proxies are separately
+# supervised, so s6 can reliably stop the server without a shell coordinator
+# leaving an orphan behind.
+exec "${OPENCHAMBER_BIN}" serve \
+    --foreground \
+    --port "${OPENCHAMBER_INTERNAL_PORT}" \
+    --host 127.0.0.1

@@ -1,0 +1,39 @@
+---
+# Field order here is cosmetic — the Home Assistant Configuration tab renders
+# fields in the order of the schema block in config.yaml. This file is kept in
+# that same order so the two stay easy to diff.
+#
+# House style for these strings:
+#   - Sentence case labels; no "Enable" prefix (a toggle already means that).
+#   - The subject is always "OpenChamber", never "the UI" or "the web app".
+#   - State a dependency in the first sentence, naming the option it depends on.
+#   - Two sentences where possible, three at most.
+#   - No restart instructions (every option needs one) and no changelog voice.
+configuration:
+  opencode_host:
+    name: OpenCode server address
+    description: >-
+      Where to reach the OpenCode add-on's LAN server, scheme included, without
+      a port — for example http://192.168.1.50. Leave empty to auto-discover
+      the Docker host gateway, which works on single-host installs.
+  opencode_port:
+    name: OpenCode server port
+    description: >-
+      Host port the OpenCode add-on's 4096/tcp is mapped to. OpenChamber shows
+      no conversations until this port answers.
+  opencode_username:
+    name: OpenCode server username
+    description: >-
+      Basic-auth username the OpenCode server expects. Leave empty to use
+      'opencode', the OpenCode server's default username.
+  opencode_password:
+    name: OpenCode server password
+    description: >-
+      Basic-auth password shared with the OpenCode add-on's 'LAN server
+      password' option. OpenChamber cannot attach without it; a
+      !secret <key> value works too. The same credentials protect the mapped
+      4097/tcp web UI port.
+network:
+  4097/TCP: >-
+    OpenChamber web UI with basic auth, for reverse proxies and tunnels.
+    Ingress needs no port mapping.

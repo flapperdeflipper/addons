@@ -1,0 +1,17 @@
+---
+# Release CI reads the pins below; the canonical devcontainer build helper
+# passes every entry under args. Keep every value aligned with its Dockerfile
+# ARG default. Home Assistant itself does not read this file because
+# config.yaml sets `image:`. See RELEASING.md in the repository root.
+build_from:
+  aarch64: ghcr.io/home-assistant/base-debian:trixie
+  amd64: ghcr.io/home-assistant/base-debian:trixie
+args:
+  NODE_VERSION: "24.15.0"
+  # Must match the exact pinned version in the Dockerfile.
+  OPENCHAMBER_VERSION: "1.21.0"
+labels:
+  org.opencontainers.image.title: "OpenChamber"
+  org.opencontainers.image.description: "Browser UI for OpenCode conversations"
+  org.opencontainers.image.source: "https://github.com/flapperdeflipper/addons"
+  org.opencontainers.image.licenses: "MIT"
