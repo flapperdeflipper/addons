@@ -1,5 +1,12 @@
-# Changelog
-All notable changes to this project will be documented in this file.
+## 2.14.0
+
+- **OpenChamber moved to its own add-on** — the web UI now ships as `ha_openchamber` (own image, own Ingress panel, own `/data`), attaching to this add-on's LAN server in external-server mode instead of spawning OpenCode. This add-on loses the `interface_mode` and `enable_openchamber_lan` options, the `4097/tcp` port, the OpenChamber s6 services and Ingress patch, and ~123 MB of image (`@openchamber/web`, bzip2, g++/make build tools). The init service logs a one-time pointer when it finds a non-terminal legacy configuration; old OpenChamber application settings under `/data/.config/openchamber` are left in place. Ingress now always serves the ttyd terminal.
+- **Basic authentication on the LAN server** — new `server_username`/`server_password` options feed OpenCode's own `OPENCODE_SERVER_USERNAME`/`OPENCODE_SERVER_PASSWORD` on `4096/tcp`, scoped to the LAN server service only (the TUI keeps its loopback server untouched). The service fails closed: with the LAN server enabled and no password set it idles with an error instead of listening unauthenticated. `opencode attach` callers pass the credentials in the URL (`http://user@host:port`); use a pair shared nowhere else, since basic auth travels as base64 on every request — the same pair protects the OpenChamber add-on's mapped `4097/tcp` UI port. Regression tests updated in `test/runtime-contract.test.js`; the OpenChamber proxy and s6 coverage moved to the new add-on.
+
+## 2.13.0
+
+- **Toolchain bumps** — opencode-ai 1.18.31 (was 1.18.25), @openchamber/web 1.24.1 (was 1.21.0), ppq-private-mode 0.6.0 (was 0.1.0), tsx 4.23.13 (was 4.20.6), yq v4.53.6 (was v4.53.3), 1Password CLI 2.39.0 (was 2.30.3), Node runtime 24.21.0 (was 24.15.0). ttyd 1.7.7, cosign v3.1.3, hactl 2026.9.0 and hab 1.6.4 are already the latest releases and stay pinned. build.yaml kept in sync; the runtime-contract tests assert the pins match.
+- **`/homeassistant/bin` on PATH** — image-level `ENV PATH` prepends the HA config dir's bin (mounted at runtime; `hasecret` and friends), so shells and agents resolve them without full paths.
 
 ## 2.13.0
 

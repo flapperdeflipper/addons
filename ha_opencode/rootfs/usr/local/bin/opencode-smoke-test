@@ -174,47 +174,6 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-section "OpenChamber (Ingress-patched)"
-# ---------------------------------------------------------------------------
-OPENCHAMBER_DIST="$(unset NPM_CONFIG_PREFIX npm_config_prefix; npm root -g 2>/dev/null)/@openchamber/web/dist"
-if [ ! -f "${OPENCHAMBER_DIST}/index.html" ]; then
-    fail "OpenChamber bundle is installed" "no index.html under ${OPENCHAMBER_DIST}"
-else
-    pass "OpenChamber bundle is installed"
-    if grep -q "data-ha-ingress-runtime" "${OPENCHAMBER_DIST}/index.html"; then
-        pass "OpenChamber index.html carries the Ingress runtime patch"
-    else
-        fail "OpenChamber index.html carries the Ingress runtime patch" \
-             "the build-time patch did not apply"
-    fi
-    if grep -Fq 'if (upstreamPath.split("?", 1)[0] === "/__openchamber_ingress_runtime.js") {' /usr/local/bin/openchamber-ingress-proxy.js; then
-        pass "OpenChamber Ingress runtime shim is served by the proxy"
-    else
-        fail "OpenChamber Ingress runtime shim is served by the proxy"
-    fi
-fi
-
-if [ -x /usr/local/bin/openchamber ]; then
-    if timeout 30 /usr/local/bin/openchamber serve --help >/dev/null 2>&1; then
-        pass "openchamber serve launches"
-    else
-        fail "openchamber serve launches" "'openchamber serve --help' failed"
-    fi
-else
-    fail "openchamber launcher is executable"
-fi
-
-if [ -f /usr/local/bin/openchamber-ingress-proxy.js ]; then
-    if node --check /usr/local/bin/openchamber-ingress-proxy.js >/dev/null 2>&1; then
-        pass "Ingress proxy parses"
-    else
-        fail "Ingress proxy parses"
-    fi
-else
-    fail "Ingress proxy is present"
-fi
-
-# ---------------------------------------------------------------------------
 section "Skills, agents and the read-only session"
 # ---------------------------------------------------------------------------
 SKILL_COUNT=$(find /data/.config/opencode/skills -name SKILL.md 2>/dev/null | wc -l)

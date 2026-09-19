@@ -10,10 +10,6 @@
 #   - Two sentences where possible, three at most.
 #   - No restart instructions (every option needs one) and no changelog voice.
 configuration:
-  interface_mode:
-    name: "Interface mode"
-    description: "Which interface OpenCode shows in the Home Assistant sidebar. 'terminal' is the classic ttyd terminal; 'openchamber' serves the OpenChamber web UI through Home Assistant Ingress."
-
   terminal_theme:
     name: "Terminal theme"
     description: "Color scheme for the terminal. All ten themes are previewed in the Documentation tab. Applies to the terminal interface only."
@@ -90,6 +86,14 @@ configuration:
     name: "LAN server CORS origins"
     description: "Applies only when the LAN server above is on, and only to browser-based clients such as a web or VS Code UI — 'opencode attach' does not need it. Each entry is an exact origin: scheme, host, and port, with no path, for example 'http://192.168.1.20:8080'. Without a matching entry a browser client may list providers and models but never receive replies."
 
+  server_username:
+    name: "LAN server username"
+    description: "Basic-auth username the LAN server demands. Leave empty to use 'opencode', the OpenCode server's default; set the same value in any client, including the OpenChamber add-on."
+
+  server_password:
+    name: "LAN server password"
+    description: "Basic-auth password for the LAN server. Required before the LAN server will start; a !secret <key> value works too. Use credentials you share nowhere else — basic auth sends them on every request."
+
   ppq_private_enabled:
     name: "PPQ private TEE models (beta)"
     description: "Requires the PPQ API key below. Starts an internal PPQ private-mode encryption proxy and adds it to OpenCode as a provider for TEE-backed models; the proxy binds to 127.0.0.1 inside the container and is not reachable from your network."
@@ -110,9 +114,6 @@ configuration:
     name: "Serial devices"
     description: "Host serial/UART devices to map into the add-on, for work that needs direct serial access such as local USB flashing or adapter inspection. Nothing is mapped unless you add a device here, for example /dev/ttyUSB0 or a /dev/serial/by-id/... path."
 
-  enable_openchamber_lan:
-    name: "OpenChamber LAN web UI"
-    description: "Publish the OpenChamber web UI on internal port 4097 so a reverse proxy or tunnel can point straight at the root path. Only works when Interface mode is 'openchamber'. To reach it, also map 4097/tcp in the Network settings. There is no Home Assistant login in front of this port, so only use it on trusted networks and put it behind a reverse proxy or Cloudflare Access before any remote exposure."
 
   env_vars:
     name: "Environment variables"
