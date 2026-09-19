@@ -19,6 +19,12 @@ ARG NODE_VERSION
 # value and is what CI reads.
 ARG OPENCHAMBER_VERSION=1.24.1
 
+# Pinned OpenCode CLI, the same certified pin as the OpenCode add-on
+# (ha_opencode/build.yaml). OpenChamber's server resolves an `opencode` binary
+# at startup even in external-server mode (OPENCODE_SKIP_START), so the image
+# ships the real CLI on PATH instead of relying on workarounds.
+ARG OPENCODE_VERSION=1.18.31
+
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
     npm_config_update_notifier=false \
@@ -38,6 +44,8 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - ca-certificates/curl: Supervisor health check and the OpenCode server probe
 # - bzip2: Required by system tar to extract OpenChamber voice models
 # - libatomic1: runtime library expected by the Node toolchain on this base
+# - git: the sessions UI shells out to the git binary via simple-git for
+#   branch/worktree info of the OpenCode workspace
 # - g++/make: native fallback builds for OpenChamber dependencies on all
 #   arches; installed only while npm installs and purged right after
 RUN apt-get update \
@@ -46,6 +54,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         g++ \
+        git \
         libatomic1 \
         make \
     && rm -rf /var/lib/apt/lists/*
@@ -55,6 +64,7 @@ RUN apt-get update \
 # is recorded on disk for runtime reference.
 RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
         @openchamber/web@${OPENCHAMBER_VERSION} \
+        opencode-ai@${OPENCODE_VERSION} \
     && npm cache clean --force \
     && apt-get purge -y --auto-remove g++ make \
     && INSTALLED=$(node -e "console.log(require('/usr/local/lib/node_modules/@openchamber/web/package.json').version)") \
@@ -62,9 +72,23 @@ RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
         echo "OPENCHAMBER_VERSION is ${OPENCHAMBER_VERSION} but the installed package is ${INSTALLED}" >&2; \
         exit 1; \
     fi \
+    && OPENCODE_INSTALLED=$(node -e "console.log(require('/usr/local/lib/node_modules/opencode-ai/package.json').version)") \
+    && if [ "${OPENCODE_INSTALLED}" != "${OPENCODE_VERSION}" ]; then \
+        echo "OPENCODE_VERSION is ${OPENCODE_VERSION} but the installed CLI is ${OPENCODE_INSTALLED}" >&2; \
+        exit 1; \
+    fi \
+    && OPENCODE_ARCH=$([ "${BUILD_ARCH}" = "aarch64" ] && echo "arm64" || echo "x64") \
+    && if [ "${OPENCODE_ARCH}" = "arm64" ]; then \
+        find /usr/local/lib/node_modules/opencode-ai/node_modules -mindepth 1 -maxdepth 1 -type d \
+            ! -name "opencode-linux-arm64" -exec rm -rf {} +; \
+    else \
+        find /usr/local/lib/node_modules/opencode-ai/node_modules -mindepth 1 -maxdepth 1 -type d \
+            ! -name "opencode-linux-x64" ! -name "opencode-linux-x64-baseline" -exec rm -rf {} +; \
+    fi \
     && find /usr/local/lib/node_modules -type f \( -name '*.d.ts' -o -name '*.map' -o -name '*.pdb' \) -delete \
     && printf '%s\n' "${OPENCHAMBER_VERSION}" > /usr/local/share/openchamber-pinned-version \
-    && test "$(openchamber --version 2>/dev/null | grep -o "${OPENCHAMBER_VERSION}")" = "${OPENCHAMBER_VERSION}"
+    && test "$(openchamber --version 2>/dev/null | grep -o "${OPENCHAMBER_VERSION}")" = "${OPENCHAMBER_VERSION}" \
+    && test "$(opencode --version)" = "${OPENCODE_VERSION}"
 
 # Copy root filesystem (ingress proxy, s6 service definitions)
 COPY rootfs /
