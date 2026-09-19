@@ -146,8 +146,15 @@ RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
     && test "$(openchamber --version 2>/dev/null | grep -o "${OPENCHAMBER_VERSION}")" = "${OPENCHAMBER_VERSION}" \
     && test "$(opencode --version)" = "${OPENCODE_VERSION}"
 
-# Copy root filesystem (ingress proxy, s6 service definitions)
+# Copy root filesystem (ingress proxy, agent MCP server, s6 service definitions)
 COPY rootfs /
+
+# Agent MCP server dependencies, installed from the checked-in package.json so
+# the pin lives in version control (bump with version: in config.yaml). The
+# server lives inside this prefix: ESM imports do not use NODE_PATH, so
+# /opt/openchamber-mcp/server.mjs resolves the SDK from its sibling node_modules.
+RUN npm install --prefix /opt/openchamber-mcp --omit=dev --no-audit --no-fund \
+    && npm cache clean --force
 
 # OpenChamber is a generic root-hosted web app. Patch the pinned bundle so its
 # static assets and runtime API URLs resolve under Home Assistant's Ingress path.

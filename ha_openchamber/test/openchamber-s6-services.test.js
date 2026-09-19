@@ -27,13 +27,14 @@ function servicePath(...parts) {
 
 describe("OpenChamber s6 service ownership", () => {
   {
-    it(`ha_openchamber directly supervises all three services`, () => {
+    it(`ha_openchamber directly supervises all four services`, () => {
       const server = read(servicePath("ha-openchamber", "run"));
       const ingress = read(servicePath("ha-openchamber-ingress", "run"));
       const lan = read(servicePath("ha-openchamber-lan", "run"));
+      const mcp = read(servicePath("ha-openchamber-mcp", "run"));
       const dockerfile = read(path.join(ADDON_ROOT, "Dockerfile"));
 
-      for (const service of ["ha-openchamber", "ha-openchamber-ingress", "ha-openchamber-lan"]) {
+      for (const service of ["ha-openchamber", "ha-openchamber-ingress", "ha-openchamber-lan", "ha-openchamber-mcp"]) {
         assert.equal(read(servicePath(service, "type")), "longrun\n");
         assert.equal(
           fs.existsSync(servicePath("user", "contents.d", service)),
@@ -68,9 +69,28 @@ describe("OpenChamber s6 service ownership", () => {
       assert.doesNotMatch(lan, /OPENCHAMBER_BASIC_USER|OPENCHAMBER_BASIC_PASSWORD/);
       assert.doesNotMatch(lan, /OPENCHAMBER_ALLOW_ANY_REMOTE/);
 
+      // The agent MCP service idles when disabled, refuses to serve without
+      // a token, proxies only the loopback REST API, and never fails the
+      // container.
+      assert.match(mcp, /exec node \/opt\/openchamber-mcp\/server\.mjs/);
+      assert.match(mcp, /bashio::config 'mcp_enabled'/);
+      assert.match(mcp, /bashio::config 'mcp_token'/);
+      assert.match(mcp, /export OPENCHAMBER_URL="http:\/\/127\.0\.0\.1:3010"/);
+      assert.match(mcp, /export MCP_PORT=4100/);
+      assert.doesNotMatch(mcp, /^.*\s&\s*(?:#.*)?$/m);
+
+      assert.equal(
+        fs.existsSync(servicePath("ha-openchamber-mcp", "dependencies.d", "ha-openchamber")),
+        true,
+      );
+
       assert.match(
         dockerfile,
         /chmod \+x \/etc\/s6-overlay\/s6-rc\.d\/ha-openchamber-ingress\/run/,
+      );
+      assert.match(
+        dockerfile,
+        /npm install --prefix \/opt\/openchamber-mcp/,
       );
     });
 
