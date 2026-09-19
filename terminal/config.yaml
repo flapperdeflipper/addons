@@ -3,6 +3,7 @@ name: "Terminal"
 description: "A familiar bash and vim environment with your dotfiles and toolset, through Home Assistant Ingress"
 version: "1.0.1"
 slug: "terminal"
+image: "flapperdeflipper/addon-terminal"
 url: "https://github.com/flapperdeflipper/addons"
 arch:
   - aarch64
