@@ -1,3 +1,11 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+## 1.3.0
+
+- **Changed** — the toolchain layers (exact Node runtime, certified OpenCode CLI, unix toolset) moved to the shared [`agent-base`](https://github.com/flapperdeflipper/agent-base) image, shared with the OpenCode and Terminal add-ons; the add-on Dockerfile now layers only the OpenChamber bundle, ingress patch and s6 services on `ghcr.io/flapperdeflipper/agent-base`.
+- **Removed** — the apt layer (including the temporary g++/make install/purge dance — the base ships the build toolchain permanently).
+
 ## 1.2.1
 
 - **MCP token: `!secret <key>` resolves at start, never at save** — the add-on options form turns a typed `!secret` value into plaintext on save (the Supervisor resolves before storing), which both leaks the secret into options and leaves a quoted literal that never authenticates. The MCP service now normalizes the `mcp_token` option itself at start: surrounding quotes are stripped, a `!secret <key>` reference is resolved from `/homeassistant/secrets.yaml` (python3+PyYAML, litellm add-on convention), and anything else is used as the literal token. Only the key name is ever logged; an unresolvable reference idles the service with an actionable error instead of serving with a broken token.
@@ -25,9 +33,6 @@
 ## 1.1.1
 
 - **Ships the real OpenCode CLI on PATH** — upstream's server resolves an `opencode` binary at startup even in external-server mode (`OPENCODE_SKIP_START`), so every boot crashed with `Unable to locate the opencode CLI on PATH` and s6 restarted the add-on forever: nothing image-less can satisfy that lookup. The Dockerfile now installs the same certified `opencode-ai` 1.18.31 pin as the OpenCode add-on (build-time version assertion, non-matching platform binaries trimmed, `opencode --version` asserted), so the binary upstream wants is genuinely on PATH. It is still never spawned: all API calls keep proxying to the OpenCode add-on's LAN server.
-
-# Changelog
-All notable changes to this project will be documented in this file.
 
 ## 1.1.0
 

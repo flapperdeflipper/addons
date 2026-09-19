@@ -3,16 +3,17 @@
 # passes every entry under args. Keep every value aligned with its Dockerfile
 # ARG default. Home Assistant itself does not read this file because
 # config.yaml sets `image:`. See RELEASING.md in the repository root.
+#
+# The toolchain layers (node, certified OpenCode CLI, unix toolset) live in
+# flapperdeflipper/agent-base; releases of that repository open the AGENT_BASE
+# bump as a pull request here automatically.
 build_from:
-  aarch64: ghcr.io/home-assistant/base-debian:trixie
-  amd64: ghcr.io/home-assistant/base-debian:trixie
+  aarch64: ghcr.io/flapperdeflipper/agent-base:1.0.0
+  amd64: ghcr.io/flapperdeflipper/agent-base:1.0.0
 args:
-  NODE_VERSION: "24.21.0"
+  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.0.0"
   # Must match the exact pinned version in the Dockerfile.
   OPENCHAMBER_VERSION: "1.24.1"
-  # Must match the exact pinned version in the Dockerfile and the certified
-  # runtime in ha_opencode/build.yaml.
-  OPENCODE_VERSION: "1.18.31"
 labels:
   org.opencontainers.image.title: "OpenChamber"
   org.opencontainers.image.description: "Browser UI for OpenCode conversations"
