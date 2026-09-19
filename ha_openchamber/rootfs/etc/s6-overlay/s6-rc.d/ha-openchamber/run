@@ -113,7 +113,9 @@ bashio::log.info "=============================================="
 bashio::log.info "  OpenChamber server (attaching to ${OPENCODE_HOST})"
 bashio::log.info "=============================================="
 
-cd /data
+# Match the OpenCode add-on's working directory (the HA config mount) so
+# workspace-relative paths behave exactly as they did before the split.
+cd /homeassistant
 
 # This must stay the service's direct child. The proxies are separately
 # supervised, so s6 can reliably stop the server without a shell coordinator

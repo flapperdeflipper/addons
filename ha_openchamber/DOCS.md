@@ -72,9 +72,11 @@ location / {
   credential comparison). Use unique credentials for this purpose — they travel
   as base64 on every request, so serve the port over TLS (e.g. through your
   reverse proxy) whenever it leaves a trusted network.
-- The add-on holds no Supervisor or Home Assistant API access and mounts no
-  configuration directories; its only privilege is the outbound connection to
-  the OpenCode server.
+- The add-on holds no Supervisor or Home Assistant API access — its only
+  network privilege is the outbound connection to the OpenCode server. It
+  mounts the same directories as the OpenCode add-on (`/homeassistant`,
+  `/local_apps`, `/addon_configs`, `/share`, read-write) so workspace paths
+  behave identically in both containers.
 
 ## Troubleshooting
 

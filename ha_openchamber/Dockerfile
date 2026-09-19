@@ -81,8 +81,8 @@ RUN chmod +x /usr/local/bin/* \
     && chmod +x /etc/s6-overlay/s6-rc.d/ha-openchamber-lan/run \
     && mkdir -p /data/.config/openchamber /data/.local/share
 
-# OpenChamber stores its own settings under /data
-WORKDIR /data
+# Working directory matches the OpenCode add-on (mounted at runtime)
+WORKDIR /homeassistant
 
 # Health check - the Ingress proxy answers on loopback (allowlisted) once the
 # OpenChamber server is up; a failure means the add-on is genuinely not serving.
