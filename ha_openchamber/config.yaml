@@ -23,11 +23,24 @@ ports_description:
   4097/tcp: "OpenChamber web UI with basic auth — for reverse proxies and tunnels; Ingress needs no port"
 
 # OpenChamber talks to the OpenCode add-on's LAN server over HTTP and holds no
-# Home Assistant API access of its own.
+# Home Assistant API access of its own. Directory mounts mirror the OpenCode
+# add-on's so workspace paths behave identically in both containers.
 hassio_api: false
 homeassistant_api: false
 host_network: false
 privileged: []
+
+# File access - same mounts as the OpenCode add-on
+map:
+  - type: homeassistant_config
+    read_only: false
+  - type: local_apps
+    read_only: false
+  - type: all_app_configs
+    read_only: false
+    path: /addon_configs
+  - type: share
+    read_only: false
 
 # The Configuration tab renders one flat list in schema key order; the grouping
 # below is presentation only.
