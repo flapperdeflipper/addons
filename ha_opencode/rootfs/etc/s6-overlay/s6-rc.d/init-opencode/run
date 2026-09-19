@@ -1065,6 +1065,16 @@ if [ -n "${MERGE_LOG}" ]; then
     done <<< "${MERGE_LOG}"
 fi
 
+# Point OpenCode at the assembled custom config. opencode reads
+# opencode.json / opencode.jsonc from the config directory on its own;
+# config.json (the opencode_config option merged with the configuration-folder
+# drop-ins) is loaded solely through OPENCODE_CONFIG. Without this export the
+# server and every session run on the generated MCP/LSP config alone: custom
+# providers vanish from the model picker and OpenChamber cannot resolve a
+# runtime credential for them, so small-model actions fail even though the
+# option and the drop-ins were assembled correctly.
+printf 'export OPENCODE_CONFIG=%q\n' "${CONFIG_TARGET}" >> "${ENV_VARS_FILE}"
+
 # ==============================================================================
 # User startup hooks (opt-in)
 #
