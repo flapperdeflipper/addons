@@ -100,8 +100,8 @@ function renderLayout(layout, availableBytes = Infinity) {
 
   if (layout.automations) {
     const managed = layout.automations.uiManaged
-      ? " — UI-managed: the Automations editor owns this file and rewrites it on save, so hand-edits must keep every existing entry and its `id`"
-      : " — hand-written (no UI `id` keys)";
+      ? " — appears UI-managed: the editor rewrites this file on save, so hand-edits must keep every entry and its `id`"
+      : " — hand-written (no or few UI `id` keys)";
     bullets.push(`- \`automations.yaml\`: ${plural(layout.automations.count, "entry", "entries")}${managed}`);
   }
 

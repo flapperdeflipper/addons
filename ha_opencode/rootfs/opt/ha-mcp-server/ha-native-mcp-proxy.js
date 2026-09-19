@@ -21,7 +21,11 @@ const API_ID = normalizeNativeMcpApiId(
 const ENDPOINT_MODE = normalizeNativeMcpEndpointMode(
   process.env.HA_NATIVE_MCP_ENDPOINT_MODE ?? DEFAULT_NATIVE_MCP_ENDPOINT_MODE
 );
-const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.HA_NATIVE_MCP_TIMEOUT_MS || "60000", 10);
+const REQUEST_TIMEOUT_MS = (() => {
+  const parsed = Number.parseInt(process.env.HA_NATIVE_MCP_TIMEOUT_MS || "60000", 10);
+  // 0 or NaN would arm AbortSignal.timeout immediately — every request dies.
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+})();
 // Repairs Home Assistant <= 2026.7 tool schemas that strict MCP clients cannot
 // compile. Set to 0 to see the raw upstream schemas.
 const SANITIZE_SCHEMAS = process.env.HA_NATIVE_MCP_SANITIZE_SCHEMAS !== "0";
@@ -76,6 +80,13 @@ log("info", "Home Assistant native MCP stdio proxy started", {
 
 let queue = Promise.resolve();
 let loggedSchemaRepair = false;
+
+// A client disconnect mid-write must not crash the proxy with EPIPE.
+// Attached once at module scope; adding it per write would leak listeners.
+process.stdout.on("error", (error) => {
+  if (error?.code === "EPIPE") process.exit(0);
+  throw error;
+});
 
 function write(payload) {
   process.stdout.write(`${JSON.stringify(payload)}\n`);

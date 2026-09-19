@@ -81,7 +81,6 @@ import {
   createJsonTextContent,
   createTextContent,
   createImageContent,
-  createResourceLink,
   truncateLines,
   truncateText,
   redactToolArgsForLog,
@@ -185,6 +184,8 @@ const HA_NATIVE_MCP_API_ID = normalizeNativeMcpApiId(
   process.env.HA_NATIVE_MCP_API_ID ?? NATIVE_MCP_ASSIST_API_ID,
   { allowBaseEndpoint: true }
 );
+const SEVERITY_WEIGHT = Object.freeze({ error: 3, warning: 2, info: 1 });
+
 const MCP_TOOL_PROFILE = normalizeToolProfile(process.env.OPENCODE_MCP_TOOL_PROFILE, {
   // Fail closed: an unset profile defaults to full (documented behaviour), but
   // a typo must not silently widen the tool surface.
@@ -1325,37 +1326,6 @@ async function streamESPHomeLogs(baseUrl, endpoint, params, onLine = null, timeo
   });
 }
 
-/**
- * Get list of ESPHome devices via REST API
- * @param {string} esphomeUrl - ESPHome dashboard URL (Supervisor ingress URL)
- * @param {string|null} ingressSession - Ingress session token for the Supervisor proxy
- */
-async function getESPHomeDevices(esphomeUrl, ingressSession = null) {
-  const headers = {};
-  if (ingressSession) {
-    headers["Cookie"] = `ingress_session=${ingressSession}`;
-  }
-  // When routing through HA Core's ingress proxy, the Bearer token is
-  // required for HA Core auth; the cookie is for the Supervisor's ingress.
-  if (HA_ACCESS_TOKEN) {
-    headers["Authorization"] = `Bearer ${HA_ACCESS_TOKEN}`;
-  }
-  const url = `${esphomeUrl}/devices`;
-  sendLog("debug", "esphome", { action: "get_devices", url, hasSession: !!ingressSession, hasToken: !!HA_ACCESS_TOKEN });
-  const response = await fetch(url, { headers, signal: AbortSignal.timeout(API_TIMEOUT_MS) });
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      invalidateESPHomeCache();
-    }
-    let body = "";
-    try { body = await response.text(); } catch (_) {}
-    const detail = `HTTP ${response.status} from ${url}` +
-      (body ? `\nResponse body: ${body.slice(0, 500)}` : "") +
-      `\nHeaders sent: Cookie=${ingressSession ? "ingress_session=<set>" : "<none>"}, Authorization=${HA_ACCESS_TOKEN ? "Bearer <set>" : "<none>"}`;
-    throw new Error(`Failed to get ESPHome devices: ${detail}`);
-  }
-  return await response.json();
-}
 
 // ============================================================================
 // COMMON SCHEMAS FOR STRUCTURED OUTPUT
@@ -2322,7 +2292,7 @@ function setValidationMemo(key, data) {
  * This is a lightweight structural check, not a full schema validation.
  */
 // validateYamlStructure, resolveConfigPath imported from ./lib/validation.js
-// createTextContent, createResourceLink imported from ./lib/helpers.js
+// createTextContent imported from ./lib/helpers.js
 
 // ============================================================================
 // DECISION NOTES STORAGE
@@ -4984,7 +4954,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const anomalies = states
           .map(detectAnomaly)
           .filter(Boolean)
-          .sort((a, b) => (b.severity === "warning" ? 1 : 0) - (a.severity === "warning" ? 1 : 0));
+          .sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]);
         
         if (anomalies.length === 0) {
           return makeCompatibleResponse({

@@ -110,6 +110,14 @@ export function summarizeTraceDetail(
     }
   }
 
+  // The trace is executed chronologically (trigger fires, then actions run);
+  // presenting it path-alphabetically puts actions before their trigger.
+  const executedAt = (node) => {
+    const parsed = node.timestamp ? Date.parse(node.timestamp) : NaN;
+    return Number.isNaN(parsed) ? Infinity : parsed;
+  };
+  timeline.sort((a, b) => executedAt(a) - executedAt(b));
+
   const truncated = timeline.length > maxNodes;
   const summary = {
     entity_id: `${raw?.domain}.${raw?.item_id}`,
