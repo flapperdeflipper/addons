@@ -126,6 +126,9 @@ describe(`${CHANNEL} config drop-ins`, () => {
     assert.match(runScript, /OPENCODE_DROPIN_DIR="\/config"/);
     // The merger exits 0 by contract; the init must not swallow its errors.
     assert.match(runScript, /ERROR:\*\).*bashio::log\.error/);
+    // The assembled config.json is only loaded through the env var.
+    assert.match(runScript, /export OPENCODE_CONFIG=%q/);
+    assert.match(runScript, /"\$\{CONFIG_TARGET\}" >> "\$\{ENV_VARS_FILE\}"/);
   });
 
   it("requests the standardized add-on config folder the drop-ins live in", () => {
