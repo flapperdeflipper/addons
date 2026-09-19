@@ -10,6 +10,9 @@ args:
   NODE_VERSION: "24.21.0"
   # Must match the exact pinned version in the Dockerfile.
   OPENCHAMBER_VERSION: "1.24.1"
+  # Must match the exact pinned version in the Dockerfile and the certified
+  # runtime in ha_opencode/build.yaml.
+  OPENCODE_VERSION: "1.18.31"
 labels:
   org.opencontainers.image.title: "OpenChamber"
   org.opencontainers.image.description: "Browser UI for OpenCode conversations"
