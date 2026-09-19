@@ -175,19 +175,18 @@ for (const filePath of jsFiles) {
     patchedVitePreloadBaseUrl = true;
   }
 
-  content = content.replace(/(["'`])\/assets\//g, "$1assets/");
-
+  // NOTE: the JS asset bodies are intentionally left byte-identical to the
+  // upstream bundle. An earlier release rewrote "/assets/..." literals to
+  // relative "assets/..." here; that only works under Ingress (where the
+  // document base carries the ingress path). On a root-hosted domain — e.g.
+  // straight nginx -> LAN port — a chunk-relative URL inside /assets/ resolves
+  // to /assets/assets/... and 404s, which broke the terminal surface's
+  // new URL("/assets/ghostty-vt.wasm", import.meta.url) (font likewise). The
+  // runtime ingress proxy re-adds the ingress prefix per request when one is
+  // present, so no build-time rewrite is needed.
   if (content !== original) {
     fs.writeFileSync(filePath, content);
   }
-}
-
-const rootAssetReferences = jsFiles.flatMap((filePath) => {
-  const content = fs.readFileSync(filePath, "utf8");
-  return /["'`]\/assets\//.test(content) ? [path.basename(filePath)] : [];
-});
-if (rootAssetReferences.length > 0) {
-  fail(`root asset references remain in JS: ${rootAssetReferences.join(", ")}`);
 }
 
 const rootVitePreloadHelpers = jsFiles.flatMap((filePath) => {
