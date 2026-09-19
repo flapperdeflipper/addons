@@ -1,3 +1,7 @@
+## 2.16.0
+
+- **File-based config drop-ins: `/homeassistant/opencode.d/*.json`** — an alternative to escaping a whole JSON document into the **Custom OpenCode configuration** text field, where one broken character silently discards the entire config with only a boot-log error as a trace. Every `*.json` in the new directory must be a JSON object; files deep-merge in alphabetical filename order over the option's configuration (a drop-in wins over the option, a later file over an earlier one), an unparseable file is skipped with a named error while the rest still apply, and the assembled `config.json` is written atomically so a failed merge can never truncate the previous one. The merge lives in `usr/local/lib/opencode/merge-config-dropins` so `test/config-dropins.test.js` can execute it against a sandbox; the `opencode_config` option itself is unchanged and still works underneath the drop-ins.
+
 ## 2.15.0
 
 - **Automation/script traces migrated into the MCP server** — new read-only tools `list_automation_traces` (newest runs first with state, `script_execution` outcome, last step, trigger, `run_id`; `errored_only` flag for a failing-run sweep) and `get_automation_trace` (bounded step-by-step timeline from HA's `trace/get` WebSocket API: trigger/condition/action paths, results, the error at the failing step, optional clipped config). Both are included in the compact tool profile. Verified live against HA 2026.9.2.
