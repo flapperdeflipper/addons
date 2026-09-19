@@ -125,3 +125,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local lockfile regeneration (vitest et al.) never ships
+node_modules/

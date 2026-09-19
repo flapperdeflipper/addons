@@ -1,3 +1,7 @@
+## 2.14.2
+
+- **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
+
 ## 2.14.1
 
 - **Crash fix: `INTERFACE_MODE: unbound variable`** — the 2.14.0 split removed the `interface_mode` option but left `${INTERFACE_MODE}` referenced in the init service's configuration log line; with `nounset` that aborted the init oneshot and stopped the container on every boot. The stale reference is gone.
