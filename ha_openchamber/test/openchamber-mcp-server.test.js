@@ -146,6 +146,27 @@ describe("openchamber MCP server: tools", () => {
   });
 });
 
+describe("openchamber MCP server: standalone GET must not open an SSE stream", () => {
+  it("answers GET /mcp with 405 before any transport dispatch", async () => {
+    const fs = require("node:fs");
+    const source = fs.readFileSync(
+      path.join(__dirname, "..", "rootfs", "opt", "openchamber-mcp", "server.mjs"),
+      "utf8",
+    );
+    // Regression guard for Node SDK clients deadlocking on the stateless
+    // transport's empty SSE stream (fixed in 1.3.1): the 405 short-circuit
+    // must run after auth and before the serialized dispatch chain.
+    const authIndex = source.indexOf("tokenMatches(bearerFrom(req.headers), token)");
+    // The /health GET handler matches "GET" too; the bare if is unique to the 405 block.
+    const getIndex = source.lastIndexOf('if (req.method === "GET")');
+    const chainIndex = source.indexOf("chain = chain.then(async () => {");
+    assert.ok(authIndex > -1 && getIndex > -1 && chainIndex > -1, "handler wiring incomplete");
+    assert.ok(authIndex < getIndex && getIndex < chainIndex, "GET 405 must sit between auth and dispatch");
+    assert.match(source.slice(getIndex, chainIndex), /405/);
+    assert.match(source.slice(getIndex, chainIndex), /stateless server/);
+  });
+});
+
 describe("openchamber MCP server: package wiring", () => {
   it("the server lives inside the SDK prefix it resolves from", async () => {
     const fs = require("node:fs");
