@@ -177,6 +177,16 @@ lines are not written to MCP logs.
 | `get_calendars` | List Calendars | `readOnly`, `idempotent` |
 | `get_calendar_events` | Get Calendar Events | `readOnly`, `idempotent` |
 
+### To-Do Lists
+| Tool | Title | Annotations |
+|------|-------|-------------|
+| `get_todo_items` | Get To-Do List Items | `readOnly`, `idempotent` |
+| `add_todo_item` | Add To-Do Item | `destructive` |
+| `update_todo_item` | Update To-Do Item | `destructive` |
+| `remove_todo_item` | Remove To-Do Item | `destructive` |
+| `remove_completed_todo_items` | Remove Completed To-Do Items | `destructive` |
+| `move_todo_item` | Move To-Do Item To Another List | `destructive` |
+
 ### Intelligence
 | Tool | Title | Annotations |
 |------|-------|-------------|

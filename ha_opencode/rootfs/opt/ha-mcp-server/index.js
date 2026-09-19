@@ -107,6 +107,7 @@ import {
   pickLatestRunId,
   summarizeTraceDetail,
 } from "./lib/ha-traces.js";
+import { buildMovePlan, findTodoItem, normalizeTodoItems } from "./lib/todo.js";
 import { createSupervisorAppsClient } from "./lib/supervisor-apps.js";
 import {
   ESPHomeDeviceBuilderClient,
@@ -2971,6 +2972,128 @@ const TOOLS = [
     },
   },
   
+  // === TO-DO LISTS ===
+  {
+    name: "get_todo_items",
+    title: "Get To-Do List Items",
+    description: "List the items of a to-do list with their uid, summary, status, due date and description. The uid is the reliable handle for update/remove/move when two items share a summary.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "To-do list entity ID (e.g., 'todo.shopping_list')" },
+      },
+      required: ["entity_id"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "add_todo_item",
+    title: "Add To-Do Item",
+    description: "Add an item to a to-do list. The new item starts as needs_action. due_date, due_datetime and description need list support; Home Assistant raises a clear error when the list lacks it. THIS MODIFIES STATE.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "To-do list entity ID" },
+        item: { type: "string", description: "Summary of the item to add" },
+        due_date: { type: "string", description: "Date the item is due (YYYY-MM-DD)" },
+        due_datetime: { type: "string", description: "Date and time the item is due (RFC 3339)" },
+        description: { type: "string", description: "Longer description than the summary" },
+      },
+      required: ["entity_id", "item"],
+      additionalProperties: false,
+    },
+    annotations: {
+      destructive: true,
+      idempotent: false,
+    },
+  },
+  {
+    name: "update_todo_item",
+    title: "Update To-Do Item",
+    description: "Update an item's summary, status, due date or description. The item is matched by uid or exact summary text (see get_todo_items); at least one change field is required. Use status 'completed' instead of the removed complete_item service.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "To-do list entity ID" },
+        item: { type: "string", description: "Uid or exact summary of the item to update" },
+        rename: { type: "string", description: "New summary for the item" },
+        status: { type: "string", enum: ["needs_action", "completed"], description: "New status for the item" },
+        due_date: { type: "string", description: "New due date (YYYY-MM-DD); null clears it" },
+        due_datetime: { type: "string", description: "New due date-time (RFC 3339); null clears it" },
+        description: { type: "string", description: "New description; null clears it" },
+      },
+      required: ["entity_id", "item"],
+      additionalProperties: false,
+    },
+    annotations: {
+      destructive: true,
+      idempotent: false,
+    },
+  },
+  {
+    name: "remove_todo_item",
+    title: "Remove To-Do Item",
+    description: "Remove one or more items from a to-do list. Each item is matched by uid or exact summary text. THIS MODIFIES STATE.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "To-do list entity ID" },
+        item: {
+          oneOf: [
+            { type: "string", description: "Uid or exact summary of the item to remove" },
+            { type: "array", items: { type: "string" }, description: "Multiple uids or summaries to remove" },
+          ],
+          description: "Item(s) to remove, by uid or exact summary",
+        },
+      },
+      required: ["entity_id", "item"],
+      additionalProperties: false,
+    },
+    annotations: {
+      destructive: true,
+      idempotent: false,
+    },
+  },
+  {
+    name: "remove_completed_todo_items",
+    title: "Remove Completed To-Do Items",
+    description: "Remove every completed item from a to-do list in one call. THIS MODIFIES STATE.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "To-do list entity ID" },
+      },
+      required: ["entity_id"],
+      additionalProperties: false,
+    },
+    annotations: {
+      destructive: true,
+      idempotent: false,
+    },
+  },
+  {
+    name: "move_todo_item",
+    title: "Move To-Do Item To Another List",
+    description: "Move an item to a different to-do list, preserving status, due date and description. The item is matched by uid or exact summary on the source list. Home Assistant has no atomic move, so this is add-then-remove: if the target rejects a field (e.g. no due-date support) the source item is left in place.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "Source to-do list entity ID" },
+        item: { type: "string", description: "Uid or exact summary of the item to move" },
+        target_entity_id: { type: "string", description: "Destination to-do list entity ID" },
+      },
+      required: ["entity_id", "item", "target_entity_id"],
+      additionalProperties: false,
+    },
+    annotations: {
+      destructive: true,
+      idempotent: false,
+    },
+  },
   // === INTELLIGENCE ===
   {
     name: "detect_anomalies",
@@ -4941,6 +5064,103 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         );
         return makeCompatibleResponse({
           content: [createTextContent(JSON.stringify(events, null, 2), { audience: ["assistant"], priority: 0.7 })],
+        });
+      }
+
+      // === TO-DO LISTS ===
+      case "get_todo_items": {
+        const todoResult = await callHAWebSocketCommand("todo/item/list", 5000, { entity_id: args.entity_id });
+        const todoItems = normalizeTodoItems(todoResult?.items);
+        return makeCompatibleResponse({
+          content: [createTextContent(JSON.stringify({
+            entity_id: args.entity_id,
+            count: todoItems.length,
+            items: todoItems,
+          }), { audience: ["assistant"], priority: 0.7 })],
+        });
+      }
+
+      case "add_todo_item": {
+        const payload = { entity_id: args.entity_id, item: args.item };
+        for (const key of ["due_date", "due_datetime", "description"]) {
+          if (args[key] !== undefined) payload[key] = args[key];
+        }
+        sendLog("notice", "ha-todo", { action: "add", entity_id: args.entity_id });
+        await callHA("/services/todo/add_item", "POST", payload);
+        invalidateStatesCache();
+        return makeCompatibleResponse({
+          content: [createTextContent(`Item '${args.item}' added to ${args.entity_id}.`, { audience: ["user"], priority: 0.9 })],
+        });
+      }
+
+      case "update_todo_item": {
+        const payload = { entity_id: args.entity_id, item: args.item };
+        const changes = [];
+        for (const key of ["rename", "status", "due_date", "due_datetime", "description"]) {
+          if (args[key] !== undefined) {
+            payload[key] = args[key];
+            changes.push(key);
+          }
+        }
+        if (changes.length === 0) {
+          throw new Error("update_todo_item needs at least one of: rename, status, due_date, due_datetime, description.");
+        }
+        sendLog("notice", "ha-todo", { action: "update", entity_id: args.entity_id, fields: changes });
+        await callHA("/services/todo/update_item", "POST", payload);
+        invalidateStatesCache();
+        return makeCompatibleResponse({
+          content: [createTextContent(`Updated ${changes.join(", ")} on '${args.item}' in ${args.entity_id}.`, { audience: ["user"], priority: 0.9 })],
+        });
+      }
+
+      case "remove_todo_item": {
+        const removeItems = Array.isArray(args.item) ? args.item : [args.item];
+        sendLog("notice", "ha-todo", { action: "remove", entity_id: args.entity_id, count: removeItems.length });
+        await callHA("/services/todo/remove_item", "POST", { entity_id: args.entity_id, item: removeItems });
+        invalidateStatesCache();
+        return makeCompatibleResponse({
+          content: [createTextContent(`Removed ${removeItems.length === 1 ? "1 item" : `${removeItems.length} items`} from ${args.entity_id}.`, { audience: ["user"], priority: 0.9 })],
+        });
+      }
+
+      case "remove_completed_todo_items": {
+        sendLog("notice", "ha-todo", { action: "remove_completed", entity_id: args.entity_id });
+        await callHA("/services/todo/remove_completed_items", "POST", { entity_id: args.entity_id });
+        invalidateStatesCache();
+        return makeCompatibleResponse({
+          content: [createTextContent(`Removed all completed items from ${args.entity_id}.`, { audience: ["user"], priority: 0.9 })],
+        });
+      }
+
+      case "move_todo_item": {
+        const { entity_id, item, target_entity_id } = args;
+        if (entity_id === target_entity_id) {
+          throw new Error("target_entity_id must be a different to-do list than entity_id.");
+        }
+        const sourceList = await callHAWebSocketCommand("todo/item/list", 5000, { entity_id });
+        const foundItem = findTodoItem(sourceList?.items, item);
+        if (!foundItem) {
+          throw new Error(`Item not found on ${entity_id}: '${item}'. Use get_todo_items to list uids and summaries.`);
+        }
+        const plan = buildMovePlan(foundItem, entity_id, target_entity_id);
+        sendLog("notice", "ha-todo", { action: "move", entity_id, target_entity_id });
+        await callHA("/services/todo/add_item", "POST", plan.addItem);
+        if (plan.restoreStatus) {
+          try {
+            await callHA("/services/todo/update_item", "POST", plan.restoreStatus);
+          } catch (error) {
+            sendLog("warning", "ha-todo", { action: "restore_status_failed", target_entity_id });
+            // The item itself moved; only its completed status could not be restored.
+            return makeCompatibleResponse({
+              content: [createTextContent(`Moved '${foundItem.summary}' from ${entity_id} to ${target_entity_id}, but restoring its completed status failed: ${error.message}`, { audience: ["user"], priority: 0.9 })],
+              isError: true,
+            });
+          }
+        }
+        await callHA("/services/todo/remove_item", "POST", plan.removeItem);
+        invalidateStatesCache();
+        return makeCompatibleResponse({
+          content: [createTextContent(`Moved '${foundItem.summary}' from ${entity_id} to ${target_entity_id}.`, { audience: ["user"], priority: 0.9 })],
         });
       }
 
