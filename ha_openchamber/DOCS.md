@@ -103,6 +103,28 @@ An empty list means loopback-only: nothing off-box is proxied.
   `/local_apps`, `/addon_configs`, `/share`, read-write) so workspace paths
   behave identically in both containers.
 
+## Agent MCP server (project notes, todos, plans)
+
+Opt-in (`mcp_enabled` + `mcp_token`, a `!secret <key>` value works): serves
+OpenChamber's **Project Notes** — the notes, todos and plans of the web UI —
+to agent clients over the Model Context Protocol on `4100`/tcp, reachable
+from other add-ons on the internal network (e.g.
+`http://<this-add-on>:4100/mcp`). Never host-mapped; every request must carry
+`Authorization: Bearer <token>`.
+
+- **One store by construction**: every tool call proxies the loopback-only
+  REST API (`127.0.0.1:3010/api/project-context/:projectId`). The JSON files
+  under `/data/.config/openchamber/projects/` stay owned by the OpenChamber
+  server alone, so the web UI and agent sessions can never drift apart.
+- **Tools**: `openchamber_context`, `openchamber_note_add` (tagged
+  `source: agent`), `openchamber_note_edit`, `openchamber_note_delete`,
+  `openchamber_todo_add`, `openchamber_todo_toggle`,
+  `openchamber_todo_delete`, `openchamber_plan_read`. Projects are addressed
+  by directory (`/homeassistant` by default) and mapped with OpenChamber's
+  own `path_<base64url>` id rule.
+- **Transport**: the same stateless streamable-HTTP shape as the OpenCode
+  add-on's ha-mcp-server HTTP mode (`GET /health`, `POST /mcp`).
+
 ## Troubleshooting
 
 - **"Waiting for server"** in the UI: the OpenCode server is not reachable.

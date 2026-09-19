@@ -1,7 +1,7 @@
 ---
 name: "OpenChamber"
 description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
-version: "1.1.5"
+version: "1.2.0"
 slug: "ha_openchamber"
 image: "flapperdeflipper/addon-ha-openchamber"
 url: "https://github.com/flapperdeflipper/addons"
@@ -68,6 +68,16 @@ options:
   # Where untrusted sources are redirected (the public URL behind your OAuth
   # proxy). Empty disables the redirect and refuses with 403 instead.
   lan_redirect_url: ""
+  # --- 3. Agent MCP server -----------------------------------------------
+  # Expose OpenChamber's project notes, todos and plans to agent clients
+  # (e.g. the OpenCode add-on) over streamable HTTP on 4100/tcp on the
+  # internal add-on network. Bearer-token authenticated; every call proxies
+  # the loopback-only OpenChamber REST API, so no LAN/Ingress allowlist is
+  # involved and no project file is read directly.
+  mcp_enabled: false
+  # Bearer token MCP clients must present as `Authorization: Bearer <token>`.
+  # A !secret <key> value resolves from secrets.yaml at start.
+  mcp_token: ""
 
 schema:
   opencode_host: str?
@@ -77,6 +87,8 @@ schema:
   lan_allowed_remotes:
     - str
   lan_redirect_url: str?
+  mcp_enabled: bool
+  mcp_token: password
 
 # OpenChamber's own settings are small; exclude its npm-owned cache paths.
 backup_exclude:
