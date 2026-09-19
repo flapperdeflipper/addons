@@ -1,13 +1,13 @@
 ---
-# Release CI passes the args below to the Docker build. BASE_IMAGE pins the
-# published OpenCode add-on image this terminal layers on top of; bump it
-# together with ha_opencode releases to pick up its toolchain changes.
+# Release CI passes the args below to the Docker build. AGENT_BASE pins the
+# shared base image this terminal layers on top of; releases of
+# flapperdeflipper/agent-base open the bump as a pull request automatically.
 build_from:
-  aarch64: ghcr.io/home-assistant/base-debian:trixie
-  amd64: ghcr.io/home-assistant/base-debian:trixie
+  aarch64: ghcr.io/flapperdeflipper/agent-base:1.0.0
+  amd64: ghcr.io/flapperdeflipper/agent-base:1.0.0
 args:
-  BASE_IMAGE: "flapperdeflipper/addon-ha-opencode:2.17.0"
+  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.0.0"
 labels:
   org.opencontainers.image.title: "Terminal"
-  org.opencontainers.image.description: "Personal bash and vim terminal add-on built on the OpenCode image"
+  org.opencontainers.image.description: "Personal bash and vim terminal add-on built on the agent-base image"
   org.opencontainers.image.source: "https://github.com/flapperdeflipper/addons"
