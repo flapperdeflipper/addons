@@ -29,6 +29,11 @@ function mockClient(state) {
         state.todos = body.todos;
         return state;
       }
+      const noteMatch = /^\/notes\/(.+)$/.exec(route);
+      if (method === "DELETE" && noteMatch) {
+        state.notes = state.notes.filter((n) => n.id !== noteMatch[1]);
+        return state; // the REST endpoint returns the bare context object
+      }
       return state;
     },
     async readContext(projectId) {
@@ -111,6 +116,13 @@ describe("openchamber MCP server: tools", () => {
     const added = await handlers.openchamber_note_add({ body: "decision: use mqtt" });
     assert.match(added, /note saved as \[n1\]/);
     assert.equal(state.notes[0].source, "agent");
+
+    // The REST DELETE returns the bare context object, not {context}
+    const removed = await handlers.openchamber_note_delete({ note_id: "n1" });
+    assert.match(removed, /note deleted:/);
+    assert.doesNotMatch(removed, /no context returned/);
+    assert.match(removed, /notes \(0\):/);
+    assert.equal(state.notes.length, 0);
 
     const toggled = await handlers.openchamber_todo_toggle({ todo_id: "t1" });
     assert.match(toggled, /\[t1\] \[x\] first/);
