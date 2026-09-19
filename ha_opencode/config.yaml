@@ -33,6 +33,8 @@ map:
   - type: all_app_configs
     read_only: false
     path: /addon_configs
+  - type: addon_config
+    read_only: false
   - type: share
     read_only: false
 
