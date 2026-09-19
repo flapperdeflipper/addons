@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Deep-merge drop-in JSON config files into OpenCode's config.json.
+#
+# Usage: merge-config-dropins <target> <dropin-dir> [base-file]
+#
+# Every <dropin-dir>/*.json must be a JSON object. Files merge in alphabetical
+# filename order on top of <base-file> (the opencode_config option's output,
+# when present), so a drop-in always wins over the option and a later file
+# wins over an earlier one. The result replaces <target> atomically.
+#
+# Output is one machine-readable line per event, for the init service to
+# forward to bashio:
+#   ERROR:  <reason>
+#   MERGED: <n> file(s) into <target>
+#
+# Exit status is always 0: a broken drop-in must never fail the init oneshot
+# (the base image takes the whole container down with it), and the previous
+# config.json must survive a failed merge untouched.
+set -u
+export LC_ALL=C
+
+if [ "$#" -lt 2 ]; then
+    echo "ERROR: usage: merge-config-dropins <target> <dropin-dir> [base-file]" >&2
+    exit 0
+fi
+
+TARGET="${1}"
+DROPIN_DIR="${2}"
+BASE_FILE="${3:-}"
+
+mkdir -p "${DROPIN_DIR}"
+
+shopt -s nullglob
+DROPINS=("${DROPIN_DIR}"/*.json)
+shopt -u nullglob
+
+if [ "${#DROPINS[@]}" -eq 0 ]; then
+    exit 0
+fi
+
+INPUTS=()
+if [ -n "${BASE_FILE}" ] && [ -f "${BASE_FILE}" ]; then
+    INPUTS+=("${BASE_FILE}")
+fi
+
+for DROPIN in "${DROPINS[@]}"; do
+    if jq -e 'type == "object"' "${DROPIN}" >/dev/null 2>&1; then
+        INPUTS+=("${DROPIN}")
+    else
+        echo "ERROR: ${DROPIN} is not a valid JSON object - file skipped"
+    fi
+done
+
+if [ "${#INPUTS[@]}" -eq 0 ]; then
+    echo "ERROR: no usable drop-in found - ${TARGET} left unchanged"
+    exit 0
+fi
+
+TMP_TARGET="${TARGET}.tmp"
+if ! jq -s 'reduce .[] as $item ({}; . * $item)' "${INPUTS[@]}" > "${TMP_TARGET}"; then
+    rm -f "${TMP_TARGET}"
+    echo "ERROR: merge failed - ${TARGET} left unchanged"
+    exit 0
+fi
+mv "${TMP_TARGET}" "${TARGET}"
+echo "MERGED: ${#INPUTS[@]} file(s) into ${TARGET}"

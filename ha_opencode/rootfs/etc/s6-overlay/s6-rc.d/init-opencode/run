@@ -1036,6 +1036,35 @@ if [ -f "${OPTIONS_FILE}" ]; then
 fi
 
 # ==============================================================================
+# Drop-in config snippets (optional, file-based)
+#
+# Plain JSON files in /homeassistant/opencode.d - the workspace users actually
+# edit - instead of escaping a whole JSON document into the opencode_config
+# text field, where one broken character silently discards the entire config
+# (the only trace is a boot-log error). Every *.json in the directory must be
+# a JSON object; files deep-merge in alphabetical filename order on top of
+# whatever the option produced, so a drop-in always wins over the option.
+# OpenCode and the OpenChamber UI both read the merged config.json.
+#
+# The merge lives in usr/local/lib/opencode/merge-config-dropins so the test
+# suite can execute it against a sandbox. It never fails this oneshot: a
+# broken drop-in is skipped with a named error and the previous config.json
+# stands.
+# ==============================================================================
+
+OPENCODE_DROPIN_DIR="/homeassistant/opencode.d"
+MERGE_LOG="$(bash /usr/local/lib/opencode/merge-config-dropins \
+    "${CONFIG_TARGET}" "${OPENCODE_DROPIN_DIR}" "${CONFIG_TARGET}")" || true
+if [ -n "${MERGE_LOG}" ]; then
+    while IFS= read -r MERGE_LINE; do
+        case "${MERGE_LINE}" in
+            ERROR:*) bashio::log.error "${MERGE_LINE#ERROR: }" ;;
+            MERGED:*) bashio::log.info "Config drop-ins: ${MERGE_LINE#MERGED: }" ;;
+        esac
+    done <<< "${MERGE_LOG}"
+fi
+
+# ==============================================================================
 # User startup hooks (opt-in)
 #
 # Scripts the user keeps in their own configuration directory, run once per
