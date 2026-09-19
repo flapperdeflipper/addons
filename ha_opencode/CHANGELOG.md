@@ -1,3 +1,8 @@
+## 2.14.1
+
+- **Crash fix: `INTERFACE_MODE: unbound variable`** — the 2.14.0 split removed the `interface_mode` option but left `${INTERFACE_MODE}` referenced in the init service's configuration log line; with `nounset` that aborted the init oneshot and stopped the container on every boot. The stale reference is gone.
+- Removed a stale `4097` mention from the user-hooks port list (the port moved to the ha_openchamber add-on).
+
 ## 2.14.0
 
 - **OpenChamber moved to its own add-on** — the web UI now ships as `ha_openchamber` (own image, own Ingress panel, own `/data`), attaching to this add-on's LAN server in external-server mode instead of spawning OpenCode. This add-on loses the `interface_mode` and `enable_openchamber_lan` options, the `4097/tcp` port, the OpenChamber s6 services and Ingress patch, and ~123 MB of image (`@openchamber/web`, bzip2, g++/make build tools). The init service logs a one-time pointer when it finds a non-terminal legacy configuration; old OpenChamber application settings under `/data/.config/openchamber` are left in place. Ingress now always serves the ttyd terminal.
