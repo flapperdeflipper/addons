@@ -2,6 +2,7 @@
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
 version: "2.18.0"
+version: "2.17.1"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
