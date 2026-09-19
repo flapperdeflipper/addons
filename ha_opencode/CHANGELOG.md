@@ -1,6 +1,16 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+## 2.19.0
+
+- **Changed** — the toolchain layers (exact Node runtime, certified OpenCode pin, hab, zigporter, ttyd + patched ingress page, yq, op/cosign CLIs, unix toolset) moved to the shared [`agent-base`](https://github.com/flapperdeflipper/agent-base) image, shared with the OpenChamber and Terminal add-ons; the add-on Dockerfile now layers only the HA MCP/LSP servers and s6 services on `ghcr.io/flapperdeflipper/agent-base`.
+- **Added** — build-time assertion that the inherited `opencode` runtime matches the base image's certified version file.
+- **Removed** — the ttyd page assets and profile.d helpers from this add-on's rootfs (they are part of agent-base now).
+
 ## 2.18.0
 
 - **To-do list tools in the MCP server** — six new `todo` tools close the gap the native Assist MCP leaves: it can add, complete and remove items, but not edit them or move them between lists. `get_todo_items` reads a list via the `todo/item/list` WebSocket command (uid, summary, status, due, description) and joins the compact/configuration tool profiles; `add_todo_item`, `update_todo_item` (rename, status, due date/datetime, description — matched by uid or summary, explicit null clears a field), `remove_todo_item` (single or batch) and `remove_completed_todo_items` wrap the `todo.*` services and stay full-profile-only. `move_todo_item` moves an item to another list preserving status, due and description — Home Assistant has no move service, so it is add-then-remove and leaves the source item in place when the target rejects a field. Item addressing mirrors Home Assistant's uid-or-summary matching; uids from `get_todo_items` are the reliable handle. Helpers in `lib/todo.js` with unit tests plus spawned-server dispatch tests (18 new tests, suite at 537).
+
 
 ## 2.17.1
 
@@ -24,9 +34,11 @@
 - **Automation/script traces migrated into the MCP server** — new read-only tools `list_automation_traces` (newest runs first with state, `script_execution` outcome, last step, trigger, `run_id`; `errored_only` flag for a failing-run sweep) and `get_automation_trace` (bounded step-by-step timeline from HA's `trace/get` WebSocket API: trigger/condition/action paths, results, the error at the failing step, optional clipped config). Both are included in the compact tool profile. Verified live against HA 2026.9.2.
 - **`get_error_log` gains a `unique` flag** — collapses repeated lines (timestamp-insensitive) into one line with an occurrence count, replacing the deduped digest previously provided by hactl's `log --unique`.
 - **hactl CLI removed from the image** — the binary, the `HACTL_VERSION` pin, the `/data/hactl` init wiring and the profile.d wrapper are gone; its remaining capability (automation traces, deduped error log) now lives in the MCP server above, and its other workflows were already covered by MCP tools, `hab` and `zigporter`. `test/hactl.test.js` and the DOCS section removed with it. The `access_token` option stays (ESPHome ingress, screenshots and the MCP server itself use it). Companion add-on retired separately on this install.
+
 ## 2.14.3
 
 - **extract-zip path-traversal advisories closed (Dependabot alerts #3, #4)** — both `ha_opencode/rootfs/opt/ha-mcp-server` lockfile alerts (CVE-2026-56876 / GHSA-jmr9-qjv8-65gv, CVE-2026-19693 / GHSA-7pqw-9j4j-h8q3) flag `extract-zip` <= 2.0.1, for which no patched release exists upstream. The package only enters the tree transitively through `@puppeteer/browsers`, and this add-on never exercises it: the MCP server always launches Chromium with a fixed image-provided `executablePath` and never downloads browser archives at runtime. `@puppeteer/browsers` is now overridden to `^3.2.2`, which dropped `extract-zip` entirely (zip handling moved to `modern-tar`), so the vulnerable package is gone from the manifest and the image. `puppeteer-core` stays on 24.x (24.43.1); suite verified against the new tree: 509/509 tests pass.
+
 ## 2.14.2
 
 - **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
@@ -45,17 +57,6 @@
 
 - **Toolchain bumps** — opencode-ai 1.18.31 (was 1.18.25), @openchamber/web 1.24.1 (was 1.21.0), ppq-private-mode 0.6.0 (was 0.1.0), tsx 4.23.13 (was 4.20.6), yq v4.53.6 (was v4.53.3), 1Password CLI 2.39.0 (was 2.30.3), Node runtime 24.21.0 (was 24.15.0). ttyd 1.7.7, cosign v3.1.3, hactl 2026.9.0 and hab 1.6.4 are already the latest releases and stay pinned. build.yaml kept in sync; the runtime-contract tests assert the pins match.
 - **`/homeassistant/bin` on PATH** — image-level `ENV PATH` prepends the HA config dir's bin (mounted at runtime; `hasecret` and friends), so shells and agents resolve them without full paths.
-
-## 2.13.0
-
-- **MCP server code-quality pass** — removed the "light on during daytime" anomaly rule from `detect_anomalies` (a lifestyle heuristic that cannot know occupancy, curtains or intent — that judgement belongs in user automations, not a diagnostic scanner); the door/window "open too long" threshold is now a named 8-hour constant, and Kelvin-unit temperature sensors are no longer checked against °C/°F household ranges.
-- **Honest `get_breaking_changes`** — the tool no longer serves a hard-coded 2023.3–2024.12 "known breaking changes" list as if it were current compatibility guidance; the official release notes are the only source, with an explicit "no data could be retrieved" answer (plus pointers) when they cannot be fetched.
-- **Error-log redaction** — `get_error_log` output now passes through `redactSensitiveText` (file-backed log and Core-journal fallback alike), matching what the Supervisor-log path already did; bare `token=`/`token:` assignments and common PAT prefixes (`ghp_`, `github_pat_`, `shpat_`, `xox…`) are redacted everywhere.
-- **Tool-argument logging** — `call_tool` log lines no longer dump raw arguments for any tool: bulky text payloads (`content`, `yaml_config`, …) become char counts and secret-shaped fields become presence flags (previously only `esphome_*` arguments were redacted).
-- **Validation fixes** — removed `\Z` from the automation/script/template block regexes (not a JavaScript anchor; it matched a literal "Z" and silently skipped structural checks at e.g. `Europe/Zurich`), and config-path containment now requires a real boundary (`/homeassistant-evil/…` is rejected instead of passing a `startsWith` prefix check).
-- **CalVer comparison** — HA-alert version ranges compare numerically per component instead of lexicographically (`"2024.11"` sorted below `"2024.9"` before).
-- **Fail-closed tool profiles** — a typo in `OPENCODE_MCP_TOOL_PROFILE` logs an error and falls back to `readonly` instead of silently widening the tool surface to `full` (an unset profile still means `full`).
-- **Dead code removal** — the motion→light suggestion in `generateSuggestions` could never fire (entity states never carry `area_id`; that is registry data) and is removed with a pinning test rather than a name-guessing fallback; the state-summary anomaly list now marks truncation like the unavailable list does.
 
 ## 2.12.0
 
@@ -726,8 +727,6 @@ Inspired by work done in [okliam's fork](https://github.com/okliam). Thanks for 
 - Improved device discovery in `get_devices` tool
   - More reliable device listing by iterating through all entity states
   - Ensures all devices are discovered, including those missed by filter-based approaches
-
-
 
 ## 1.0.11
 

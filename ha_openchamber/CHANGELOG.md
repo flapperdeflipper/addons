@@ -1,3 +1,11 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+## 1.3.0
+
+- **Changed** — the toolchain layers (exact Node runtime, certified OpenCode CLI, unix toolset) moved to the shared [`agent-base`](https://github.com/flapperdeflipper/agent-base) image, shared with the OpenCode and Terminal add-ons; the add-on Dockerfile now layers only the OpenChamber bundle, ingress patch and s6 services on `ghcr.io/flapperdeflipper/agent-base`.
+- **Removed** — the apt layer (including the temporary g++/make install/purge dance — the base ships the build toolchain permanently).
+
 ## 1.2.2
 
 - **`openchamber_note_delete` prints the remaining context again** — the REST DELETE endpoint returns the bare context object while the handler looked for a `{context}` wrapper, so every successful delete ended with the confusing "no context returned" line. The handler now formats whichever shape arrives (`result.context ?? result`, same defensive form as `openchamber_note_edit`).
@@ -29,9 +37,6 @@
 ## 1.1.1
 
 - **Ships the real OpenCode CLI on PATH** — upstream's server resolves an `opencode` binary at startup even in external-server mode (`OPENCODE_SKIP_START`), so every boot crashed with `Unable to locate the opencode CLI on PATH` and s6 restarted the add-on forever: nothing image-less can satisfy that lookup. The Dockerfile now installs the same certified `opencode-ai` 1.18.31 pin as the OpenCode add-on (build-time version assertion, non-matching platform binaries trimmed, `opencode --version` asserted), so the binary upstream wants is genuinely on PATH. It is still never spawned: all API calls keep proxying to the OpenCode add-on's LAN server.
-
-# Changelog
-All notable changes to this project will be documented in this file.
 
 ## 1.1.0
 

@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.0
+
+- **Changed** — built on the shared [`agent-base`](https://github.com/flapperdeflipper/agent-base) image instead of the published OpenCode add-on image: same inherited toolchain, now shared with the OpenCode and OpenChamber add-ons rather than chained behind ha_opencode's release cycle.
+- **Removed** — the ~100-package apt layer and the base-service disable dance; agent-base ships all of it (and no add-on services to disable).
+
 ## 1.0.1
 
 - **Fixed** — `hab` and `zigporter` (inherited from the OpenCode image) now authenticate through the Supervisor API (`hassio_api`): they were documented but every call failed without a Supervisor token.

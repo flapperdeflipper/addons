@@ -1,7 +1,8 @@
-// The add-on ships exactly one OpenCode build and runs only that one. That is a
-// property of several files at once — the Dockerfile pin, the CI-read pin in
-// build.yaml, and every script that builds a PATH — so it is asserted here
-// rather than trusted to review.
+// The add-on runs exactly one OpenCode build — the certified one baked into
+// its agent-base base image — and inherits its whole toolchain from that
+// image. That is a property of several files at once (the AGENT_BASE pin in
+// the Dockerfile, the CI-read pin in build.yaml, the build-time assertions)
+// so it is asserted here rather than trusted to review.
 //
 // Scoped to the add-on folder this test file ships in, so the copy promoted to
 // stable checks stable and the beta copy checks beta.
@@ -44,36 +45,39 @@ describe(`${CHANNEL} runtime pin`, () => {
   const dockerfile = read(ADDON_DIR, "Dockerfile");
   const buildYaml = read(ADDON_DIR, "build.yaml");
 
-  const dockerfilePin = /^ARG OPENCODE_VERSION=(.+)$/m.exec(dockerfile)?.[1]?.trim();
-  const buildYamlPin = /^\s*OPENCODE_VERSION:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
-  const dockerfileNodePin = /^ARG NODE_VERSION=(.+)$/m.exec(dockerfile)?.[1]?.trim();
-  const buildYamlNodePin = /^\s*NODE_VERSION:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
+  const basePin = /^ARG AGENT_BASE=(.+)$/m.exec(dockerfile)?.[1]?.trim();
+  const buildYamlBasePin = /^\s*AGENT_BASE:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
 
-  it("pins an exact OpenCode version in the Dockerfile", () => {
-    assert.ok(dockerfilePin, "Dockerfile has no ARG OPENCODE_VERSION");
+  it("pins an exact agent-base image in the Dockerfile", () => {
+    assert.ok(basePin, "Dockerfile has no ARG AGENT_BASE");
     assert.match(
-      dockerfilePin,
-      /^\d+\.\d+\.\d+$/,
-      `OPENCODE_VERSION must be an exact version, got '${dockerfilePin}'`,
+      basePin,
+      /^ghcr\.io\/flapperdeflipper\/agent-base:\d+\.\d+\.\d+$/,
+      `AGENT_BASE must be an exact ghcr pin, got '${basePin}'`,
     );
   });
 
-  it("pins the same version in build.yaml, which is what CI reads", () => {
-    assert.ok(buildYamlPin, "build.yaml has no OPENCODE_VERSION");
-    assert.equal(buildYamlPin, dockerfilePin);
+  it("pins the same image in build.yaml, which is what CI reads", () => {
+    assert.ok(buildYamlBasePin, "build.yaml has no AGENT_BASE");
+    assert.equal(buildYamlBasePin, basePin);
   });
 
-  it("copies one exact supported Node runtime into the Home Assistant base", () => {
-    assert.match(dockerfileNodePin, /^24\.\d+\.\d+$/);
-    assert.equal(buildYamlNodePin, dockerfileNodePin);
-    assert.match(dockerfile, /FROM node:\$\{NODE_VERSION\}-trixie-slim AS node-runtime/);
-    assert.match(dockerfile, /test "\$\(node --version\)" = "v\$\{NODE_VERSION\}"/);
-    assert.doesNotMatch(dockerfile, /^[ \t]+nodejs \\/m);
+  it("builds from that pin and nothing else", () => {
+    assert.match(dockerfile, /^FROM \$\{AGENT_BASE\}$/m);
+    // The toolchain must come from the base image, not be reinstalled here:
+    // divergence between the add-ons is exactly what agent-base exists to
+    // prevent.
+    assert.doesNotMatch(dockerfile, /apt-get install/);
+    assert.doesNotMatch(dockerfile, /npm install -g/);
+    assert.doesNotMatch(dockerfile, /FROM node:/);
   });
 
-  it("fails closed on architecture selection and executes the target runtime", () => {
+  it("fails closed on architecture selection", () => {
     assert.match(dockerfile, /Unsupported BUILD_ARCH: \$\{BUILD_ARCH:-unset\}/);
-    assert.match(dockerfile, /test "\$\(opencode --version\)" = "\$\{OPENCODE_VERSION\}"/);
+  });
+
+  it("fails the build when the inherited runtime is not the certified one", () => {
+    assert.match(dockerfile, /test "\$\(opencode --version\)" = "\$\(cat \/usr\/local\/share\/opencode-certified-version\)"/);
   });
 
   it("carries no OpenChamber pin or bundle since the 2.13.0 split", () => {
@@ -91,30 +95,18 @@ describe(`${CHANNEL} runtime pin`, () => {
     );
   });
 
-  it("stays on the certified V1 line", () => {
-    // V2 adoption is governed by OPENCODE_V2_FUTURE.md and its release gates,
-    // not by editing a pin.
-    assert.match(dockerfilePin, /^1\./);
+  it("no longer ships the toolchain layers that moved to agent-base", () => {
+    // The ttyd ingress page is built into the base image and only referenced
+    // at runtime; the profile.d helpers are inherited.
+    assert.equal(fs.existsSync(path.join(ROOTFS, "opt", "ttyd")), false);
+    assert.equal(fs.existsSync(path.join(ROOTFS, "etc", "profile.d")), false);
   });
 
-  it("fails the image build when the resolved runtime is not the pin", () => {
-    assert.match(dockerfile, /opencode-ai\/package\.json'\)\.version/);
-    assert.match(dockerfile, /OPENCODE_VERSION is \$\{OPENCODE_VERSION\}/);
-  });
-
-  it("records the certified version in the image for runtime code to read", () => {
-    assert.match(dockerfile, /\/usr\/local\/share\/opencode-certified-version/);
+  it("records the certified version for runtime code to read", () => {
     assert.match(
       read(ROOTFS, "usr", "local", "lib", "opencode", "runtime.sh"),
       /opencode_certified_version\(\)/,
     );
-  });
-
-  it("ships OpenSSH client tools for Git SSH remotes", () => {
-    assert.match(dockerfile, /^\s*openssh-client \\/m);
-    for (const command of ["ssh", "ssh-keygen", "ssh-keyscan"]) {
-      assert.match(dockerfile, new RegExp(`command -v ${command} >/dev/null`));
-    }
   });
 
   it("uses current Supervisor map types for local app development", () => {
