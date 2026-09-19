@@ -1,0 +1,10 @@
+{
+  "name": "openchamber-mcp",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Agent MCP server for OpenChamber's Project Notes (streamable HTTP, bearer auth)",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0"
+  }
+}
