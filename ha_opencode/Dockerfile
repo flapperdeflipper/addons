@@ -52,12 +52,6 @@ ARG OP_CLI_VERSION=2.39.0
 # Go binary from GitHub releases (not in Debian repos), same pinned-release
 # pattern as yq/op above.
 ARG COSIGN_VERSION=v3.1.3
-# hactl, Home Assistant control CLI designed for LLM agents (token-capped
-# output, progressive manual delivery, dry-run + --confirm config writes).
-# Static Go binary from GitHub releases, same pinned-release pattern as
-# yq/cosign above. Release tags carry a v- prefix, asset names do not.
-ARG HACTL_VERSION=2026.9.0
-
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
     npm_config_update_notifier=false \
@@ -162,18 +156,6 @@ RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
     && chmod +x /usr/local/bin/cosign \
     && cosign version 2>/dev/null | grep -q "GitVersion:.*${COSIGN_VERSION}"
 
-# Install hactl from GitHub releases (static Go binary, not in Debian repos).
-# Talks to HA Core from agent shells; the init service writes the instance
-# config (/data/hactl/.env) from the add-on's Long-Lived Access Token option
-# and points HACTL_DIR at it. The trailing version assertion fails the build
-# on a truncated or HTML-error download.
-RUN ARCH=$([ "$BUILD_ARCH" = "aarch64" ] && echo "arm64" || echo "amd64") \
-    && curl -fsSL "https://github.com/hemm-ems/hactl/releases/download/v${HACTL_VERSION}/hactl_${HACTL_VERSION}_linux_${ARCH}.tar.gz" -o /tmp/hactl.tar.gz \
-    && tar -xzf /tmp/hactl.tar.gz -C /tmp hactl \
-    && install -m 0755 /tmp/hactl /usr/local/bin/hactl \
-    && rm -f /tmp/hactl.tar.gz /tmp/hactl \
-    && hactl version 2>/dev/null | grep -q "hactl ${HACTL_VERSION}"
-
 # Copy hab CLI binary built from source (pinned release)
 # A CLI designed for AI agents to manage HA via REST/WebSocket APIs
 COPY --from=hab-builder /hab /usr/local/bin/hab
@@ -245,7 +227,6 @@ RUN chmod +x /usr/local/bin/* \
     && chmod +x /etc/s6-overlay/s6-rc.d/ppq-private-proxy/run \
     && chmod +x /etc/profile.d/hab-esphome.sh \
     && chmod +x /etc/profile.d/zigporter-z2m.sh \
-    && chmod +x /etc/profile.d/hactl.sh \
     && mkdir -p /data/.local/share/opencode /data/.config/opencode
 
 # Build the custom ttyd index page (served via -I at runtime): ttyd's page is

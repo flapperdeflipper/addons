@@ -32,19 +32,23 @@ export async function readErrorLogWithFallback({
  * Build a transparent MCP payload for either the error-log file or the
  * Supervisor-backed Core journal fallback.
  */
-export function formatErrorLogResult({ text, source, requestedLines, lines }) {
+export function formatErrorLogResult({ text, source, requestedLines, lines, unique = false }) {
   const allLines = String(text ?? "").split("\n");
   if (allLines.at(-1) === "") allLines.pop();
   const logLines = allLines.slice(-lines);
   const usingCoreJournal = source === "core_journal";
-  const { text: redactedLog, redactions } = redactSensitiveText(logLines.join("\n"));
+  const uniqueLines = unique ? condenseLogLines(logLines) : logLines;
+  const duplicatesCollapsed = logLines.length - uniqueLines.length;
+  const { text: redactedLog, redactions } = redactSensitiveText(uniqueLines.join("\n"));
 
   return {
-    summary: `Returned ${logLines.length} Home Assistant ${usingCoreJournal ? "Core journal" : "error log"} lines${usingCoreJournal ? " (error log unavailable)" : ""}${redactions > 0 ? `, ${redactions} redaction(s) applied` : ""}`,
+    summary: `Returned ${uniqueLines.length} Home Assistant ${usingCoreJournal ? "Core journal" : "error log"} ${unique ? "unique lines" : "lines"}${usingCoreJournal ? " (error log unavailable)" : ""}${unique && duplicatesCollapsed > 0 ? `, ${duplicatesCollapsed} duplicate line(s) collapsed` : ""}${redactions > 0 ? `, ${redactions} redaction(s) applied` : ""}`,
     data: { log: redactedLog },
     meta: {
       requested_lines: requestedLines,
-      returned_lines: logLines.length,
+      returned_lines: uniqueLines.length,
+      unique,
+      duplicates_collapsed: unique ? duplicatesCollapsed : null,
       source,
       fallback_used: usingCoreJournal,
       total_lines: usingCoreJournal ? null : allLines.length,
@@ -52,4 +56,29 @@ export function formatErrorLogResult({ text, source, requestedLines, lines }) {
       server_limited: usingCoreJournal,
     },
   };
+}
+
+/**
+ * Collapse repeated log lines into one line with an occurrence count, keyed by
+ * the line with its leading timestamp removed. Order of first occurrence is
+ * preserved. Empty lines are dropped.
+ */
+const LOG_TIMESTAMP_PREFIX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:[.,]\d+)? /;
+
+export function condenseLogLines(logLines) {
+  const seen = new Map();
+  const order = [];
+  for (const line of logLines) {
+    const key = String(line ?? "").replace(LOG_TIMESTAMP_PREFIX, "").trim();
+    if (key === "") continue;
+    const existing = seen.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      const record = { line: String(line ?? ""), count: 1 };
+      seen.set(key, record);
+      order.push(record);
+    }
+  }
+  return order.map((record) => (record.count > 1 ? `${record.line}  [×${record.count}]` : record.line));
 }
