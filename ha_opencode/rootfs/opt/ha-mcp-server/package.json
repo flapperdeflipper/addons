@@ -29,5 +29,8 @@
     "opencode",
     "smart-home",
     "automation"
-  ]
+  ],
+  "overrides": {
+    "@puppeteer/browsers": "^3.2.2"
+  }
 }
