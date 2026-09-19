@@ -17,6 +17,8 @@ const COMPACT_TOOL_NAMES = [
   "get_areas",
   "get_devices",
   "get_error_log",
+  "list_automation_traces",
+  "get_automation_trace",
   "get_supervisor_health",
   "get_supervisor_resolution",
   "get_backup_posture",

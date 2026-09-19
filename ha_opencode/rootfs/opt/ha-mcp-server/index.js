@@ -102,6 +102,12 @@ import {
   probeNativeMcpEndpoint,
 } from "./lib/ha-native-mcp.js";
 import { formatErrorLogResult, readErrorLogWithFallback } from "./lib/ha-error-log.js";
+import {
+  normalizeTraceSummaries,
+  parseTraceEntityId,
+  pickLatestRunId,
+  summarizeTraceDetail,
+} from "./lib/ha-traces.js";
 import { createSupervisorAppsClient } from "./lib/supervisor-apps.js";
 import {
   ESPHomeDeviceBuilderClient,
@@ -1946,7 +1952,7 @@ async function fetchHARepairs() {
  * Run a single HA WebSocket API command (auth, send, close).
  * Used for registry dumps that have no REST equivalent.
  */
-function callHAWebSocketCommand(commandType, timeoutMs = 5000) {
+function callHAWebSocketCommand(commandType, timeoutMs = 5000, extraArgs = undefined) {
   return new Promise((promiseResolve, promiseReject) => {
     let settled = false;
     const settle = (fn, value) => {
@@ -1975,7 +1981,7 @@ function callHAWebSocketCommand(commandType, timeoutMs = 5000) {
         if (msg.type === "auth_required") {
           ws.send(JSON.stringify({ type: "auth", access_token: SUPERVISOR_TOKEN }));
         } else if (msg.type === "auth_ok") {
-          ws.send(JSON.stringify({ id: 1, type: commandType }));
+          ws.send(JSON.stringify({ id: 1, type: commandType, ...(extraArgs ?? {}) }));
         } else if (msg.type === "auth_invalid") {
           settle(promiseReject, new Error("WebSocket authentication failed"));
         } else if (msg.type === "result") {
@@ -2503,6 +2509,7 @@ const UNFILTERED_STATE_RESULT_CAP = 150;
 const HOME_CONTEXT_RESULT_CAP = 80;
 const HISTORY_RESULT_CAP = 200;
 const LOGBOOK_RESULT_CAP = 200;
+const TRACE_LIST_RESULT_CAP = 40;
 const DOCS_MAX_CHARS = 12000;
 const CHANGELOG_MAX_CHARS = 16000;
 const CLI_OUTPUT_MAX_CHARS = 20000;
@@ -2879,9 +2886,47 @@ const TOOLS = [
       type: "object",
       properties: {
         lines: { type: "integer", minimum: 1, maximum: 500, description: "Number of lines to return (default: 100, max: 500)" },
+        unique: { type: "boolean", description: "Collapse repeated lines (timestamp-insensitive) into one line with an occurrence count (default: false)" },
       },
       additionalProperties: false,
     },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "list_automation_traces",
+    title: "List Automation Traces",
+    description: "List Home Assistant automation (or script) run traces via the trace WebSocket API: newest runs first with state, script_execution outcome (finished/error/...), last executed step, trigger, and run_id. Use errored_only=true for a failing-run sweep, then get_automation_trace with the run_id for the step-by-step detail. Traces exist only for runs since the last restart (restored from disk on demand).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        domain: { type: "string", enum: ["automation", "script"], description: "Trace domain (default: automation)" },
+        item_id: { type: "string", description: "Optional object id filter, e.g. 'my_automation' from automation.my_automation" },
+        errored_only: { type: "boolean", description: "Only return runs whose script_execution is error or that carry an error (default: false)" },
+      },
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: true,
+    },
+  },
+  {
+    name: "get_automation_trace",
+    title: "Get Automation Trace Detail",
+    description: "Get one full automation/script trace: summary plus a bounded timeline of executed steps (trigger/condition/action paths, timestamps, results, error at the failing step). Pass entity_id and optionally run_id from list_automation_traces; without run_id the newest run is returned. Step results and changed variables are clipped previews, not full payloads.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        entity_id: { type: "string", description: "Entity id such as automation.my_automation or script.my_script" },
+        run_id: { type: "string", description: "Specific run id from list_automation_traces (default: newest run)" },
+        include_config: { type: "boolean", description: "Include a clipped copy of the automation config as it ran (default: false)" },
+      },
+      additionalProperties: false,
+    },
+    required: ["entity_id"],
     annotations: {
       readOnly: true,
       idempotent: true,
@@ -4804,12 +4849,85 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const requestedLines = Number.isFinite(args?.lines) ? args.lines : 100;
         const lines = Math.max(1, Math.min(500, Math.trunc(requestedLines)));
         const { text: log, source } = await getErrorLogWithFallback(lines);
-        const result = formatErrorLogResult({ text: log, source, requestedLines, lines });
+        const result = formatErrorLogResult({ text: log, source, requestedLines, lines, unique: args?.unique === true });
         return makeCompatibleResponse({
           content: [createCompactJsonContent(
             result.summary,
             result.data,
             result.meta,
+            { audience: ["assistant"], priority: 0.8 }
+          )],
+        });
+      }
+
+      case "list_automation_traces": {
+        const domain = args?.domain === "script" ? "script" : "automation";
+        const listArgs = { domain };
+        if (typeof args?.item_id === "string" && args.item_id.trim() !== "") {
+          listArgs.item_id = args.item_id.trim();
+        }
+        const erroredOnly = args?.errored_only === true;
+        const rawTraces = await callHAWebSocketCommand("trace/list", 15000, listArgs);
+        const rows = normalizeTraceSummaries(rawTraces, { erroredOnly });
+        const truncated = rows.length > TRACE_LIST_RESULT_CAP;
+        const returnedRows = truncated ? rows.slice(0, TRACE_LIST_RESULT_CAP) : rows;
+        const filterNote = erroredOnly ? " errored" : "";
+        return makeCompatibleResponse({
+          content: [createCompactJsonContent(
+            truncated
+              ? `Returned newest ${returnedRows.length} of ${rows.length}${filterNote} ${domain} trace runs`
+              : `Returned ${rows.length}${filterNote} ${domain} trace run(s)`,
+            returnedRows,
+            {
+              domain,
+              item_id: listArgs.item_id ?? null,
+              errored_only: erroredOnly,
+              total_runs: rows.length,
+              returned_runs: returnedRows.length,
+              truncated,
+              hint: returnedRows.length > 0 ? "Pass entity_id + run_id to get_automation_trace for step detail" : null,
+            },
+            { audience: ["assistant"], priority: 0.8 }
+          )],
+        });
+      }
+
+      case "get_automation_trace": {
+        const parsed = parseTraceEntityId(args?.entity_id);
+        if (!parsed) {
+          return makeCompatibleResponse({
+            content: [createTextContent(
+              `Invalid entity_id '${args?.entity_id}': expected automation.<id> or script.<id>.`,
+              { audience: ["user", "assistant"], priority: 0.9 }
+            )],
+          });
+        }
+        let runId = typeof args?.run_id === "string" && args.run_id.trim() !== "" ? args.run_id.trim() : null;
+        if (!runId) {
+          const summaries = normalizeTraceSummaries(
+            await callHAWebSocketCommand("trace/list", 15000, { domain: parsed.domain, item_id: parsed.item_id })
+          );
+          runId = pickLatestRunId(summaries);
+          if (!runId) {
+            return makeCompatibleResponse({
+              content: [createTextContent(
+                `No stored traces for ${parsed.domain}.${parsed.item_id}. It has not run since Home Assistant started, or tracing is unavailable.`,
+                { audience: ["user", "assistant"], priority: 0.9 }
+              )],
+            });
+          }
+        }
+        const rawTrace = await callHAWebSocketCommand("trace/get", 15000, {
+          domain: parsed.domain,
+          item_id: parsed.item_id,
+          run_id: runId,
+        });
+        const { detail, meta } = summarizeTraceDetail(rawTrace, { includeConfig: args?.include_config === true });
+        return makeCompatibleResponse({
+          content: [createCompactJsonContent(
+            `Trace of ${detail.entity_id} run ${detail.script_execution ?? detail.state ?? "unknown"}: ${detail.timeline.length} step record(s)`,
+            detail,
+            meta,
             { audience: ["assistant"], priority: 0.8 }
           )],
         });
