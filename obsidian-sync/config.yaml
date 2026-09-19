@@ -1,0 +1,27 @@
+---
+name: "Obsidian Sync"
+slug: obsidian-sync
+description: "Self-hosted Obsidian LiveSync backend on CouchDB. Plain HTTP — put your own reverse proxy in front for TLS."
+version: "3.5.2.2"
+image: flapperdeflipper/addon-obsidian-sync
+url: "https://github.com/flapperdeflipper/addons/tree/master/obsidian-sync"
+arch:
+  - amd64
+startup: services
+init: false
+ports:
+  5984/tcp: 5984
+ports_description:
+  5984/tcp: "CouchDB HTTP — add a reverse proxy for mobile Obsidian"
+map:
+  - addon_config:rw
+options:
+  username: admin
+  password: ""
+  database: obsidian
+  log_level: info
+schema:
+  username: str
+  password: password?
+  database: match(^[a-z][a-z0-9_$()+/-]*$)
+  log_level: list(debug|info|warn|error)
