@@ -274,7 +274,14 @@ function noStoreHeaders(extra = {}) {
 }
 
 function transformRootAssetUrls(content, ingressPath) {
-  const assetPath = ingressPath ? `${ingressPath}/assets/` : "assets/";
+  // No Ingress base path (the LAN instance): same-origin absolute asset URLs
+  // are already correct, and rewriting them to relative "assets/..." corrupts
+  // URLs the bundle resolves against a chunk's own directory — a literal
+  // new URL("/assets/x", import.meta.url) inside /assets/surface-*.js would
+  // resolve to /assets/assets/x and 404, breaking the terminal surface
+  // (ghostty-vt.wasm, Nerd Font) with a silently blank panel.
+  if (!ingressPath) return content;
+  const assetPath = `${ingressPath}/assets/`;
   return content
     .replace(/(["'`])\/assets\//g, `$1${assetPath}`)
     .replace(/url\((["]?)\/assets\//g, `url($1${assetPath}`)

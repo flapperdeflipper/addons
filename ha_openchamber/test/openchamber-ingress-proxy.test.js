@@ -955,3 +955,82 @@ describe("openchamber ingress proxy: basic authentication (LAN instance)", () =>
     assert.equal(response.body, "ok");
   });
 });
+
+describe("openchamber ingress proxy: asset URL rewriting", () => {
+  let proxy;
+  let proxyPort;
+  let upstream;
+  let upstreamPort;
+
+  // Mirrors the terminal surface chunk: an absolute asset URL the bundle
+  // resolves against the chunk's own directory via import.meta.url. Rewritten
+  // to a relative URL on a no-base-path listener it would 404 as
+  // /assets/assets/... (ghostty-vt.wasm and the Nerd Font were exactly this).
+  const CHUNK_BODY = 'const font=new URL("/assets/SymbolsNerdFontMono-Regular-aK5vsLov.woff2",import.meta.url).href;';
+
+  const startProxy = async () => {
+    upstream = http.createServer((req, res) => {
+      res.writeHead(200, { "content-type": "application/javascript" });
+      res.end(CHUNK_BODY);
+    });
+    upstreamPort = await freePort();
+    await listen(upstream, upstreamPort);
+
+    proxyPort = await freePort();
+    proxy = spawn(process.execPath, [PROXY_SCRIPT], {
+      env: {
+        ...process.env,
+        OPENCHAMBER_INGRESS_HOST: "127.0.0.1",
+        OPENCHAMBER_INGRESS_PORT: String(proxyPort),
+        OPENCHAMBER_UPSTREAM_HOST: "127.0.0.1",
+        OPENCHAMBER_UPSTREAM_PORT: String(upstreamPort),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    proxy.stderr.resume();
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("proxy did not start")), 10000);
+      proxy.stdout.on("data", (chunk) => {
+        if (String(chunk).includes("listening")) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+      proxy.once("error", reject);
+    });
+    proxy.stdout.resume();
+  };
+
+  const stopProxy = async () => {
+    await close(upstream);
+    if (proxy && proxy.exitCode === null) {
+      proxy.kill();
+      await new Promise((resolve) => proxy.once("exit", resolve));
+    }
+  };
+
+  afterEach(stopProxy);
+
+  it("keeps absolute asset URLs untouched without an Ingress path (LAN instance)", async () => {
+    await startProxy();
+
+    const response = await request(proxyPort, { method: "GET", path: "/assets/surface-test.js" });
+
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.body.includes('"/assets/SymbolsNerdFontMono-Regular-aK5vsLov.woff2"'), response.body);
+    assert.ok(!response.body.includes('"assets/Symbols'), response.body);
+  });
+
+  it("prefixes asset URLs with the Ingress path when one is present", async () => {
+    await startProxy();
+
+    const response = await request(proxyPort, {
+      method: "GET",
+      path: "/assets/surface-test.js",
+      headers: { "x-ingress-path": INGRESS_PATH },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.body.includes(`"${INGRESS_PATH}/assets/SymbolsNerdFontMono-Regular-aK5vsLov.woff2"`), response.body);
+  });
+});
