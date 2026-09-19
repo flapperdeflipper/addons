@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.20.1
+
+- **external_directory: allow /share/worktrees and /data** — the opencode file-tool permission allowlist covered only `/homeassistant/**`, so agents could reach the shared add-on worktrees and the add-on data/worktree dirs via bash but not with the file tools. Both trees (plus `/**` globs) are now allowed; the `read` denylist for secrets/`.storage`/ssl/key/pem still applies on top.
+
 ## 2.20.0
 
 - **Added** — **MQTT tools in the Home Assistant MCP server**: `mqtt_publish`, `mqtt_listen` (subscribe + collect; retained messages arrive immediately, so it doubles as broker-state reads; wildcards allowed, up to 60s) and `mqtt_clear_retained` ride Home Assistant's own MQTT connection via the Supervisor core API, so no broker credentials are involved. Living inside ha-mcp-server, they reach sibling add-ons such as the LiteLLM MCP gateway through the HTTP MCP endpoint on 8927 with no extra server registration; the generated opencode config bumps the `homeassistant` server timeout to 65s to cover a full listen window. Unit tests in `rootfs/opt/ha-mcp-server/test/mqtt.test.js`, structural contract in `test/mcp-mqtt.test.js`. Compact/configuration tool profiles intentionally exclude the tools.
