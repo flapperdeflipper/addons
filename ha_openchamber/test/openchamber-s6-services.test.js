@@ -79,6 +79,13 @@ describe("OpenChamber s6 service ownership", () => {
       assert.match(mcp, /export MCP_PORT=4100/);
       assert.doesNotMatch(mcp, /^.*\s&\s*(?:#.*)?$/m);
 
+      // The bearer token resolves at start, never at save: quotes are
+      // stripped, !secret <key> is looked up in secrets.yaml, and only the
+      // key name may be logged.
+      assert.match(mcp, /secrets\.yaml/);
+      assert.match(mcp, /!secret\[\[:space:\]\]\+/);
+      assert.doesNotMatch(mcp, /bashio::log\.[a-z]+ .*\$\{?MCP_TOKEN/);
+
       assert.equal(
         fs.existsSync(servicePath("ha-openchamber-mcp", "dependencies.d", "ha-openchamber")),
         true,

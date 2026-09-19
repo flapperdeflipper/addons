@@ -1,7 +1,7 @@
 ---
 name: "OpenChamber"
 description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
-version: "1.2.0"
+version: "1.2.1"
 slug: "ha_openchamber"
 image: "flapperdeflipper/addon-ha-openchamber"
 url: "https://github.com/flapperdeflipper/addons"
@@ -76,7 +76,9 @@ options:
   # involved and no project file is read directly.
   mcp_enabled: false
   # Bearer token MCP clients must present as `Authorization: Bearer <token>`.
-  # A !secret <key> value resolves from secrets.yaml at start.
+  # Either a literal token, or a `!secret <key>` reference resolved from
+  # secrets.yaml at start (surrounding quotes are stripped, and only the key
+  # name is ever logged — the resolved value never lands in options or logs).
   mcp_token: ""
 
 schema:
