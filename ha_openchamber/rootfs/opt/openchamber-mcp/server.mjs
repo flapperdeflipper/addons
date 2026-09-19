@@ -145,7 +145,8 @@ export function toolHandlers(ctx) {
 
     async openchamber_note_delete(args) {
       const result = await ctx.client.call(pid(args.directory), `/notes/${encodeURIComponent(String(args.note_id))}`, "DELETE");
-      return `note deleted:\n${formatContext(result.context)}`;
+      // The DELETE endpoint returns the bare context object, not {context}.
+      return `note deleted:\n${formatContext(result.context ?? result)}`;
     },
 
     async openchamber_todo_add(args) {

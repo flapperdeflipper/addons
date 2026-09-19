@@ -1,3 +1,7 @@
+## 1.2.2
+
+- **`openchamber_note_delete` prints the remaining context again** — the REST DELETE endpoint returns the bare context object while the handler looked for a `{context}` wrapper, so every successful delete ended with the confusing "no context returned" line. The handler now formats whichever shape arrives (`result.context ?? result`, same defensive form as `openchamber_note_edit`).
+
 ## 1.2.1
 
 - **MCP token: `!secret <key>` resolves at start, never at save** — the add-on options form turns a typed `!secret` value into plaintext on save (the Supervisor resolves before storing), which both leaks the secret into options and leaves a quoted literal that never authenticates. The MCP service now normalizes the `mcp_token` option itself at start: surrounding quotes are stripped, a `!secret <key>` reference is resolved from `/homeassistant/secrets.yaml` (python3+PyYAML, litellm add-on convention), and anything else is used as the literal token. Only the key name is ever logged; an unresolvable reference idles the service with an actionable error instead of serving with a broken token.
