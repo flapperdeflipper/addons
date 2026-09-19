@@ -299,7 +299,8 @@ export function redactSensitiveText(value) {
     const separator = match.indexOf("=");
     return `${match.slice(0, separator + 1)}<redacted>`;
   }, state);
-  text = redact(text, /\b((?:password|passwd|api[_-]?key|access[_-]?token|client[_-]?secret|secret[_-]?key|supervisor_token)\s*[:=]\s*["']?)[^\s"',;}]+/gi, (match, prefix) => `${prefix}<redacted>`, state);
+  text = redact(text, /\b((?:password|passwd|api[_-]?key|access[_-]?token|client[_-]?secret|secret[_-]?key|supervisor_token|token)\s*[:=]\s*["']?)[^\s"',;}]+/gi, (match, prefix) => `${prefix}<redacted>`, state);
+  text = redact(text, /\b(?:ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|shpat_|shpca_|shppa_|xox[baprs]-)[A-Za-z0-9_\-.]{20,}/g, "<redacted token>", state);
   text = redact(text, /([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/gi, (match, scheme) => `${scheme}<redacted>@`, state);
   return { text, redactions: state.count };
 }

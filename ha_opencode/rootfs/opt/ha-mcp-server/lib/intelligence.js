@@ -23,11 +23,15 @@ export function detectAnomaly(state) {
     const temp = parseFloat(value);
     if (!isNaN(temp)) {
       const unit = attributes.unit_of_measurement || "°C";
-      const isCelsius = unit.includes("C");
-      const normalMin = isCelsius ? -10 : 14;
-      const normalMax = isCelsius ? 50 : 122;
-      if (temp < normalMin || temp > normalMax) {
-        return { entity_id, reason: `Unusual temperature: ${value}${unit}`, severity: "warning" };
+      // Deliberately wide household range — a heuristic filter, not a fact.
+      // Kelvin sensors are skipped: their normal range does not translate.
+      const isCelsius = unit.includes("C") && !unit.toUpperCase().startsWith("K");
+      const isFahrenheit = unit.includes("F");
+      if (isCelsius && (temp < -10 || temp > 50)) {
+        return { entity_id, reason: `Temperature outside household range: ${value}${unit}`, severity: "warning" };
+      }
+      if (isFahrenheit && (temp < 14 || temp > 122)) {
+        return { entity_id, reason: `Temperature outside household range: ${value}${unit}`, severity: "warning" };
       }
     }
   }
@@ -40,22 +44,16 @@ export function detectAnomaly(state) {
     }
   }
 
-  // Door/window sensors open for extended period
+  // Door/window sensors open for an unusually long time. HEURISTIC: some homes
+  // keep doors open all day; severity stays "info" for that reason.
+  const LONG_OPENING_HOURS = 8;
   if ((domain === "binary_sensor") &&
       (attributes?.device_class === "door" || attributes?.device_class === "window") &&
       value === "on") {
     const lastChanged = new Date(state.last_changed);
     const hoursOpen = (Date.now() - lastChanged.getTime()) / (1000 * 60 * 60);
-    if (hoursOpen > 4) {
+    if (hoursOpen > LONG_OPENING_HOURS) {
       return { entity_id, reason: `Open for ${hoursOpen.toFixed(1)} hours`, severity: "info" };
-    }
-  }
-
-  // Lights on during day (basic heuristic)
-  if (domain === "light" && value === "on") {
-    const hour = new Date().getHours();
-    if (hour >= 10 && hour <= 16) {
-      return { entity_id, reason: "Light on during daytime", severity: "info" };
     }
   }
 
@@ -68,7 +66,8 @@ export function detectAnomaly(state) {
  */
 export function searchEntities(states, query) {
   const queryLower = query.toLowerCase();
-  const terms = queryLower.split(/\s+/);
+  const terms = queryLower.split(/\s+/).filter((term) => term.length > 0);
+  if (terms.length === 0) return [];
 
   const results = states.map(state => {
     let score = 0;
@@ -112,27 +111,9 @@ export function searchEntities(states, query) {
 export function generateSuggestions(states) {
   const suggestions = [];
 
-  const motionSensors = states.filter(s =>
-    s.attributes?.device_class === "motion" ||
-    s.entity_id.includes("motion")
-  );
-  const lights = states.filter(s => s.entity_id.startsWith("light."));
-
-  for (const motion of motionSensors) {
-    const areaId = motion.attributes?.area_id;
-    if (areaId) {
-      const areaLights = lights.filter(l => l.attributes?.area_id === areaId);
-      if (areaLights.length > 0) {
-        suggestions.push({
-          type: "motion_light",
-          title: "Motion-Activated Lighting",
-          description: `Create automation: When ${motion.attributes?.friendly_name || motion.entity_id} detects motion, turn on ${areaLights.map(l => l.attributes?.friendly_name || l.entity_id).join(", ")}`,
-          trigger_entity: motion.entity_id,
-          action_entities: areaLights.map(l => l.entity_id),
-        });
-      }
-    }
-  }
+  // NOTE: no motion->light suggestion here. Entity states never carry area_id
+  // (that is registry data), so matching sensors to lights by area from a
+  // state dump is impossible; guessing by entity-id prefix would be noise.
 
   const openings = states.filter(s =>
     s.attributes?.device_class === "door" ||
@@ -186,10 +167,9 @@ export function generateStateSummary(states) {
   for (const state of states) {
     const [domain] = state.entity_id.split(".");
     if (!byDomain[domain]) {
-      byDomain[domain] = { count: 0, on: 0, off: 0, entities: [] };
+      byDomain[domain] = { count: 0, on: 0, off: 0 };
     }
     byDomain[domain].count++;
-    byDomain[domain].entities.push(state);
 
     if (state.state === "on") byDomain[domain].on++;
     if (state.state === "off") byDomain[domain].off++;
@@ -230,6 +210,9 @@ export function generateStateSummary(states) {
     lines.push("\n### Potential Anomalies Detected");
     for (const a of anomalies.slice(0, 5)) {
       lines.push(`- **${a.entity_id}**: ${a.reason}`);
+    }
+    if (anomalies.length > 5) {
+      lines.push(`- ... and ${anomalies.length - 5} more`);
     }
   }
 

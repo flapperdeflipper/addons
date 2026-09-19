@@ -93,12 +93,12 @@ describe("detectAnomaly", () => {
   });
 
   it("detects door open for extended period", () => {
-    const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+    const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
     const state = {
       entity_id: "binary_sensor.front_door",
       state: "on",
       attributes: { device_class: "door" },
-      last_changed: fiveHoursAgo,
+      last_changed: tenHoursAgo,
     };
     const result = detectAnomaly(state);
     expect(result).not.toBeNull();
@@ -106,7 +106,7 @@ describe("detectAnomaly", () => {
     expect(result.reason).toContain("hours");
   });
 
-  it("ignores a door open for less than 4 hours", () => {
+  it("ignores a door open for less than 8 hours", () => {
     const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
     const state = {
       entity_id: "binary_sensor.front_door",
@@ -117,35 +117,22 @@ describe("detectAnomaly", () => {
     expect(detectAnomaly(state)).toBeNull();
   });
 
-  it("detects light on during daytime", () => {
-    // We fake the clock to noon
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2025, 5, 15, 12, 0, 0));
+  it("never flags lights, regardless of time of day", () => {
+    // Lights being on is not a health signal; occupancy/intent is unknowable
+    // from a state dump, so lighting belongs in user automations, not here.
+    for (const hour of [3, 12, 15, 23]) {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2025, 5, 15, hour, 0, 0));
 
-    const state = {
-      entity_id: "light.kitchen",
-      state: "on",
-      attributes: {},
-    };
-    const result = detectAnomaly(state);
-    expect(result).not.toBeNull();
-    expect(result.reason).toContain("daytime");
+      const state = {
+        entity_id: "light.kitchen",
+        state: "on",
+        attributes: {},
+      };
+      expect(detectAnomaly(state)).toBeNull();
 
-    vi.useRealTimers();
-  });
-
-  it("ignores light on during evening", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2025, 5, 15, 21, 0, 0));
-
-    const state = {
-      entity_id: "light.kitchen",
-      state: "on",
-      attributes: {},
-    };
-    expect(detectAnomaly(state)).toBeNull();
-
-    vi.useRealTimers();
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -217,21 +204,24 @@ describe("searchEntities", () => {
 // ---------------------------------------------------------------------------
 
 describe("generateSuggestions", () => {
-  it("suggests motion-activated lighting when motion sensor and light share area", () => {
+  it("does not suggest motion-activated lighting: area_id is registry data, never present in states", () => {
+    // Entity states from /api/states never carry area_id, so area-based
+    // sensor->light matching from a state dump is impossible. The suggestion
+    // was removed; this test pins that no guess-by-name fallback sneaks in.
     const states = [
       {
         entity_id: "binary_sensor.hallway_motion",
         state: "off",
-        attributes: { device_class: "motion", area_id: "hallway", friendly_name: "Hallway Motion" },
+        attributes: { device_class: "motion", friendly_name: "Hallway Motion" },
       },
       {
         entity_id: "light.hallway",
         state: "off",
-        attributes: { area_id: "hallway", friendly_name: "Hallway Light" },
+        attributes: { friendly_name: "Hallway Light" },
       },
     ];
     const suggestions = generateSuggestions(states);
-    expect(suggestions.some(s => s.type === "motion_light")).toBe(true);
+    expect(suggestions.some(s => s.type === "motion_light")).toBe(false);
   });
 
   it("suggests security alert when door/window sensors exist", () => {

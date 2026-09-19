@@ -2,6 +2,8 @@
  * Read the Home Assistant error log, falling back to the Core journal only
  * when Supervisor reports that the file-backed error-log endpoint is absent.
  */
+import { redactSensitiveText } from "./supervisor-operations.js";
+
 export async function readErrorLogWithFallback({
   readErrorLog,
   readCoreLogs,
@@ -35,10 +37,11 @@ export function formatErrorLogResult({ text, source, requestedLines, lines }) {
   if (allLines.at(-1) === "") allLines.pop();
   const logLines = allLines.slice(-lines);
   const usingCoreJournal = source === "core_journal";
+  const { text: redactedLog, redactions } = redactSensitiveText(logLines.join("\n"));
 
   return {
-    summary: `Returned ${logLines.length} Home Assistant ${usingCoreJournal ? "Core journal" : "error log"} lines${usingCoreJournal ? " (error log unavailable)" : ""}`,
-    data: { log: logLines.join("\n") },
+    summary: `Returned ${logLines.length} Home Assistant ${usingCoreJournal ? "Core journal" : "error log"} lines${usingCoreJournal ? " (error log unavailable)" : ""}${redactions > 0 ? `, ${redactions} redaction(s) applied` : ""}`,
+    data: { log: redactedLog },
     meta: {
       requested_lines: requestedLines,
       returned_lines: logLines.length,
