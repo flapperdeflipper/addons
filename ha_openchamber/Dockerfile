@@ -48,15 +48,71 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 #   branch/worktree info of the OpenCode workspace
 # - g++/make: native fallback builds for OpenChamber dependencies on all
 #   arches; installed only while npm installs and purged right after
+# - everything else: the interactive toolset for the OpenChamber terminal
+#   (editors, archives, process/network inspection, Python venv tooling);
+#   the -dev packages are headers only, no compiler stays installed
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        bash \
+        bats \
+        bats-assert \
+        bats-file \
+        bats-support \
+        binutils \
+        bc \
+        bubblewrap \
         bzip2 \
         ca-certificates \
+        coreutils \
         curl \
+        direnv \
+        file \
+        findutils \
+        fzf \
         g++ \
+        gawk \
+        gettext \
+        gh \
+        glab \
         git \
+        grc \
+        highlight \
+        ipcalc \
+        jo \
+        jq \
         libatomic1 \
+        libffi-dev \
+        libpcre2-dev \
+        libpq-dev \
+        libtool \
+        libyaml-dev \
         make \
+        moreutils \
+        ncdu \
+        netcat-openbsd \
+        openssl \
+        openssh-client \
+        p7zip \
+        pigz \
+        procps \
+        progress \
+        psutils \
+        python3 \
+        python3-venv \
+        python3-virtualenv \
+        python3-virtualenvwrapper \
+        python3-yaml \
+        rsync \
+        sqlite3 \
+        tmux \
+        sudo \
+        telnet \
+        tree \
+        unzip \
+        vim \
+        wget \
+        xz-utils \
+        zoxide \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the pinned OpenChamber web UI globally. The trailing assertion fails
