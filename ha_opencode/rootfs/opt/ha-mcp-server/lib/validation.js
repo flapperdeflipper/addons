@@ -18,7 +18,7 @@ export function validateYamlStructure(yamlContent) {
   const issues = [];
 
   // Check for automation structure
-  const automationBlockRegex = /^automation(?:\s+\w+)?:\s*\n([\s\S]*?)(?=^\S|\Z)/gm;
+  const automationBlockRegex = /^automation(?:\s+\w+)?:\s*\n([\s\S]*?)(?=^\S)/gm;
   let autoMatch;
   while ((autoMatch = automationBlockRegex.exec(yamlContent)) !== null) {
     const block = autoMatch[1];
@@ -47,7 +47,7 @@ export function validateYamlStructure(yamlContent) {
   }
 
   // Check for script structure
-  const scriptBlockRegex = /^script:\s*\n([\s\S]*?)(?=^\S|\Z)/gm;
+  const scriptBlockRegex = /^script:\s*\n([\s\S]*?)(?=^\S)/gm;
   let scriptMatch;
   while ((scriptMatch = scriptBlockRegex.exec(yamlContent)) !== null) {
     const block = scriptMatch[1];
@@ -73,7 +73,7 @@ export function validateYamlStructure(yamlContent) {
   }
 
   // Check for template sensor structure
-  const templateBlockRegex = /^template:\s*\n([\s\S]*?)(?=^\S|\Z)/gm;
+  const templateBlockRegex = /^template:\s*\n([\s\S]*?)(?=^\S)/gm;
   let templateMatch;
   while ((templateMatch = templateBlockRegex.exec(yamlContent)) !== null) {
     const block = templateMatch[1];
@@ -107,7 +107,10 @@ export function validateYamlStructure(yamlContent) {
  */
 export function resolveConfigPath(filePath, configDir = DEFAULT_CONFIG_DIR) {
   // Reject absolute paths that point outside config dir
-  if (isAbsolute(filePath) && !filePath.startsWith(configDir)) {
+  const normalizedConfigDir = normalize(configDir);
+  const withinConfigDir = (p) =>
+    p === normalizedConfigDir || p.startsWith(normalizedConfigDir + "/");
+  if (isAbsolute(filePath) && !withinConfigDir(normalize(filePath))) {
     return null;
   }
 
@@ -116,7 +119,7 @@ export function resolveConfigPath(filePath, configDir = DEFAULT_CONFIG_DIR) {
   const normalized = normalize(resolved);
 
   // Ensure the resolved path is still within the config directory
-  if (!normalized.startsWith(configDir)) {
+  if (!withinConfigDir(normalized)) {
     return null;
   }
 

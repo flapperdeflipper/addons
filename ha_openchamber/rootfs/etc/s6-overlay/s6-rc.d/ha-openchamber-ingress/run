@@ -1,29 +1,20 @@
 #!/command/with-contenv bashio
 # ==============================================================================
-# OpenCode - OpenChamber Home Assistant Ingress Proxy Service
+# OpenChamber - Home Assistant Ingress Proxy Service
 # ==============================================================================
 
 export HOME="/data"
 export XDG_DATA_HOME="/data/.local/share"
 export XDG_CONFIG_HOME="/data/.config"
-export NPM_CONFIG_PREFIX="/data/.npm-global"
 export NODE_OPTIONS="--max-old-space-size=768"
-
-if [ -f /data/.env_vars ]; then
-    source /data/.env_vars
-fi
-
-INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
-if [ "${INTERFACE_MODE}" != "openchamber" ]; then
-    bashio::log.info "Interface mode is '${INTERFACE_MODE}'; OpenChamber ingress proxy is inactive."
-    exec sleep infinity
-fi
 
 OPENCHAMBER_INTERNAL_PORT=3010
 OPENCHAMBER_INGRESS_PORT=8099
 
-# The default Ingress proxy must not inherit a permissive setting from user
-# environment variables. Only the separate LAN service permits remote clients.
+# The Ingress proxy must not inherit a permissive setting from user environment
+# variables. Only the separate LAN service permits remote clients, and only the
+# LAN service enables basic authentication — Home Assistant's login is the
+# authentication layer on this listener.
 export OPENCHAMBER_ALLOW_ANY_REMOTE="false"
 export OPENCHAMBER_INGRESS_HOST="0.0.0.0"
 export OPENCHAMBER_INGRESS_PORT

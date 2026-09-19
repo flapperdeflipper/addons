@@ -15,7 +15,6 @@ at `/usr/share/doc/ha-opencode/NOTICE` and in this repository's
 
 - **AI-Powered Editing**: Use natural language to modify your Home Assistant configuration
 - **Modern Terminal**: Beautiful web-based terminal with 10 theme options
-- **OpenChamber Web UI**: Optional graphical interface for OpenCode, served through the same sidebar entry
 - **Log Access**: View Home Assistant Core, Supervisor, and host logs
 - **Ingress Support**: Access directly from the Home Assistant sidebar
 - **Provider Agnostic**: Works with Anthropic, OpenAI, Google, and 70+ other AI providers
@@ -41,38 +40,9 @@ Configure the app from the **Configuration** tab in the app page.
 
 The options below appear in the same order and groups as the Configuration tab.
 
-### Interface Mode
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| **Interface mode** | `terminal` | Choose the browser interface shown in the sidebar: the classic `terminal` or the `openchamber` web UI. |
-
-The add-on can show either the terminal interface or the OpenChamber web UI in the Home Assistant sidebar.
-
-Modes:
-
-- `terminal`: default. Uses the ttyd terminal and tmux session.
-- `openchamber`: serves the OpenChamber web UI behind Home Assistant Ingress on the same sidebar entry.
-
-To switch to OpenChamber:
-
-1. In the add-on **Configuration** tab, set **Interface mode** to `openchamber`.
-2. Save and restart the add-on.
-3. Open **OpenCode** from the Home Assistant sidebar.
-
-Security and networking notes:
-
-- OpenChamber is not exposed through a Home Assistant Network port.
-- The OpenChamber process binds to `127.0.0.1` inside the container.
-- A small first-party ingress proxy binds to internal port `8099`, accepts Home Assistant Ingress traffic, and forwards to OpenChamber locally.
-- Home Assistant Ingress provides the browser authentication layer, so no separate OpenChamber UI password is needed.
-- LAN access remains the separate opt-in **OpenCode LAN server** feature on port `4096`.
-
-If OpenChamber misbehaves (for example after an update), switch **Interface mode** back to `terminal`, restart the add-on, and include logs when reporting the issue.
-
-The two modes are exclusive: `openchamber` starts no terminal. OpenCode can still run most helper commands through its shell tool, but `ha-readonly` requires terminal mode because it starts a separate session.
-
-OpenChamber's own built-in update check is disabled in this add-on. OpenChamber is pinned and patched for Home Assistant Ingress when the add-on image is built, so an in-app self-update cannot persist or stay patched and would only hang the UI. OpenChamber is updated by updating the add-on — no "update available" prompt appears inside OpenChamber, and the Update button in **Settings → OpenChamber → About** reports no update.
+The sidebar always shows the ttyd terminal; the OpenChamber web UI moved to
+its own **OpenChamber** add-on (ha_openchamber), which attaches to this
+add-on's LAN server.
 
 ### Terminal Appearance
 
@@ -147,7 +117,6 @@ Everything else stays fully readable, and this doesn't change how the agent edit
 |--------|---------|-------------|
 | **OpenCode LAN server** | `false` | Start an OpenCode server on internal port `4096` for clients on your local network. Map `4096/tcp` in the add-on Network settings. |
 | **LAN server CORS origins** | `[]` | Exact browser origins allowed to call the LAN server directly. `opencode attach` does not need this. |
-| **OpenChamber LAN web UI** | `false` | Publish OpenChamber on internal port `4097` at the root path. Only works with `interface_mode: openchamber`; map `4097/tcp` to reach it. |
 
 ### Model Providers
 
@@ -207,8 +176,6 @@ These project definitions are separate from the skills shipped in `/data/.config
 
 ### Read-Only Session
 
-> Requires `interface_mode: terminal`.
-
 Run `ha-readonly` for an investigation session that can read configuration and query live state, history, and logs, but cannot edit files, run shell commands, call services, write configuration, or access sensitive paths. It forces the compact MCP profile and disables the native MCP bridge. Your normal OpenCode session is unchanged; `ha-readonly --print-config` prints the exact overlay.
 
 ### Local Models (Ollama and similar)
@@ -247,7 +214,7 @@ The add-on ships one certified OpenCode runtime: an exact version pinned in the 
 
 If you previously used the old `latest` policy, an OpenCode installation may remain under `/data/.npm-global`. It is left untouched but is no longer on `PATH` or used. You can remove the now-unknown `opencode_update_policy` line from the Configuration tab.
 
-Run `opencode-smoke-test` to verify the certified runtime, generated configuration, MCP and language servers, OpenChamber Ingress patch, deployed skills, and read-only overlay. In OpenChamber mode, ask OpenCode to run it through the shell tool.
+Run `opencode-smoke-test` to verify the certified runtime, generated configuration, MCP and language servers, deployed skills, and read-only overlay.
 
 For x64 systems without visible AVX2 support, OpenCode selects its baseline binary. If this add-on runs in a VM on an AVX2-capable host, enable host CPU passthrough; generic QEMU/KVM CPU models can hide AVX2 and force the baseline binary unnecessarily. There is a known upstream baseline OOM issue tracked at `anomalyco/opencode#20988`.
 
@@ -346,14 +313,19 @@ LAN server mode lets you attach to the Home Assistant-hosted OpenCode session fr
 To enable LAN access:
 
 1. In the add-on **Configuration** tab, turn on **OpenCode LAN server**.
-2. In the add-on **Network** settings, map `4096/tcp` to the host port you want to use.
-3. Save and restart the add-on.
+2. Set **LAN server username/password** — the server refuses to start without a password. A `!secret <key>` value works. Use credentials shared nowhere else: basic auth sends them on every request, in base64.
+3. In the add-on **Network** settings, map `4096/tcp` to the host port you want to use.
+4. Save and restart the add-on.
 
 On the secondary computer, use `opencode attach` with your Home Assistant host IP and configured port:
 
 ```bash
-opencode attach http://<home-assistant-ip>:<mapped-host-port>
+opencode attach http://<username>@<home-assistant-ip>:<mapped-host-port>
 ```
+
+An empty username means `opencode`, the OpenCode server's default. The mapped
+port requires these credentials on every request — including the OpenChamber
+add-on, which attaches with the same pair.
 
 Example, if you mapped `4096/tcp` to host port `4096`:
 
@@ -363,7 +335,7 @@ opencode attach http://192.168.1.50:4096
 
 The add-on log shows the current Home Assistant port mapping when the server starts, for example `Home Assistant port mapping: 4096/tcp -> 3443`. If OpenCode also prints `opencode server listening on http://0.0.0.0:4096`, that is the internal container listener, not the URL to use from another computer. Use your Home Assistant host and the mapped host port instead.
 
-Security warning: enabling this service and mapping the port exposes an OpenCode server on your LAN. Only use this on trusted networks, restrict access with your network/firewall controls, and never expose the port to the internet or untrusted networks.
+Security warning: enabling this service and mapping the port exposes an OpenCode server on your LAN. Basic auth is enforced by the OpenCode server itself, but the credentials travel as base64 on every request — put TLS in front (reverse proxy) whenever traffic leaves a trusted network, and never expose the port directly to the internet.
 
 LAN server sessions have no terminal prompt to answer an `ask` permission. To prevent an HTTP client from leaving a write tool call running forever, the add-on denies unmatched `edit: ask` rules in this mode only. The terminal and Ingress UI keep their normal confirmation prompts.
 
@@ -390,40 +362,14 @@ To allow a browser client:
 
 For example: `http://192.168.1.20:8080`.
 
-### OpenChamber LAN Web UI
+### OpenChamber
 
-By default the OpenChamber web UI (`interface_mode: openchamber`) is served **only** through Home Assistant Ingress at `/api/hassio_ingress/<token>/`. That is the recommended path because Home Assistant provides the authentication layer.
-
-If you instead want a clean root URL for a reverse proxy or tunnel — for example so `https://openchamber.example.com/` maps straight to a backend without an ingress-path redirect — enable the OpenChamber LAN web UI. It publishes OpenChamber on a mappable network port and serves it at the root path `/`.
-
-To enable it:
-
-1. Set **Interface mode** to `openchamber`.
-2. Turn on **OpenChamber LAN web UI**.
-3. In the add-on **Network** settings, map `4097/tcp` to the host port you want to use.
-4. Save and restart the add-on.
-
-Then open the UI at:
-
-```text
-http://<home-assistant-host>:<mapped-host-port>/
-```
-
-Behind a Cloudflare Tunnel, point a public hostname straight at it (no redirect rule needed because it already serves at `/`):
-
-```yaml
-additional_hosts:
-  - hostname: openchamber.example.com
-    service: http://<home-assistant-host>:<mapped-host-port>
-```
-
-How it works:
-
-- A second instance of the OpenChamber ingress proxy binds to `0.0.0.0:4097` and forwards to the same OpenChamber process on `127.0.0.1:3010`.
-- Because the mapped port has no Home Assistant Ingress session, the proxy runs with `OPENCHAMBER_ALLOW_ANY_REMOTE=true` and serves the UI with an empty ingress path (root `/`).
-- The default Ingress instance on `8099` is unchanged and keeps its strict `127.0.0.1` / Supervisor-only allowlist.
-
-Security warning: there is **no Home Assistant login** in front of the mapped `4097/tcp` port. Anyone who can reach it can use OpenChamber, which has read/write access to your configuration. Only map it on trusted networks, and put it behind a reverse proxy, Cloudflare Access, or equivalent authentication before any remote exposure. Never expose the raw port directly to the internet.
+The OpenChamber web UI is no longer part of this add-on; it ships as its own
+**OpenChamber** add-on (ha_openchamber) with its own Ingress entry and a
+basic-auth-protected `4097/tcp` LAN port. It attaches to this add-on's LAN
+server: enable **OpenCode LAN server**, set the username/password, map
+`4096/tcp`, and configure the same credentials in the OpenChamber add-on.
+See its Documentation tab for details.
 
 ### Theme Previews
 
@@ -469,8 +415,7 @@ Follow the prompts to authenticate with your preferred provider:
 
 Some providers offer a **browser** sign-in method that sends you back to `http://localhost:<port>/auth/callback` once you have signed in. That address is the add-on container, not the computer you are browsing from, so the final redirect always fails to load with a connection error. That is expected here and does not mean the sign-in failed.
 
-- **OpenChamber interface**: after signing in, copy the whole `http://localhost:...` URL from your browser's address bar, paste it into the **Paste authorization code** field, and select **Complete**. The add-on hands it to OpenCode locally so the sign-in finishes. Pasting only the `code=` value from that URL works too.
-- **Terminal interface**: use the provider's **headless** method instead (for example **ChatGPT Pro/Plus (headless)**). It shows a short code to enter on the provider's device-authorization page and needs no redirect at all.
+Use the provider's **headless** method instead (for example **ChatGPT Pro/Plus (headless)**). It shows a short code to enter on the provider's device-authorization page and needs no redirect at all. In the OpenChamber add-on, the paste-and-complete flow remains available — its proxy bridges the loopback redirect locally.
 
 If a browser sign-in still does not complete, check the add-on log for `OAuth loopback bridge` lines and include them when reporting the issue.
 

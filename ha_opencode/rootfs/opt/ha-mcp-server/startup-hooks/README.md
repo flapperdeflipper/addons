@@ -83,8 +83,8 @@ updates, and the two can corrupt each other.
 ## Ports
 
 These are already taken inside the container: **8099** (the interface behind
-Ingress), **3010** (OpenChamber), **4096** (OpenCode's own API), **4097**
-(OpenChamber LAN), **8787** (PPQ proxy). Pick a different one for your own
+Ingress), **4096** (OpenCode's own API), **8787** (PPQ proxy). Pick a
+different one for your own
 service — *listening* on one of these breaks the add-on in a way that is very
 hard to trace.
 

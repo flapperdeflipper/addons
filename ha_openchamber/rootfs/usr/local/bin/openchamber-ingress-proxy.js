@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const http = require("http");
+const crypto = require("crypto");
 const net = require("net");
 const zlib = require("zlib");
 
@@ -15,6 +16,53 @@ const SUPERVISOR_INGRESS_IP = process.env.HA_INGRESS_PROXY_IP || "172.30.32.2";
 const ALLOW_ANY_REMOTE = String(process.env.OPENCHAMBER_ALLOW_ANY_REMOTE || "")
   .trim()
   .toLowerCase() === "true";
+// Optional HTTP Basic authentication, used by the LAN-facing proxy instance:
+// the mapped port has no Home Assistant Ingress session in front of it, so the
+// proxy itself must demand credentials. When both variables are set, every
+// request — including WebSocket upgrades — has to present them. The Ingress
+// instance never sets them: Home Assistant's own login is the auth layer there.
+const BASIC_USER = process.env.OPENCHAMBER_BASIC_USER || "";
+const BASIC_PASSWORD = process.env.OPENCHAMBER_BASIC_PASSWORD || "";
+const BASIC_AUTH_REQUIRED = BASIC_USER !== "" && BASIC_PASSWORD !== "";
+const BASIC_AUTH_REALM = process.env.OPENCHAMBER_BASIC_REALM || "OpenChamber";
+
+function timingSafeEqualStrings(expected, provided) {
+  const a = Buffer.from(String(expected), "utf8");
+  const b = Buffer.from(String(provided ?? ""), "utf8");
+  if (a.length !== b.length) {
+    // Keep the timing profile uniform on length mismatch; result is discarded.
+    crypto.timingSafeEqual(a, a);
+    return false;
+  }
+  return crypto.timingSafeEqual(a, b);
+}
+
+function isAuthorizedBasic(req) {
+  const header = Array.isArray(req.headers.authorization)
+    ? req.headers.authorization[0]
+    : req.headers.authorization;
+  const match = /^Basic\s+([A-Za-z0-9+/=]+)\s*$/.exec(String(header || ""));
+  if (!match) return false;
+  let decoded = "";
+  try {
+    decoded = Buffer.from(match[1], "base64").toString("utf8");
+  } catch {
+    return false;
+  }
+  const separator = decoded.indexOf(":");
+  if (separator < 0) return false;
+  const user = decoded.slice(0, separator);
+  const password = decoded.slice(separator + 1);
+  return timingSafeEqualStrings(BASIC_USER, user) && timingSafeEqualStrings(BASIC_PASSWORD, password);
+}
+
+function rejectBasicAuth(res) {
+  res.writeHead(401, {
+    "content-type": "text/plain; charset=utf-8",
+    "www-authenticate": `Basic realm="${BASIC_AUTH_REALM}", charset="UTF-8"`,
+  });
+  res.end("Unauthorized\n");
+}
 
 function normalizeRemoteAddress(address) {
   if (!address) return "";
@@ -581,6 +629,11 @@ function proxyRequest(req, res) {
     return;
   }
 
+  if (BASIC_AUTH_REQUIRED && !isAuthorizedBasic(req)) {
+    rejectBasicAuth(res);
+    return;
+  }
+
   const ingressPath = ingressPathFromRequest(req);
   const upstreamPath = stripIngressPath(req.url || "/", ingressPath);
 
@@ -784,6 +837,12 @@ function proxyUpgrade(req, socket, head) {
     return;
   }
 
+  if (BASIC_AUTH_REQUIRED && !isAuthorizedBasic(req)) {
+    socket.write(`HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="${BASIC_AUTH_REALM}", charset="UTF-8"\r\nConnection: close\r\n\r\n`);
+    socket.destroy();
+    return;
+  }
+
   const ingressPath = ingressPathFromRequest(req);
   const upstreamPath = stripIngressPath(req.url || "/", ingressPath);
   const headers = { ...req.headers };
@@ -825,4 +884,5 @@ server.on("upgrade", proxyUpgrade);
 server.listen(LISTEN_PORT, LISTEN_HOST, () => {
   console.log(`OpenChamber ingress proxy listening on ${LISTEN_HOST}:${LISTEN_PORT}`);
   console.log(`Forwarding to http://${UPSTREAM_HOST}:${UPSTREAM_PORT}`);
+  if (BASIC_AUTH_REQUIRED) console.log("Basic authentication required");
 });

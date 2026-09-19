@@ -84,6 +84,7 @@ import {
   createResourceLink,
   truncateLines,
   truncateText,
+  redactToolArgsForLog,
 } from "./lib/helpers.js";
 import { buildAgentCapabilities } from "./lib/agent-capabilities.js";
 import {
@@ -92,6 +93,7 @@ import {
   isToolAllowedInProfile,
   normalizeToolProfile,
   profileDisabledToolMessage,
+  TOOL_PROFILE_NAMES,
 } from "./lib/tool-profiles.js";
 import { buildHaLlmDevelopmentGuide } from "./lib/ha-llm-development.js";
 import {
@@ -177,7 +179,16 @@ const HA_NATIVE_MCP_API_ID = normalizeNativeMcpApiId(
   process.env.HA_NATIVE_MCP_API_ID ?? NATIVE_MCP_ASSIST_API_ID,
   { allowBaseEndpoint: true }
 );
-const MCP_TOOL_PROFILE = normalizeToolProfile(process.env.OPENCODE_MCP_TOOL_PROFILE);
+const MCP_TOOL_PROFILE = normalizeToolProfile(process.env.OPENCODE_MCP_TOOL_PROFILE, {
+  // Fail closed: an unset profile defaults to full (documented behaviour), but
+  // a typo must not silently widen the tool surface.
+  fallback: process.env.OPENCODE_MCP_TOOL_PROFILE ? "readonly" : "full",
+  onInvalid: (value) =>
+    console.error(
+      `[ha-mcp-server] Unknown OPENCODE_MCP_TOOL_PROFILE "${value}" — falling back to "readonly". ` +
+      `Valid profiles: ${TOOL_PROFILE_NAMES.join(", ")}`
+    ),
+});
 const NATIVE_HA_MCP_BRIDGE_ENABLED = process.env.OPENCODE_NATIVE_HA_MCP_ENABLED === "true";
 
 // Clear error message when ESPHome tools are used without an access token
@@ -2132,9 +2143,17 @@ async function getAlertsForIntegration(integration, haVersion = null) {
     if (haVersion && alert.homeassistant) {
       const minVersion = alert.homeassistant.min || alert.homeassistant.affected_from_version;
       const maxVersion = alert.homeassistant.max || alert.homeassistant.resolved_in_version;
-      // Simple string comparison works for CalVer (YYYY.M.P)
-      if (minVersion && haVersion < minVersion) return false;
-      if (maxVersion && haVersion >= maxVersion) return false;
+      const compareCalVer = (a, b) => {
+        const pa = String(a).split(".").map(Number);
+        const pb = String(b).split(".").map(Number);
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+          const da = pa[i] ?? 0, db = pb[i] ?? 0;
+          if (da !== db) return da < db ? -1 : 1;
+        }
+        return 0;
+      };
+      if (minVersion && compareCalVer(haVersion, minVersion) < 0) return false;
+      if (maxVersion && compareCalVer(haVersion, maxVersion) >= 0) return false;
     }
     
     return true;
@@ -4404,7 +4423,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 // --- Call Tool ---
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  sendLog("info", "mcp-server", { action: "call_tool", tool: name, args: redactESPHomeToolArgs(name, args) });
+  sendLog("info", "mcp-server", { action: "call_tool", tool: name, args: name?.startsWith("esphome_") ? redactESPHomeToolArgs(name, args) : redactToolArgsForLog(args) });
 
   // Helper to strip unsupported MCP features from response for OpenCode compatibility
   const makeCompatibleResponse = (result) => {
@@ -5051,7 +5070,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "get_breaking_changes": {
         const { integration, version } = args;
         sendLog("info", "docs", { action: "get_breaking_changes", integration, version });
-        
+
         let haVersion = "unknown";
         try {
           const config = await callHA("/config");
@@ -5059,150 +5078,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         } catch (e) {
           sendLog("warning", "docs", { action: "version_fetch_failed", error: e.message });
         }
-        
-        // Build a list of known breaking changes (curated, since parsing release notes is complex)
-        // This provides immediate value without complex web scraping
-        const knownBreakingChanges = [
-          {
-            version: "2024.12",
-            title: "Template sensor/binary_sensor syntax change",
-            description: "Legacy 'platform: template' under sensor/binary_sensor is deprecated. Use top-level 'template:' key.",
-            integration: "template",
-            url: "https://www.home-assistant.io/integrations/template/",
-          },
-          {
-            version: "2024.11",
-            title: "MQTT discovery changes",
-            description: "MQTT discovery payload format updated for better device support.",
-            integration: "mqtt",
-            url: "https://www.home-assistant.io/integrations/mqtt/",
-          },
-          {
-            version: "2024.10",
-            title: "REST sensor authentication",
-            description: "REST sensors now support digest authentication; some configurations may need updating.",
-            integration: "rest",
-            url: "https://www.home-assistant.io/integrations/rest/",
-          },
-          {
-            version: "2024.8",
-            title: "Automation trigger variables",
-            description: "Trigger variables are now more strictly typed in automations.",
-            integration: "automation",
-            url: "https://www.home-assistant.io/docs/automation/trigger/",
-          },
-          {
-            version: "2024.6",
-            title: "Time & Date sensor deprecation",
-            description: "The time_date platform is deprecated. Use template sensors with now() instead.",
-            integration: "time_date",
-            url: "https://www.home-assistant.io/integrations/time_date/",
-          },
-          {
-            version: "2024.4",
-            title: "Template switch/cover/fan syntax",
-            description: "Template platforms for switch, cover, and fan can now use the top-level 'template:' key.",
-            integration: "template",
-            url: "https://www.home-assistant.io/integrations/template/",
-          },
-          {
-            version: "2024.1",
-            title: "Legacy template sensor syntax deprecated",
-            description: "The 'platform: template' syntax under sensor: is deprecated in favor of the template: integration.",
-            integration: "template",
-            url: "https://www.home-assistant.io/integrations/template/",
-          },
-          {
-            version: "2023.12",
-            title: "Entity naming convention changes",
-            description: "Entities now follow stricter naming conventions. Some entity IDs may have changed.",
-            integration: null,
-            url: "https://www.home-assistant.io/blog/2023/12/",
-          },
-          {
-            version: "2023.8",
-            title: "entity_namespace deprecated",
-            description: "The entity_namespace option is deprecated. Use unique_id instead.",
-            integration: null,
-            url: "https://www.home-assistant.io/blog/2023/08/",
-          },
-          {
-            version: "2023.3",
-            title: "white_value deprecated in light services",
-            description: "Use 'white' instead of 'white_value' in light service calls.",
-            integration: "light",
-            url: "https://www.home-assistant.io/integrations/light/",
-          },
-        ];
-        
-        // Filter by integration if specified
-        let filteredChanges = knownBreakingChanges;
-        if (integration) {
-          filteredChanges = knownBreakingChanges.filter(
-            c => c.integration === integration || c.integration === null
-          );
-        }
-        
-        // Filter by version if specified
-        if (version) {
-          filteredChanges = filteredChanges.filter(c => c.version === version);
-        }
-        
-        // Try to fetch the release notes page for additional context
+
+        // The official release notes are the only source. There is no curated
+        // fallback list: stale hand-picked entries presented as current
+        // compatibility guidance are worse than an honest "no data".
         let releaseNotesContent = "";
+        let sourceUrl = null;
         const targetVersion = version || haVersion.split(".").slice(0, 2).join(".");
+        if (/^\d{4}\.\d{1,2}$/.test(targetVersion)) {
+          const notesCacheKey = `release-notes:${targetVersion}`;
+          const cachedNotes = getCachedDoc(notesCacheKey);
+          if (cachedNotes !== null && cachedNotes !== "") {
+            releaseNotesContent = cachedNotes;
+          } else {
+            try {
+              sourceUrl = `${HA_BLOG_URL}/${targetVersion.replace(".", "/")}/`;
+              const html = await fetchUrl(sourceUrl);
+              const { content } = extractContentFromHtml(html);
 
-        const notesCacheKey = `release-notes:${targetVersion}`;
-        const cachedNotes = getCachedDoc(notesCacheKey);
-        if (cachedNotes !== null) {
-          releaseNotesContent = cachedNotes;
-        } else {
-          try {
-            const releaseUrl = `${HA_BLOG_URL}/${targetVersion.replace(".", "/")}/`;
-            const html = await fetchUrl(releaseUrl);
-            const { content } = extractContentFromHtml(html);
-
-            // Extract breaking changes section if present
-            const breakingMatch = content.match(/breaking changes?[\s\S]*?(?=\n## |$)/i);
-            if (breakingMatch) {
-              releaseNotesContent = breakingMatch[0].substring(0, 5000);
+              // Extract the breaking-changes section if present
+              const breakingMatch = content.match(/breaking changes?[\s\S]*?(?=\n## |$)/i);
+              if (breakingMatch) {
+                releaseNotesContent = breakingMatch[0].substring(0, 5000);
+              }
+              if (releaseNotesContent) setCachedDoc(notesCacheKey, releaseNotesContent);
+            } catch (e) {
+              sendLog("debug", "docs", { action: "release_notes_fetch_failed", error: e.message });
             }
-            setCachedDoc(notesCacheKey, releaseNotesContent);
-          } catch (e) {
-            sendLog("debug", "docs", { action: "release_notes_fetch_failed", error: e.message });
           }
         }
-        
-        const result = {
-          ha_version: haVersion,
-          queried_version: version || "recent",
-          queried_integration: integration || "all",
-          changes: filteredChanges,
-          release_notes_excerpt: releaseNotesContent || null,
-        };
-        
+
         let responseText = `# Breaking Changes\n\n` +
           `**Your HA Version:** ${haVersion}\n` +
           `**Queried:** ${integration ? `integration '${integration}'` : "all integrations"}` +
-          `${version ? ` for version ${version}` : ""}\n\n`;
-        
-        if (filteredChanges.length > 0) {
-          responseText += `## Known Breaking Changes\n\n`;
-          for (const change of filteredChanges) {
-            responseText += `### ${change.version}: ${change.title}\n`;
-            responseText += `${change.description}\n`;
-            responseText += `**More info:** ${change.url}\n\n`;
+          `${version ? ` for version ${version}` : ` for ${targetVersion}`}\n\n`;
+
+        if (releaseNotesContent) {
+          responseText += `## From the ${targetVersion} Release Notes\n\n${releaseNotesContent}\n` +
+            (sourceUrl ? `\nSource: ${sourceUrl}\n` : "");
+          if (integration) {
+            responseText += `\n(Filter the excerpt above for '${integration}' — no per-integration index is kept.)\n`;
           }
         } else {
-          responseText += `No specific breaking changes found for the query.\n\n`;
+          responseText += `No breaking-changes data could be retrieved for ${targetVersion}.\n\n` +
+            `Check the official release notes directly: ${HA_BLOG_URL}/categories/release-notes/\n`;
         }
-        
-        if (releaseNotesContent) {
-          responseText += `## From Release Notes\n\n${releaseNotesContent}\n`;
-        }
-        
+
         responseText += `\n---\n**Tip:** Always check ${HA_BLOG_URL}/categories/release-notes/ for the latest changes.`;
-        
+
         return makeCompatibleResponse({
           content: [createTextContent(responseText, { audience: ["assistant"], priority: 0.9 })],
         });

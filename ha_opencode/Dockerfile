@@ -40,7 +40,6 @@ ARG TTYD_VERSION=1.7.7
 # carries the same value and is what CI reads; the two are asserted equal by
 # test/runtime-contract.test.js so a half-done bump cannot ship.
 ARG OPENCODE_VERSION=1.18.31
-ARG OPENCHAMBER_VERSION=1.24.1
 ARG PPQ_PROXY_VERSION=0.6.0
 ARG TSX_VERSION=4.23.13
 ARG YQ_VERSION=v4.53.6
@@ -89,16 +88,13 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - curl/ca-certificates: For downloading ttyd
 # - gh/glab: GitHub and GitLab CLIs for issue/PR/repo automation
 # - binutils: Provides strings for binary inspection
-# - bzip2: Required by system tar to extract OpenChamber voice models
 # - procps: Provides pgrep for health check
 # - tmux: Session persistence to prevent multiple OpenCode instances
 # - python3-yaml: PyYAML for ad-hoc python3 YAML parsing in sessions
 # - rsync: directory syncing (addon source sync, skills staging)
 # - chromium: Headless browser for screenshot_url MCP tool (visual verification)
-# - g++/make: native fallback builds for OpenChamber dependencies on all arches
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        bzip2 \
         ca-certificates \
         chromium \
         curl \
@@ -188,14 +184,12 @@ RUN python3 -m venv /opt/zigporter-venv \
     && /opt/zigporter-venv/bin/pip install --no-cache-dir zigporter \
     && ln -s /opt/zigporter-venv/bin/zigporter /usr/local/bin/zigporter
 
-# Install OpenCode, OpenChamber, Prettier, and the PPQ private-mode proxy globally
+# Install OpenCode, Prettier, and the PPQ private-mode proxy globally
 # - OpenCode: AI coding agent (certified pin; see OPENCODE_VERSION above)
-# - OpenChamber: browser UI for OpenCode (pinned; patched below for HA Ingress)
 # - Prettier: Code formatter for YAML files, configured for HA conventions
 # - ppq-private-mode: local OpenAI-compatible encryption proxy for PPQ TEE models
 # - tsx: pinned runtime for the PPQ package's TypeScript entrypoint
-# Build tools are needed only while npm installs native dependencies. Peer
-# dependencies are omitted because ppq-private-mode is run as a standalone
+# Peer dependencies are omitted because ppq-private-mode is run as a standalone
 # proxy, not loaded as an OpenClaw plugin.
 #
 # The trailing assertion fails the build when the resolved OpenCode is not the
@@ -203,17 +197,12 @@ RUN python3 -m venv /opt/zigporter-venv \
 # otherwise publish an image whose runtime nobody tested, and the mismatch would
 # surface for the first time on a user's machine. The version is also recorded
 # on disk so runtime code can name the certified build without shelling out.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends g++ make \
-    && npm install -g --omit=dev --omit=peer --no-audit --no-fund \
+RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
         opencode-ai@${OPENCODE_VERSION} \
-        @openchamber/web@${OPENCHAMBER_VERSION} \
         prettier \
         ppq-private-mode@${PPQ_PROXY_VERSION} \
         tsx@${TSX_VERSION} \
     && npm cache clean --force \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get purge -y --auto-remove g++ make \
     && INSTALLED=$(node -e "console.log(require('/usr/local/lib/node_modules/opencode-ai/package.json').version)") \
     && if [ "${INSTALLED}" != "${OPENCODE_VERSION}" ]; then \
         echo "OPENCODE_VERSION is ${OPENCODE_VERSION} but the installed runtime is ${INSTALLED}" >&2; \
@@ -248,18 +237,10 @@ RUN (cd /opt/ha-mcp-server && npm install --omit=dev --no-audit --no-fund) & \
 # Copy root filesystem (server code, scripts, etc.)
 COPY rootfs /
 
-# OpenChamber is a generic root-hosted web app. Patch the pinned bundle so its
-# static assets and runtime API URLs resolve under Home Assistant's Ingress path.
-RUN node /opt/openchamber/patch-ingress.js
-
 # Make scripts executable and create runtime directories
 RUN chmod +x /usr/local/bin/* \
-    && chmod +x /opt/openchamber/patch-ingress.js \
     && chmod +x /etc/s6-overlay/s6-rc.d/init-opencode/run \
     && chmod +x /etc/s6-overlay/s6-rc.d/ha-opencode/run \
-    && chmod +x /etc/s6-overlay/s6-rc.d/ha-openchamber/run \
-    && chmod +x /etc/s6-overlay/s6-rc.d/ha-openchamber-ingress/run \
-    && chmod +x /etc/s6-overlay/s6-rc.d/ha-openchamber-lan/run \
     && chmod +x /etc/s6-overlay/s6-rc.d/ha-opencode-server/run \
     && chmod +x /etc/s6-overlay/s6-rc.d/ppq-private-proxy/run \
     && chmod +x /etc/profile.d/hab-esphome.sh \

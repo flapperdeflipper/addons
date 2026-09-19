@@ -21,7 +21,6 @@ printf '%s\n' "${ADDON_CHANNEL}" > /data/.addon_channel
 # ==============================================================================
 
 CPU_MODE_CONFIG=$(bashio::config 'cpu_mode' || echo "auto")
-INTERFACE_MODE=$(bashio::config 'interface_mode' 2>/dev/null || echo "terminal")
 MCP_ENABLED=$(bashio::config 'mcp_enabled')
 MCP_TOOL_PROFILE=$(bashio::config 'mcp_tool_profile' 2>/dev/null || echo "full")
 NATIVE_HA_MCP_ENABLED=$(bashio::config 'native_ha_mcp_enabled' 2>/dev/null || echo "false")
@@ -73,7 +72,7 @@ if [ "${USER_HOOKS_ENABLED}" != "true" ]; then
     USER_HOOKS_ENABLED="false"
 fi
 
-bashio::log.info "Configuration: INTERFACE_MODE=${INTERFACE_MODE} MCP=${MCP_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
+bashio::log.info "Configuration: MCP=${MCP_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
 
 # ==============================================================================
 # Runtime paths
@@ -103,7 +102,6 @@ rm -rf "${OPENCODE_TMPDIR}"
 # from backups and data syncs.
 mkdir -p /data/.local/share/opencode /data/.config/opencode "${NPM_CONFIG_PREFIX}/lib" "${OPENCODE_TMPDIR}"
 chmod 700 "${OPENCODE_TMPDIR}"
-printf '%s\n' "${INTERFACE_MODE}" > /data/.interface_mode
 
 # ==============================================================================
 # Legacy update-policy migration
@@ -136,6 +134,29 @@ if [ "${LEGACY_UPDATE_POLICY}" = "latest" ]; then
 elif [ -n "${LEGACY_UPDATE_POLICY}" ]; then
     bashio::log.info "The 'OpenCode update policy' option has been removed; the certified OpenCode build in this image is always used."
 fi
+
+# ==============================================================================
+# Legacy OpenChamber options migration
+#
+# OpenChamber moved to its own add-on (ha_openchamber) in 2.13.0. The
+# 'interface_mode' and 'enable_openchamber_lan' options no longer exist; the
+# Supervisor drops removed keys from the saved options on validation, so this
+# only says once, plainly, where the feature went. The evidence file is
+# /data/.interface_mode, which every previous version wrote at every start.
+# ==============================================================================
+
+LEGACY_INTERFACE_MODE=$(cat /data/.interface_mode 2>/dev/null || echo "")
+rm -f /data/.interface_mode
+
+if [ -n "${LEGACY_INTERFACE_MODE}" ] && [ "${LEGACY_INTERFACE_MODE}" != "terminal" ]; then
+    bashio::log.notice "The OpenChamber web UI has moved to its own 'OpenChamber' add-on; this add-on now always shows the terminal."
+    bashio::log.notice "Install ha_openchamber to keep using it - it attaches to this add-on's LAN server on 4096/tcp with shared basic-auth credentials."
+elif jq -e '.enable_openchamber_lan == true' /data/options.json >/dev/null 2>&1; then
+    bashio::log.notice "The 'OpenChamber LAN web UI' option has been removed; OpenChamber now lives in its own add-on (ha_openchamber)."
+    bashio::log.notice "Map 4097/tcp on that add-on to keep serving the UI to reverse proxies, with basic auth in front."
+fi
+# Old OpenChamber application settings under /data/.config/openchamber are left
+# in place; the new add-on starts with its own. Remove them manually if unused.
 
 # ==============================================================================
 # Process user-defined environment variables

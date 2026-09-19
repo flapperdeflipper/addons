@@ -1,7 +1,14 @@
-# Changelog
-All notable changes to this project will be documented in this file.
+## 2.14.1
 
-## 2.13.1
+- **Crash fix: `INTERFACE_MODE: unbound variable`** — the 2.14.0 split removed the `interface_mode` option but left `${INTERFACE_MODE}` referenced in the init service's configuration log line; with `nounset` that aborted the init oneshot and stopped the container on every boot. The stale reference is gone.
+- Removed a stale `4097` mention from the user-hooks port list (the port moved to the ha_openchamber add-on).
+
+## 2.14.0
+
+- **OpenChamber moved to its own add-on** — the web UI now ships as `ha_openchamber` (own image, own Ingress panel, own `/data`), attaching to this add-on's LAN server in external-server mode instead of spawning OpenCode. This add-on loses the `interface_mode` and `enable_openchamber_lan` options, the `4097/tcp` port, the OpenChamber s6 services and Ingress patch, and ~123 MB of image (`@openchamber/web`, bzip2, g++/make build tools). The init service logs a one-time pointer when it finds a non-terminal legacy configuration; old OpenChamber application settings under `/data/.config/openchamber` are left in place. Ingress now always serves the ttyd terminal.
+- **Basic authentication on the LAN server** — new `server_username`/`server_password` options feed OpenCode's own `OPENCODE_SERVER_USERNAME`/`OPENCODE_SERVER_PASSWORD` on `4096/tcp`, scoped to the LAN server service only (the TUI keeps its loopback server untouched). The service fails closed: with the LAN server enabled and no password set it idles with an error instead of listening unauthenticated. `opencode attach` callers pass the credentials in the URL (`http://user@host:port`); use a pair shared nowhere else, since basic auth travels as base64 on every request — the same pair protects the OpenChamber add-on's mapped `4097/tcp` UI port. Regression tests updated in `test/runtime-contract.test.js`; the OpenChamber proxy and s6 coverage moved to the new add-on.
+
+## 2.14.2
 
 - **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
 
@@ -9,6 +16,17 @@ All notable changes to this project will be documented in this file.
 
 - **Toolchain bumps** — opencode-ai 1.18.31 (was 1.18.25), @openchamber/web 1.24.1 (was 1.21.0), ppq-private-mode 0.6.0 (was 0.1.0), tsx 4.23.13 (was 4.20.6), yq v4.53.6 (was v4.53.3), 1Password CLI 2.39.0 (was 2.30.3), Node runtime 24.21.0 (was 24.15.0). ttyd 1.7.7, cosign v3.1.3, hactl 2026.9.0 and hab 1.6.4 are already the latest releases and stay pinned. build.yaml kept in sync; the runtime-contract tests assert the pins match.
 - **`/homeassistant/bin` on PATH** — image-level `ENV PATH` prepends the HA config dir's bin (mounted at runtime; `hasecret` and friends), so shells and agents resolve them without full paths.
+
+## 2.13.0
+
+- **MCP server code-quality pass** — removed the "light on during daytime" anomaly rule from `detect_anomalies` (a lifestyle heuristic that cannot know occupancy, curtains or intent — that judgement belongs in user automations, not a diagnostic scanner); the door/window "open too long" threshold is now a named 8-hour constant, and Kelvin-unit temperature sensors are no longer checked against °C/°F household ranges.
+- **Honest `get_breaking_changes`** — the tool no longer serves a hard-coded 2023.3–2024.12 "known breaking changes" list as if it were current compatibility guidance; the official release notes are the only source, with an explicit "no data could be retrieved" answer (plus pointers) when they cannot be fetched.
+- **Error-log redaction** — `get_error_log` output now passes through `redactSensitiveText` (file-backed log and Core-journal fallback alike), matching what the Supervisor-log path already did; bare `token=`/`token:` assignments and common PAT prefixes (`ghp_`, `github_pat_`, `shpat_`, `xox…`) are redacted everywhere.
+- **Tool-argument logging** — `call_tool` log lines no longer dump raw arguments for any tool: bulky text payloads (`content`, `yaml_config`, …) become char counts and secret-shaped fields become presence flags (previously only `esphome_*` arguments were redacted).
+- **Validation fixes** — removed `\Z` from the automation/script/template block regexes (not a JavaScript anchor; it matched a literal "Z" and silently skipped structural checks at e.g. `Europe/Zurich`), and config-path containment now requires a real boundary (`/homeassistant-evil/…` is rejected instead of passing a `startsWith` prefix check).
+- **CalVer comparison** — HA-alert version ranges compare numerically per component instead of lexicographically (`"2024.11"` sorted below `"2024.9"` before).
+- **Fail-closed tool profiles** — a typo in `OPENCODE_MCP_TOOL_PROFILE` logs an error and falls back to `readonly` instead of silently widening the tool surface to `full` (an unset profile still means `full`).
+- **Dead code removal** — the motion→light suggestion in `generateSuggestions` could never fire (entity states never carry `area_id`; that is registry data) and is removed with a pinning test rather than a name-guessing fallback; the state-summary anomaly list now marks truncation like the unavailable list does.
 
 ## 2.12.0
 

@@ -1,0 +1,60 @@
+---
+name: "OpenChamber"
+description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
+version: "1.0.0"
+slug: "ha_openchamber"
+image: "flapperdeflipper/addon-ha-openchamber"
+url: "https://github.com/flapperdeflipper/addons"
+arch:
+  - aarch64
+  - amd64
+startup: application
+init: false
+
+# Ingress configuration
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: mdi:forum
+panel_title: OpenChamber
+ports:
+  4097/tcp: null
+ports_description:
+  4097/tcp: "OpenChamber web UI with basic auth — for reverse proxies and tunnels; Ingress needs no port"
+
+# OpenChamber talks to the OpenCode add-on's LAN server over HTTP and holds no
+# Home Assistant API access of its own.
+hassio_api: false
+homeassistant_api: false
+host_network: false
+privileged: []
+
+# The Configuration tab renders one flat list in schema key order; the grouping
+# below is presentation only.
+options:
+  # --- 1. OpenCode server -----------------------------------------------
+  # Address of the OpenCode add-on's LAN server (the 'OpenCode LAN server'
+  # feature on 4096/tcp). Leave empty to auto-discover the Docker host
+  # gateway — that reaches the published port on any single-host install.
+  # Include the scheme but no port, e.g. http://192.168.1.50
+  opencode_host: ""
+  # Host port that 4096/tcp is mapped to on the OpenCode add-on.
+  opencode_port: 4096
+  # Basic-auth username the OpenCode server expects. Empty means 'opencode',
+  # the OpenCode server's default.
+  opencode_username: ""
+  # Basic-auth password for the OpenCode server. Required.
+  # A !secret <key> value resolves from secrets.yaml at start.
+  opencode_password: null
+
+schema:
+  opencode_host: str?
+  opencode_port: port
+  opencode_username: password?
+  opencode_password: password
+
+# OpenChamber's own settings are small; exclude its npm-owned cache paths.
+backup_exclude:
+  - ".npm/*"
+  - ".npm-global/*"
+  - ".cache/*"

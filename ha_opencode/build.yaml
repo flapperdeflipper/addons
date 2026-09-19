@@ -14,7 +14,6 @@ args:
   NODE_VERSION: "24.21.0"
   # Must match the exact certified version in the Dockerfile.
   OPENCODE_VERSION: "1.18.31"
-  OPENCHAMBER_VERSION: "1.24.1"
   PPQ_PROXY_VERSION: "0.6.0"
   TSX_VERSION: "4.23.13"
   TTYD_VERSION: "1.7.7"

@@ -48,8 +48,6 @@ describe(`${CHANNEL} runtime pin`, () => {
   const buildYamlPin = /^\s*OPENCODE_VERSION:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
   const dockerfileNodePin = /^ARG NODE_VERSION=(.+)$/m.exec(dockerfile)?.[1]?.trim();
   const buildYamlNodePin = /^\s*NODE_VERSION:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
-  const dockerfileOpenchamberPin = /^ARG OPENCHAMBER_VERSION=(.+)$/m.exec(dockerfile)?.[1]?.trim();
-  const buildYamlOpenchamberPin = /^\s*OPENCHAMBER_VERSION:\s*"([^"]*)"/m.exec(buildYaml)?.[1];
 
   it("pins an exact OpenCode version in the Dockerfile", () => {
     assert.ok(dockerfilePin, "Dockerfile has no ARG OPENCODE_VERSION");
@@ -78,11 +76,19 @@ describe(`${CHANNEL} runtime pin`, () => {
     assert.match(dockerfile, /test "\$\(opencode --version\)" = "\$\{OPENCODE_VERSION\}"/);
   });
 
-  it("pins the same exact OpenChamber version in the Dockerfile and build.yaml", () => {
-    assert.ok(dockerfileOpenchamberPin, "Dockerfile has no ARG OPENCHAMBER_VERSION");
-    assert.ok(buildYamlOpenchamberPin, "build.yaml has no OPENCHAMBER_VERSION");
-    assert.match(dockerfileOpenchamberPin, /^\d+\.\d+\.\d+$/);
-    assert.equal(buildYamlOpenchamberPin, dockerfileOpenchamberPin);
+  it("carries no OpenChamber pin or bundle since the 2.13.0 split", () => {
+    assert.doesNotMatch(dockerfile, /OPENCHAMBER/);
+    assert.doesNotMatch(buildYaml, /OPENCHAMBER/);
+    assert.equal(
+      fs.existsSync(path.join(ROOTFS, "opt", "openchamber")),
+      false,
+      "rootfs/opt/openchamber should be gone",
+    );
+    assert.equal(
+      fs.existsSync(path.join(ROOTFS, "usr", "local", "bin", "openchamber-ingress-proxy.js")),
+      false,
+      "the ingress proxy moved to the ha_openchamber add-on",
+    );
   });
 
   it("stays on the certified V1 line", () => {
@@ -160,7 +166,6 @@ describe(`${CHANNEL} bundled runtime precedence`, () => {
       path.join("rootfs", "etc", "s6-overlay", "s6-rc.d", "init-opencode", "run"),
       path.join("rootfs", "etc", "s6-overlay", "s6-rc.d", "ha-opencode", "run"),
       path.join("rootfs", "etc", "s6-overlay", "s6-rc.d", "ha-opencode-server", "run"),
-      path.join("rootfs", "etc", "s6-overlay", "s6-rc.d", "ha-openchamber", "run"),
       path.join("rootfs", "usr", "local", "bin", "opencode-session.sh"),
       path.join("rootfs", "usr", "local", "bin", "ha-readonly"),
     ];
@@ -171,20 +176,6 @@ describe(`${CHANNEL} bundled runtime precedence`, () => {
         `${relative} does not disable OpenCode auto-update`,
       );
     }
-  });
-
-  it("tells OpenChamber the certified runtime cannot be upgraded in place", () => {
-    const openchamber = read(
-      ROOTFS,
-      "etc",
-      "s6-overlay",
-      "s6-rc.d",
-      "ha-openchamber",
-      "run",
-    );
-
-    assert.match(openchamber, /OPENCHAMBER_BUNDLED_OPENCODE_CLI_DIR="\/usr\/local\/bin"/);
-    assert.match(openchamber, /OPENCHAMBER_BIN="\/usr\/local\/bin\/openchamber"/);
   });
 
   it("carries no update-policy option or plumbing", () => {
