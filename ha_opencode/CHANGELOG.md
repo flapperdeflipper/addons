@@ -1,11 +1,17 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.20.0
+
+- **Added** — **MQTT tools in the Home Assistant MCP server**: `mqtt_publish`, `mqtt_listen` (subscribe + collect; retained messages arrive immediately, so it doubles as broker-state reads; wildcards allowed, up to 60s) and `mqtt_clear_retained` ride Home Assistant's own MQTT connection via the Supervisor core API, so no broker credentials are involved. Living inside ha-mcp-server, they reach sibling add-ons such as the LiteLLM MCP gateway through the HTTP MCP endpoint on 8927 with no extra server registration; the generated opencode config bumps the `homeassistant` server timeout to 65s to cover a full listen window. Unit tests in `rootfs/opt/ha-mcp-server/test/mqtt.test.js`, structural contract in `test/mcp-mqtt.test.js`. Compact/configuration tool profiles intentionally exclude the tools.
+- **Removed** — the standalone `/usr/local/bin/mcp-mqtt` stdio server, its generated base-config entry and init-script gate (superseded by the tools above; the read-only session keeps excluding MQTT via the compact tool profile).
+
 ## 2.19.0
 
 - **Changed** — the toolchain layers (exact Node runtime, certified OpenCode pin, hab, zigporter, ttyd + patched ingress page, yq, op/cosign CLIs, unix toolset) moved to the shared [`agent-base`](https://github.com/flapperdeflipper/agent-base) image, shared with the OpenChamber and Terminal add-ons; the add-on Dockerfile now layers only the HA MCP/LSP servers and s6 services on `ghcr.io/flapperdeflipper/agent-base`.
 - **Added** — build-time assertion that the inherited `opencode` runtime matches the base image's certified version file.
 - **Removed** — the ttyd page assets and profile.d helpers from this add-on's rootfs (they are part of agent-base now).
+
 
 ## 2.18.0
 
