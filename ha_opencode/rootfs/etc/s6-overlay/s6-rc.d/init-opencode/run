@@ -1038,8 +1038,9 @@ fi
 # ==============================================================================
 # Drop-in config snippets (optional, file-based)
 #
-# Plain JSON files in /homeassistant/opencode.d - the workspace users actually
-# edit - instead of escaping a whole JSON document into the opencode_config
+# Plain JSON files in the add-on's configuration directory (mounted at
+# /config here; /addon_configs/<repository-slug> on the host and in file
+# shares) instead of escaping a whole JSON document into the opencode_config
 # text field, where one broken character silently discards the entire config
 # (the only trace is a boot-log error). Every *.json in the directory must be
 # a JSON object; files deep-merge in alphabetical filename order on top of
@@ -1052,7 +1053,7 @@ fi
 # stands.
 # ==============================================================================
 
-OPENCODE_DROPIN_DIR="/homeassistant/opencode.d"
+OPENCODE_DROPIN_DIR="/config"
 MERGE_LOG="$(bash /usr/local/lib/opencode/merge-config-dropins \
     "${CONFIG_TARGET}" "${OPENCODE_DROPIN_DIR}" "${CONFIG_TARGET}")" || true
 if [ -n "${MERGE_LOG}" ]; then

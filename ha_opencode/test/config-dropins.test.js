@@ -123,8 +123,13 @@ describe(`${CHANNEL} config drop-ins`, () => {
   it("is wired into the init service so a drop-in cannot be silently ignored", () => {
     const runScript = fs.readFileSync(INIT_RUN, "utf8");
     assert.match(runScript, /merge-config-dropins/);
-    assert.match(runScript, /OPENCODE_DROPIN_DIR="\/homeassistant\/opencode\.d"/);
+    assert.match(runScript, /OPENCODE_DROPIN_DIR="\/config"/);
     // The merger exits 0 by contract; the init must not swallow its errors.
     assert.match(runScript, /ERROR:\*\).*bashio::log\.error/);
+  });
+
+  it("requests the standardized add-on config folder the drop-ins live in", () => {
+    const manifest = fs.readFileSync(path.join(ADDON_DIR, "config.yaml"), "utf8");
+    assert.match(manifest, /^  - type: addon_config\n    read_only: false\n/m);
   });
 });
