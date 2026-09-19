@@ -53,12 +53,12 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 #   the -dev packages are headers only, no compiler stays installed
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        awscli \
         bash \
         bats \
         bats-assert \
         bats-file \
         bats-support \
+        binutils \
         bc \
         bubblewrap \
         bzip2 \
@@ -72,6 +72,8 @@ RUN apt-get update \
         g++ \
         gawk \
         gettext \
+        gh \
+        glab \
         git \
         grc \
         highlight \
@@ -89,21 +91,27 @@ RUN apt-get update \
         ncdu \
         netcat-openbsd \
         openssl \
+        openssh-client \
         p7zip \
         pigz \
         procps \
         progress \
         psutils \
         python3 \
+        python3-venv \
         python3-virtualenv \
         python3-virtualenvwrapper \
+        python3-yaml \
+        rsync \
         sqlite3 \
+        tmux \
         sudo \
         telnet \
         tree \
         unzip \
         vim \
         wget \
+        xz-utils \
         zoxide \
     && rm -rf /var/lib/apt/lists/*
 
