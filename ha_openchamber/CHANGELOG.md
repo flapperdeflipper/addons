@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.0
+
+- **Trusted-remote allowlist replaces basic auth on the LAN port** — the mapped `4097/tcp` no longer prompts for credentials. The proxy now only accepts loopback plus the addresses in the new **LAN trusted remotes** option (IPs or CIDRs, e.g. your nginx/OAuth proxy's source); every other request — WebSocket upgrades included — is redirected to the new **LAN redirect URL** (e.g. `https://openchamber.pl4.dev`, where the OAuth proxy authenticates properly) or refused with 403 when unset. Each rejection is logged with the source address, so an unknown proxy IP is discovered from the add-on log and then added to the list; an empty list means loopback-only. The env-gated basic-auth code stays in the proxy for opt-in use. Ingress (Home Assistant login) and the OpenCode server credentials are unchanged.
+
 ## 1.0.1
 
 - **Mirrors the OpenCode add-on's directory mounts** — 1.0.0 shipped with no `map` entries, so the container only had its own `/data`: `/homeassistant`, `/local_apps`, `/addon_configs` and `/share` were missing, breaking anything that expected workspace paths to exist locally. All four now mount read-write exactly as in ha_opencode, the server runs with `/homeassistant` as its working directory (matching pre-split behaviour), and the image `WORKDIR` follows. Still no Supervisor or Home Assistant API access — mounts are filesystem-level only.
