@@ -13,7 +13,11 @@
     },
     "external_directory": {
       "/homeassistant": "allow",
-      "/homeassistant/**": "allow"
+      "/homeassistant/**": "allow",
+      "/share/worktrees": "allow",
+      "/share/worktrees/**": "allow",
+      "/data": "allow",
+      "/data/**": "allow"
     }
   },
   "watcher": {
