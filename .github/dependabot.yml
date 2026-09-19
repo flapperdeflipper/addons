@@ -9,9 +9,16 @@
 #
 # Scope notes:
 # - Only literal `FROM <image>:<tag>` pins are managed. ARG-indirected pins
-#   (BUILD_FROM, NODE_VERSION, GO_VERSION, MOSQUITTO_*, BASE_IMAGE, ...) are
+#   (BUILD_FROM, NODE_VERSION, GO_VERSION, MOSQUITTO_*, AGENT_BASE, ...) are
 #   invisible to Dependabot and remain manual.
-# - mosquitto/, terminal/ and isponsorblocktv/ therefore have no entries.
+# - mosquitto/, ha_opencode/, ha_openchamber/, terminal/ and isponsorblocktv/
+#   therefore have no docker entries: the agent add-ons are layered on
+#   flapperdeflipper/agent-base via an ARG-indirected AGENT_BASE pin, and that
+#   bump arrives automatically as a PR from agent-base's release workflow
+#   (update-addons.yml in that repository) whenever a new base image is
+#   released.
+# - ha_opencode's golang build stage moved to agent-base and is managed by
+#   that repository's own Dependabot config.
 version: 2
 updates:
   # GitHub Actions pins in .github/workflows/builder.yml
@@ -28,16 +35,6 @@ updates:
         versions: [">2026.02.1"]
     commit-message:
       prefix: "ci"
-    labels: ["dependencies"]
-
-  # golang:<ver>-trixie build stage in ha_opencode
-  - package-ecosystem: docker
-    directory: "/ha_opencode"
-    schedule:
-      interval: weekly
-      day: monday
-    commit-message:
-      prefix: "ha_opencode"
     labels: ["dependencies"]
 
   # ghcr.io/berriai/litellm-database base image
