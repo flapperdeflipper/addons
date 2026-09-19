@@ -73,12 +73,12 @@ export function extractContentFromHtml(html) {
     // Remove remaining tags
     .replace(/<[^>]+>/g, "")
     // Decode common entities
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
     // Clean up whitespace
     .replace(/\n{3,}/g, "\n\n")
     .trim();
