@@ -42,7 +42,7 @@
       "type": "local",
       "command": ["node", "/opt/ha-mcp-server/index.js"],
       "enabled": true,
-      "timeout": 60000,
+      "timeout": 65000,
       "environment": {
         "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
         "HA_NATIVE_MCP_API_ID": "assist",
@@ -58,15 +58,6 @@
       "environment": {
         "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
         "HA_NATIVE_MCP_API_ID": "assist"
-      }
-    },
-    "mqtt": {
-      "type": "local",
-      "command": ["node", "/usr/local/bin/mcp-mqtt"],
-      "enabled": true,
-      "timeout": 65000,
-      "environment": {
-        "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}"
       }
     }
   },

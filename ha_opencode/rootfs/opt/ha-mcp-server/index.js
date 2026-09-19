@@ -102,6 +102,14 @@ import {
 } from "./lib/ha-native-mcp.js";
 import { formatErrorLogResult, readErrorLogWithFallback } from "./lib/ha-error-log.js";
 import {
+  normalizeListenDuration,
+  listenMqttTopic,
+  publishMqttMessage,
+  clearMqttRetained,
+  formatListenResult,
+  formatClearResult,
+} from "./lib/mqtt.js";
+import {
   normalizeTraceSummaries,
   parseTraceEntityId,
   pickLatestRunId,
@@ -4227,6 +4235,71 @@ const TOOLS = [
       idempotent: true,
     },
   },
+  // === MQTT BROKER (via HA's own connection; no broker credentials) ===
+  {
+    name: "mqtt_publish",
+    title: "MQTT Publish",
+    description: "Publish a message to an MQTT topic via Home Assistant's broker connection. Publishing an empty payload with retain=true clears a retained message on that topic.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Exact MQTT topic" },
+        payload: { type: "string", description: "Message payload (empty string clears a retained message when retain=true)" },
+        retain: { type: "boolean", description: "Broker retains the message for future subscribers (default false)" },
+        qos: { type: "integer", enum: [0, 1, 2], description: "QoS level (default 0)" },
+      },
+      required: ["topic", "payload"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnly: false,
+      idempotent: false,
+      openWorld: false,
+    },
+  },
+  {
+    name: "mqtt_listen",
+    title: "MQTT Listen",
+    description: "Subscribe to an MQTT topic filter and collect messages for a few seconds. Retained messages arrive immediately, so this also reads current broker state (e.g. 'homeassistant/#' for discovery, or a device's topics). Use MQTT wildcards # and +.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Topic filter, wildcards allowed (e.g. home/alarm/#)" },
+        duration_seconds: { type: "integer", minimum: 1, maximum: 60, description: "How long to listen (default 5)" },
+      },
+      required: ["topic"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnly: true,
+      idempotent: false,
+      openWorld: false,
+    },
+  },
+  {
+    name: "mqtt_clear_retained",
+    title: "MQTT Clear Retained",
+    description: "Clear retained messages by publishing an empty retained payload to each exact topic. Use mqtt_listen first to enumerate topics (e.g. stale MQTT discovery under homeassistant/).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topics: {
+          anyOf: [
+            { type: "string" },
+            { type: "array", items: { type: "string" } },
+          ],
+          description: "One exact topic or a list of exact topics (no wildcards)",
+        },
+      },
+      required: ["topics"],
+      additionalProperties: false,
+    },
+    annotations: {
+      readOnly: false,
+      idempotent: true,
+      openWorld: false,
+    },
+  },
 ];
 
 // ============================================================================
@@ -7397,6 +7470,46 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               priority: 1.0,
             }),
           ],
+        });
+      }
+
+      case "mqtt_publish": {
+        const published = await publishMqttMessage({
+          callHA,
+          topic: args?.topic,
+          payload: args?.payload,
+          retain: args?.retain,
+          qos: args?.qos,
+        });
+        sendLog("info", "mqtt", { action: "published", topic: published.topic, bytes: published.bytes, retain: published.retained });
+        return makeCompatibleResponse({
+          content: [createTextContent(
+            `published ${published.bytes} byte(s) to ${published.topic}${published.retained ? " (retained)" : ""}`,
+            { audience: ["user", "assistant"], priority: 0.8 }
+          )],
+        });
+      }
+
+      case "mqtt_listen": {
+        const durationSeconds = normalizeListenDuration(args?.duration_seconds);
+        const { reason, events } = await listenMqttTopic({ topic: String(args?.topic ?? ""), durationSeconds });
+        sendLog("info", "mqtt", { action: "listened", topic: String(args?.topic), duration: durationSeconds, events: events.length, reason });
+        return makeCompatibleResponse({
+          content: [createTextContent(
+            formatListenResult({ topic: String(args?.topic), durationSeconds, reason, events }),
+            { audience: ["assistant"], priority: 0.8 }
+          )],
+        });
+      }
+
+      case "mqtt_clear_retained": {
+        const result = await clearMqttRetained({ callHA, topics: args?.topics });
+        sendLog("notice", "mqtt", { action: "clear_retained", cleared: result.cleared, failed: result.failed.length, total: result.total });
+        return makeCompatibleResponse({
+          content: [createTextContent(
+            formatClearResult(result),
+            { audience: ["user", "assistant"], priority: 0.8 }
+          )],
         });
       }
 
