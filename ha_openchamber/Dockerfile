@@ -48,15 +48,63 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 #   branch/worktree info of the OpenCode workspace
 # - g++/make: native fallback builds for OpenChamber dependencies on all
 #   arches; installed only while npm installs and purged right after
+# - everything else: the interactive toolset for the OpenChamber terminal
+#   (editors, archives, process/network inspection, Python venv tooling);
+#   the -dev packages are headers only, no compiler stays installed
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        awscli \
+        bash \
+        bats \
+        bats-assert \
+        bats-file \
+        bats-support \
+        bc \
+        bubblewrap \
         bzip2 \
         ca-certificates \
+        coreutils \
         curl \
+        direnv \
+        file \
+        findutils \
+        fzf \
         g++ \
+        gawk \
+        gettext \
         git \
+        grc \
+        highlight \
+        ipcalc \
+        jo \
+        jq \
         libatomic1 \
+        libffi-dev \
+        libpcre2-dev \
+        libpq-dev \
+        libtool \
+        libyaml-dev \
         make \
+        moreutils \
+        ncdu \
+        netcat-openbsd \
+        openssl \
+        p7zip \
+        pigz \
+        procps \
+        progress \
+        psutils \
+        python3 \
+        python3-virtualenv \
+        python3-virtualenvwrapper \
+        sqlite3 \
+        sudo \
+        telnet \
+        tree \
+        unzip \
+        vim \
+        wget \
+        zoxide \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the pinned OpenChamber web UI globally. The trailing assertion fails
