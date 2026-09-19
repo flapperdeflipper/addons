@@ -25,9 +25,44 @@ fi
 
 MCP_TOKEN=$(bashio::config 'mcp_token' 2>/dev/null || echo "")
 
-if ! bashio::var.has_value "${MCP_TOKEN}"; then
+# Normalize: tolerate surrounding quotes the options form may have added, so a
+# typed '!secret <key>' still resolves after the UI quoted it.
+MCP_TOKEN=$(printf '%s' "${MCP_TOKEN}" | sed -e "s/^['\"]//" -e "s/['\"]$//")
+
+# Secrets policy: the option holds a reference or a literal, never a resolved
+# secret. '!secret <key>' resolves from secrets.yaml at start (litellm add-on
+# convention); anything else is used as the literal token. Only the key NAME
+# is ever logged.
+if printf '%s' "${MCP_TOKEN}" | grep -Eq '^!secret[[:space:]]+[A-Za-z0-9_.-]+$'; then
+    MCP_SECRET_KEY=$(printf '%s' "${MCP_TOKEN}" | awk '{print $2}')
+    MCP_TOKEN=$(python3 - "${MCP_SECRET_KEY}" <<'PYRES'
+import sys, yaml
+
+key = sys.argv[1]
+try:
+    with open("/homeassistant/secrets.yaml") as handle:
+        data = yaml.safe_load(handle) or {}
+except Exception as err:
+    sys.stderr.write("secrets.yaml unreadable: %s\n" % err)
+    sys.exit(1)
+value = data.get(key) if isinstance(data, dict) else None
+if value in (None, ""):
+    sys.stderr.write("secret '%s' not found or empty in secrets.yaml\n" % key)
+    sys.exit(1)
+sys.stdout.write(str(value))
+PYRES
+    )
+    if ! bashio::var.has_value "${MCP_TOKEN}"; then
+        bashio::log.error "Could not resolve '!secret ${MCP_SECRET_KEY}' from /homeassistant/secrets.yaml."
+        bashio::log.error "Add the key to secrets.yaml or set a literal token, then restart."
+        exec sleep infinity
+    fi
+    bashio::log.info "Agent MCP bearer token resolved from secrets.yaml key '${MCP_SECRET_KEY}'"
+elif bashio::var.has_value "${MCP_TOKEN}"; then
+    bashio::log.info "Agent MCP bearer token taken literally from the mcp_token option"
+else
     bashio::log.error "The agent MCP server is enabled but no bearer token is set."
-    bashio::log.error "Set 'Agent MCP bearer token' in the Configuration tab (a !secret <key> value works too), then restart."
+    bashio::log.error "Set 'Agent MCP bearer token' in the Configuration tab ('!secret <key>' or a literal), then restart."
     exec sleep infinity
 fi
 # server.mjs reads process.env.MCP_TOKEN: without this export the exec'd

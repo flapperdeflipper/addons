@@ -105,7 +105,7 @@ An empty list means loopback-only: nothing off-box is proxied.
 
 ## Agent MCP server (project notes, todos, plans)
 
-Opt-in (`mcp_enabled` + `mcp_token`, a `!secret <key>` value works): serves
+Opt-in (`mcp_enabled` + `mcp_token`): serves
 OpenChamber's **Project Notes** — the notes, todos and plans of the web UI —
 to agent clients over the Model Context Protocol on `4100`/tcp, reachable
 from other add-ons on the internal network (e.g.
@@ -124,6 +124,10 @@ from other add-ons on the internal network (e.g.
   own `path_<base64url>` id rule.
 - **Transport**: the same stateless streamable-HTTP shape as the OpenCode
   add-on's ha-mcp-server HTTP mode (`GET /health`, `POST /mcp`).
+- **Token**: `mcp_token` holds either a literal token or a `!secret <key>`
+  reference, resolved from `/homeassistant/secrets.yaml` at every start
+  (quotes around the value are stripped). The option never stores the
+  resolved secret; only the key name is logged.
 
 ## Troubleshooting
 
