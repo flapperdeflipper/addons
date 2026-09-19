@@ -31,9 +31,23 @@ configuration:
     description: >-
       Basic-auth password shared with the OpenCode add-on's 'LAN server
       password' option. OpenChamber cannot attach without it; a
-      !secret <key> value works too. The same credentials protect the mapped
-      4097/tcp web UI port.
+      !secret <key> value works too.
+
+  lan_allowed_remotes:
+    name: LAN trusted remotes
+    description: >-
+      IP addresses or CIDRs the reverse proxy connects from. OpenChamber
+      proxies 4097/tcp for these and loopback only. Watch the add-on log for
+      'not in trusted remotes' lines to discover an unknown proxy address,
+      then add it here.
+
+  lan_redirect_url:
+    name: LAN redirect URL
+    description: >-
+      Where OpenChamber sends sources that are not in the trusted list, for
+      example the public URL behind the OAuth proxy. Leave empty to refuse
+      them with a plain 403 instead.
 network:
   4097/TCP: >-
-    OpenChamber web UI with basic auth, for reverse proxies and tunnels.
-    Ingress needs no port mapping.
+    OpenChamber web UI for the trusted reverse proxy; other sources are
+    redirected. Ingress needs no port mapping.

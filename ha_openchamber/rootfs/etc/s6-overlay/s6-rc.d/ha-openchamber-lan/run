@@ -3,12 +3,13 @@
 # OpenChamber - LAN web UI proxy (mappable port 4097/tcp)
 #
 # Publishes the OpenChamber web UI at the root path on a mappable network port
-# so reverse proxies and tunnels can point straight at it. There is no Home
-# Assistant Ingress session in front of this port, so this instance accepts any
-# remote address — and compensates with HTTP Basic authentication enforced by
-# the proxy itself, using the same credentials OpenChamber uses towards the
-# OpenCode server. The Ingress listener on 8099 stays authentication-free
-# (Home Assistant's login covers it).
+# for a trusted reverse proxy (e.g. nginx with an OAuth proxy in front). There
+# is no Home Assistant Ingress session on this port, so the proxy runs a
+# trusted-remote allowlist instead: only loopback and the configured
+# 'LAN trusted remotes' are proxied, and every other source is redirected to
+# the public URL (or refused when none is set) — each rejection is logged with
+# the source address, so an unknown proxy IP is discovered from the add-on log
+# and then added to the list. The Ingress listener on 8099 is unaffected.
 # ==============================================================================
 
 export HOME="/data"
@@ -16,19 +17,30 @@ export XDG_DATA_HOME="/data/.local/share"
 export XDG_CONFIG_HOME="/data/.config"
 export NODE_OPTIONS="--max-old-space-size=768"
 
-OPENCODE_USERNAME=$(bashio::config 'opencode_username' 2>/dev/null || echo "")
 OPENCODE_PASSWORD=$(bashio::config 'opencode_password' 2>/dev/null || echo "")
 
 if ! bashio::var.has_value "${OPENCODE_PASSWORD}"; then
-    bashio::log.error "OpenChamber LAN proxy needs the basic-auth password to protect the mapped port."
+    bashio::log.error "OpenChamber LAN proxy requires the OpenCode server password option to be set."
     exec sleep infinity
 fi
 
-# Match OpenCode's own default: an unset username authenticates as 'opencode'.
-LAN_BASIC_USER="${OPENCODE_USERNAME}"
-if ! bashio::var.has_value "${LAN_BASIC_USER}"; then
-    LAN_BASIC_USER="opencode"
+# Trusted remotes: IPs or CIDRs the reverse proxy connects from. Loopback is
+# always trusted. Empty list = loopback only; every other source is rejected
+# (and logged, which is how an unknown proxy IP gets discovered).
+LAN_ALLOWED_REMOTES=""
+LAN_REMOTES_COUNT=$(bashio::config 'lan_allowed_remotes | length' 2>/dev/null || echo "0")
+if [ "${LAN_REMOTES_COUNT}" -gt 0 ]; then
+    for _ in $(seq 0 $((LAN_REMOTES_COUNT - 1))); do
+        LAN_REMOTE=$(bashio::config "lan_allowed_remotes[${_}]")
+        if [ -n "${LAN_REMOTE}" ]; then
+            LAN_ALLOWED_REMOTES="${LAN_ALLOWED_REMOTES} ${LAN_REMOTE}"
+        fi
+    done
 fi
+
+# Where untrusted sources are redirected to (the public URL behind the OAuth
+# proxy). Empty means plain 403 instead of a redirect.
+LAN_REDIRECT_URL=$(bashio::config 'lan_redirect_url' 2>/dev/null || echo "")
 
 OPENCHAMBER_INTERNAL_PORT=3010
 OPENCHAMBER_LAN_PORT=4097
@@ -37,17 +49,24 @@ export OPENCHAMBER_INGRESS_HOST="0.0.0.0"
 export OPENCHAMBER_INGRESS_PORT="${OPENCHAMBER_LAN_PORT}"
 export OPENCHAMBER_UPSTREAM_HOST="127.0.0.1"
 export OPENCHAMBER_UPSTREAM_PORT="${OPENCHAMBER_INTERNAL_PORT}"
-# No Home Assistant Ingress session guards this port, so accept LAN clients...
-export OPENCHAMBER_ALLOW_ANY_REMOTE="true"
-# ...but demand basic auth from every request, WebSocket upgrades included.
-export OPENCHAMBER_BASIC_USER="${LAN_BASIC_USER}"
-export OPENCHAMBER_BASIC_PASSWORD="${OPENCODE_PASSWORD}"
+# Trusted-remote mode: exporting (even an empty list) switches the proxy from
+# the Ingress allowlist to loopback + the configured remotes only.
+export OPENCHAMBER_ALLOWED_REMOTES="${LAN_ALLOWED_REMOTES}"
+export OPENCHAMBER_REDIRECT_URL="${LAN_REDIRECT_URL}"
 
 HOST_PORT=$(bashio::addon.port "${OPENCHAMBER_LAN_PORT}" 2>/dev/null || true)
 
 if bashio::var.has_value "${HOST_PORT}"; then
     bashio::log.info "Home Assistant port mapping: ${OPENCHAMBER_LAN_PORT}/tcp -> ${HOST_PORT}"
-    bashio::log.info "Open the UI at: http://<home-assistant-host>:${HOST_PORT}/ (basic auth: user '${LAN_BASIC_USER}')"
+    if [ -n "${LAN_ALLOWED_REMOTES}" ]; then
+        bashio::log.info "Trusted remotes:${LAN_ALLOWED_REMOTES} (+ loopback)"
+    else
+        bashio::log.warning "Trusted remotes: none configured — only loopback is proxied."
+        bashio::log.warning "Requests from other addresses are rejected and logged; add the reverse proxy's source address to 'LAN trusted remotes'."
+    fi
+    if [ -n "${LAN_REDIRECT_URL}" ]; then
+        bashio::log.info "Untrusted sources are redirected to: ${LAN_REDIRECT_URL}"
+    fi
 else
     bashio::log.info "No host port mapped for ${OPENCHAMBER_LAN_PORT}/tcp; the LAN proxy only serves inside the container."
     bashio::log.info "Map ${OPENCHAMBER_LAN_PORT}/tcp in the add-on Network settings to expose the UI to reverse proxies."

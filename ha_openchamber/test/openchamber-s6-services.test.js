@@ -63,9 +63,10 @@ describe("OpenChamber s6 service ownership", () => {
       assert.doesNotMatch(ingress, /OPENCHAMBER_BASIC_USER|OPENCHAMBER_BASIC_PASSWORD/);
 
       assert.match(lan, /exec node \/usr\/local\/bin\/openchamber-ingress-proxy\.js/);
-      assert.match(lan, /export OPENCHAMBER_ALLOW_ANY_REMOTE="true"/);
-      assert.match(lan, /export OPENCHAMBER_BASIC_USER=/);
-      assert.match(lan, /export OPENCHAMBER_BASIC_PASSWORD=/);
+      assert.match(lan, /export OPENCHAMBER_ALLOWED_REMOTES=/);
+      assert.match(lan, /export OPENCHAMBER_REDIRECT_URL=/);
+      assert.doesNotMatch(lan, /OPENCHAMBER_BASIC_USER|OPENCHAMBER_BASIC_PASSWORD/);
+      assert.doesNotMatch(lan, /OPENCHAMBER_ALLOW_ANY_REMOTE/);
 
       assert.match(
         dockerfile,
