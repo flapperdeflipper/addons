@@ -44,6 +44,8 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 # - ca-certificates/curl: Supervisor health check and the OpenCode server probe
 # - bzip2: Required by system tar to extract OpenChamber voice models
 # - libatomic1: runtime library expected by the Node toolchain on this base
+# - git: the sessions UI shells out to the git binary via simple-git for
+#   branch/worktree info of the OpenCode workspace
 # - g++/make: native fallback builds for OpenChamber dependencies on all
 #   arches; installed only while npm installs and purged right after
 RUN apt-get update \
@@ -52,6 +54,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         g++ \
+        git \
         libatomic1 \
         make \
     && rm -rf /var/lib/apt/lists/*
