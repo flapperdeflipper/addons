@@ -1,0 +1,101 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Terminal - Initialization Service (oneshot)
+# Prepares the persistent /data home, session environment, and the
+# dotfiles/toolset checkout. Never fails: a failing oneshot takes the whole
+# container down, and a terminal without dotfiles is still a terminal.
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
+
+bashio::log.info "Initializing Terminal add-on..."
+
+mkdir -p /data/.local/share /data/.config /data/.cache
+
+# Record add-on version for the session banner. /data/addon.json is written
+# by the Supervisor; this needs no Supervisor API access.
+ADDON_VERSION=$(jq -r '.version // "unknown"' /data/addon.json 2>/dev/null || echo "unknown")
+printf '%s\n' "${ADDON_VERSION}" > /data/.addon_version
+
+# ==============================================================================
+# User-defined environment variables -> /data/.env_vars
+# Sourced by the ttyd service and by every terminal session.
+# ==============================================================================
+
+ENV_VARS_FILE="/data/.env_vars"
+OPTIONS_FILE="/data/options.json"
+
+rm -f "${ENV_VARS_FILE}"
+
+ENV_VARS_COUNT=$(jq -r '.env_vars // [] | length' "${OPTIONS_FILE}" 2>/dev/null || echo "0")
+
+# Reserved names that would break the add-on if overridden
+ENV_VARS_RESERVED='"HOME","PATH","SHELL","USER","PWD","TMPDIR","SUPERVISOR_TOKEN","XDG_DATA_HOME","XDG_CONFIG_HOME","NPM_CONFIG_PREFIX"'
+
+if [ "${ENV_VARS_COUNT}" -gt 0 ]; then
+    bashio::log.info "Processing ${ENV_VARS_COUNT} user-defined environment variable(s)..."
+
+    # Single jq pass emits all valid export lines (quoting via @sh,
+    # multi-line values stay intact inside the quotes)
+    jq -r "
+        (.env_vars // [])[] |
+        select(.name | test(\"^[A-Za-z_][A-Za-z0-9_]*\$\")) |
+        select(.name | IN(${ENV_VARS_RESERVED}) | not) |
+        \"export \(.name)=\(.value | tostring | @sh)\"
+    " "${OPTIONS_FILE}" >> "${ENV_VARS_FILE}"
+
+    # Second pass classifies names for logging only
+    while IFS=$'\t' read -r STATUS VAR_NAME; do
+        case "${STATUS}" in
+            ok)
+                ;;
+            invalid)
+                bashio::log.warning "Skipping invalid environment variable name: '${VAR_NAME}'"
+                ;;
+            reserved)
+                bashio::log.warning "Skipping reserved environment variable: '${VAR_NAME}'"
+                ;;
+        esac
+    done < <(jq -r "
+        (.env_vars // [])[] | .name as \$n |
+        if (\$n | test(\"^[A-Za-z_][A-Za-z0-9_]*\$\") | not) then
+            \"invalid\t\(\$n | gsub(\"[\\n\\t]\"; \" \"))\"
+        elif (\$n | IN(${ENV_VARS_RESERVED})) then
+            \"reserved\t\(\$n)\"
+        else
+            \"ok\t\(\$n)\"
+        end
+    " "${OPTIONS_FILE}")
+else
+    bashio::log.info "No user-defined environment variables configured"
+fi
+
+# Standard session environment, appended after user variables so it cannot
+# be pushed out by a stale entry. The venv, toolset and dotfiles bins lead
+# the PATH so the known toolset wins over system binaries.
+{
+    printf 'export SHELL=/bin/bash\n'
+    printf 'export PATH="/data/.venv/bin:/data/.toolset/bin:/data/.dotfiles/profile/bin:/data/.npm-global/bin:/usr/local/bin:/usr/bin:/bin"\n'
+} >> "${ENV_VARS_FILE}"
+chmod 600 "${ENV_VARS_FILE}"
+
+# ==============================================================================
+# Dotfiles and toolset: clone or pull, stow the profile, install python deps.
+# All failures are logged, never fatal.
+# ==============================================================================
+
+if bashio::config.true 'sync_dotfiles'; then
+    bashio::log.info "Syncing dotfiles and toolset..."
+    if ! /usr/local/bin/dotfiles-sync --init; then
+        bashio::log.warning "Dotfiles sync reported problems - the terminal still starts"
+        bashio::log.warning "Open the terminal and run 'dotfiles-sync' after authenticating (see DOCS)"
+    fi
+else
+    bashio::log.info "Dotfiles sync disabled by configuration - using whatever is in /data"
+fi
+
+bashio::log.info "Terminal initialization complete"
+exit 0

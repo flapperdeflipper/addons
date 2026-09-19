@@ -1,0 +1,39 @@
+---
+# Field order matches the schema block in config.yaml; the Configuration tab
+# renders fields in that order.
+configuration:
+  terminal_theme:
+    name: "Terminal theme"
+    description: "Color scheme for the terminal. Same themes as the OpenCode terminal."
+
+  font_size:
+    name: "Font size"
+    description: "Font size in pixels. Larger values are easier to read, smaller values fit more on screen."
+
+  cursor_style:
+    name: "Cursor style"
+    description: "Shape of the cursor: block, underline, or bar."
+
+  cursor_blink:
+    name: "Cursor blinking"
+    description: "Blink the cursor instead of showing it solid."
+
+  sync_dotfiles:
+    name: "Dotfiles sync"
+    description: "Clone or pull the toolset and dotfiles repositories into /data at every start and re-stow the profile. Turn off to keep the /data copies untouched."
+
+  dotfiles_repo:
+    name: "Dotfiles repository"
+    description: "Git URL of the dotfiles repository. SSH GitHub URLs are rewritten to HTTPS automatically when GitHub credentials are available."
+
+  toolset_repo:
+    name: "Toolset repository"
+    description: "Git URL of the toolset repository."
+
+  install_python_deps:
+    name: "Python dependencies"
+    description: "Keep /data/.venv and install the python dependencies from the dotfiles pyproject.toml. The first install runs in the background and can take a few minutes."
+
+  env_vars:
+    name: "Environment variables"
+    description: "Injected into every shell session. Set GH_TOKEN here to let the private dotfiles repository clone over HTTPS without a login."
