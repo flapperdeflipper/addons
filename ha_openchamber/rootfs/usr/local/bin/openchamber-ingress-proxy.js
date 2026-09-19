@@ -26,6 +26,132 @@ const BASIC_PASSWORD = process.env.OPENCHAMBER_BASIC_PASSWORD || "";
 const BASIC_AUTH_REQUIRED = BASIC_USER !== "" && BASIC_PASSWORD !== "";
 const BASIC_AUTH_REALM = process.env.OPENCHAMBER_BASIC_REALM || "OpenChamber";
 
+// Trusted-remote allowlist (LAN instance). Setting OPENCHAMBER_ALLOWED_REMOTES
+// (even to an empty list) opts this listener into trusted mode: only loopback
+// and the listed addresses/CIDRs are proxied. Every other source is redirected
+// to OPENCHAMBER_REDIRECT_URL (or refused with 403 when unset), and each
+// rejection is logged with the source address — so the reverse proxy's real
+// origin IP is discovered by watching the log, then added to the list.
+const TRUSTED_REMOTE_MODE = process.env.OPENCHAMBER_ALLOWED_REMOTES !== undefined;
+const REDIRECT_URL = String(process.env.OPENCHAMBER_REDIRECT_URL || "").trim();
+
+function parseRemoteEntry(entry) {
+  const value = String(entry || "").trim();
+  if (!value) return null;
+  const separator = value.lastIndexOf("/");
+  const addressPart = separator === -1 ? value : value.slice(0, separator);
+  const prefixPart = separator === -1 ? null : Number.parseInt(value.slice(separator + 1), 10);
+  const family = net.isIP(addressPart);
+  if (family === 0) return null;
+  const bytes = Buffer.from(family === 4 ? normalizeToIpv4Bytes(addressPart) : normalizeToIpv6Bytes(addressPart));
+  const maxBits = family === 4 ? 32 : 128;
+  if (prefixPart !== null && (!Number.isInteger(prefixPart) || prefixPart < 0 || prefixPart > maxBits)) return null;
+  return { bytes, bits: prefixPart === null ? maxBits : prefixPart };
+}
+
+function normalizeToIpv4Bytes(address) {
+  return Buffer.from(address.split(".").map((part) => Number.parseInt(part, 10)));
+}
+
+function normalizeToIpv6Bytes(address) {
+  // Expand :: and the embedded IPv4 form so prefixes compare byte-wise.
+  const [head, tail = ""] = address.split("::");
+  const splitGroups = (part) => (part ? part.split(":") : []);
+  const headGroups = splitGroups(head);
+  const tailGroups = splitGroups(tail);
+  let embeddedIpv4 = null;
+  for (const groups of [headGroups, tailGroups]) {
+    const last = groups[groups.length - 1] || "";
+    if (last.includes(".")) {
+      embeddedIpv4 = normalizeToIpv4Bytes(last);
+      groups[groups.length - 1] = "0";
+    }
+  }
+  const missing = 8 - headGroups.length - tailGroups.length - (embeddedIpv4 ? 1 : 0);
+  const groups = [...headGroups, ...new Array(Math.max(missing, 0)).fill("0"), ...tailGroups];
+  const bytes = Buffer.alloc(16);
+  groups.slice(0, 8).forEach((group, index) => {
+    bytes.writeUInt16BE(Number.parseInt(group || "0", 16) || 0, index * 2);
+  });
+  if (embeddedIpv4) embeddedIpv4.copy(bytes, 12);
+  return bytes;
+}
+
+function remoteMatchesEntry(addressBytes, entry) {
+  const fullBytes = entry.bits === entry.bytes.length * 8;
+  if (fullBytes) return entry.bytes.equals(addressBytes);
+  if (addressBytes.length !== entry.bytes.length) return false;
+  const prefixBytes = Math.floor(entry.bits / 8);
+  if (prefixBytes > 0 && !entry.bytes.subarray(0, prefixBytes).equals(addressBytes.subarray(0, prefixBytes))) return false;
+  const remainderBits = entry.bits % 8;
+  if (remainderBits === 0) return true;
+  const mask = (0xff << (8 - remainderBits)) & 0xff;
+  return (entry.bytes[prefixBytes] & mask) === (addressBytes[prefixBytes] & mask);
+}
+
+function trustedRemoteBytes(address) {
+  const family = net.isIP(address);
+  if (family === 4) return normalizeToIpv4Bytes(address);
+  if (family === 6) return normalizeToIpv6Bytes(address);
+  return null;
+}
+
+const TRUSTED_REMOTES = TRUSTED_REMOTE_MODE
+  ? String(process.env.OPENCHAMBER_ALLOWED_REMOTES || "")
+      .split(/[\s,]+/)
+      .map((entry) => {
+        const parsed = parseRemoteEntry(entry);
+        if (!parsed && entry.trim()) {
+          console.warn(`Ignoring invalid trusted remote: ${JSON.stringify(entry.trim())}`);
+        }
+        return parsed;
+      })
+      .filter(Boolean)
+  : [];
+
+function isLoopbackRemote(address) {
+  return address === "127.0.0.1" || address.startsWith("127.") || address === "::1";
+}
+
+function isAllowedTrustedRemote(address) {
+  if (isLoopbackRemote(address)) return true;
+  const addressBytes = trustedRemoteBytes(address);
+  if (!addressBytes) return false;
+  return TRUSTED_REMOTES.some((entry) => remoteMatchesEntry(addressBytes, entry));
+}
+
+function remoteIsAllowed(address) {
+  if (TRUSTED_REMOTE_MODE) return isAllowedTrustedRemote(address);
+  return isAllowedRemote(address);
+}
+
+function rejectRemoteRequest(res, address) {
+  console.log(
+    `Rejected ${address}: not in trusted remotes${REDIRECT_URL ? ` — redirecting to ${REDIRECT_URL}` : ""}.`
+    + " Add this address to the trusted list if it is your reverse proxy.",
+  );
+  if (REDIRECT_URL) {
+    res.writeHead(302, { location: REDIRECT_URL });
+    res.end();
+    return;
+  }
+  res.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
+  res.end("Forbidden\n");
+}
+
+function rejectRemoteUpgrade(socket, address) {
+  console.log(
+    `Rejected WebSocket upgrade from ${address}: not in trusted remotes${REDIRECT_URL ? ` — redirecting to ${REDIRECT_URL}` : ""}.`
+    + " Add this address to the trusted list if it is your reverse proxy.",
+  );
+  if (REDIRECT_URL) {
+    socket.write(`HTTP/1.1 302 Found\r\nLocation: ${REDIRECT_URL}\r\nConnection: close\r\n\r\n`);
+  } else {
+    socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+  }
+  socket.destroy();
+}
+
 function timingSafeEqualStrings(expected, provided) {
   const a = Buffer.from(String(expected), "utf8");
   const b = Buffer.from(String(provided ?? ""), "utf8");
@@ -623,9 +749,8 @@ function relayOauthAuthorizeResponse(upstreamRes, res, responseHeaders, provider
 
 function proxyRequest(req, res) {
   const remoteAddress = normalizeRemoteAddress(req.socket.remoteAddress || "");
-  if (!isAllowedRemote(remoteAddress)) {
-    res.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
-    res.end("Forbidden\n");
+  if (!remoteIsAllowed(remoteAddress)) {
+    rejectRemoteRequest(res, remoteAddress);
     return;
   }
 
@@ -831,9 +956,8 @@ function forwardRequest(req, res, { ingressPath, upstreamPath, body = null, oaut
 
 function proxyUpgrade(req, socket, head) {
   const remoteAddress = normalizeRemoteAddress(req.socket.remoteAddress || "");
-  if (!isAllowedRemote(remoteAddress)) {
-    socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
-    socket.destroy();
+  if (!remoteIsAllowed(remoteAddress)) {
+    rejectRemoteUpgrade(socket, remoteAddress);
     return;
   }
 
@@ -885,4 +1009,8 @@ server.listen(LISTEN_PORT, LISTEN_HOST, () => {
   console.log(`OpenChamber ingress proxy listening on ${LISTEN_HOST}:${LISTEN_PORT}`);
   console.log(`Forwarding to http://${UPSTREAM_HOST}:${UPSTREAM_PORT}`);
   if (BASIC_AUTH_REQUIRED) console.log("Basic authentication required");
+  if (TRUSTED_REMOTE_MODE) {
+    console.log(`Trusted remotes: ${TRUSTED_REMOTES.length === 0 ? "(none — loopback only)" : TRUSTED_REMOTES.length + " entr" + (TRUSTED_REMOTES.length === 1 ? "y" : "ies")}`);
+    console.log(`Untrusted sources are ${REDIRECT_URL ? "redirected to " + REDIRECT_URL : "refused with 403"}`);
+  }
 });

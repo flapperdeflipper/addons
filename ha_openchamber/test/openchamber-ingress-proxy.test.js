@@ -646,6 +646,166 @@ describe("openchamber ingress proxy: disconnected clients", () => {
   });
 });
 
+describe("openchamber ingress proxy: trusted remotes allowlist (LAN instance)", () => {
+  let proxy;
+  let proxyPort;
+  let upstream;
+  let upstreamPort;
+
+  const startProxy = async (allowedRemotes, redirectUrl) => {
+    if (proxy) {
+      proxy.kill();
+      proxy = null;
+    }
+
+    proxyPort = await freePort();
+    const env = {
+      ...process.env,
+      // Bind all interfaces so the non-loopback-sourced tests can reach the
+      // proxy, exactly like the remote-allowlist suite above.
+      OPENCHAMBER_INGRESS_HOST: "0.0.0.0",
+      OPENCHAMBER_INGRESS_PORT: String(proxyPort),
+      OPENCHAMBER_UPSTREAM_HOST: "127.0.0.1",
+      OPENCHAMBER_UPSTREAM_PORT: String(upstreamPort),
+      OPENCHAMBER_ALLOWED_REMOTES: allowedRemotes,
+    };
+    if (redirectUrl !== undefined) env.OPENCHAMBER_REDIRECT_URL = redirectUrl;
+    proxy = spawn(process.execPath, [PROXY_SCRIPT], { env, stdio: ["ignore", "pipe", "pipe"] });
+    proxy.stderr.resume();
+
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("proxy did not start")), 10000);
+      proxy.stdout.on("data", (chunk) => {
+        if (String(chunk).includes("listening")) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+      proxy.once("error", reject);
+    });
+    proxy.stdout.resume();
+  };
+
+  before(async () => {
+    upstream = http.createServer((req, res) => {
+      const payload = Buffer.from("ok");
+      res.writeHead(200, { "content-type": "text/plain", "content-length": String(payload.length) });
+      res.end(payload);
+    });
+    upstreamPort = await freePort();
+    await listen(upstream, upstreamPort);
+  });
+
+  after(async () => {
+    if (proxy) proxy.kill();
+    await close(upstream);
+  });
+
+  it("always allows loopback in trusted mode, even with an empty list", async () => {
+    await startProxy("", "https://openchamber.example.com");
+
+    const response = await request(proxyPort, { method: "GET", path: "/api/provider" });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ok");
+  });
+
+  it("redirects non-trusted sources to the configured URL", async (t) => {
+    await startProxy("", "https://openchamber.example.com");
+
+    const response = await requestFromNonLoopback(proxyPort, { method: "GET", path: "/api/provider" });
+    if (!response) {
+      t.skip("no usable non-loopback IPv4 interface available");
+      return;
+    }
+
+    assert.equal(response.statusCode, 302);
+    assert.equal(response.headers.location, "https://openchamber.example.com");
+  });
+
+  it("proxies a non-loopback source once its address is trusted", async (t) => {
+    const address = nonLoopbackIPv4Addresses()[0];
+    if (!address) {
+      t.skip("no usable non-loopback IPv4 interface available");
+      return;
+    }
+    await startProxy(address, "https://openchamber.example.com");
+
+    const response = await requestFromNonLoopback(proxyPort, { method: "GET", path: "/api/provider" });
+    if (!response) {
+      t.skip("request from the non-loopback interface failed");
+      return;
+    }
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ok");
+  });
+
+  it("proxies a non-loopback source inside a trusted CIDR", async (t) => {
+    const address = nonLoopbackIPv4Addresses()[0];
+    if (!address) {
+      t.skip("no usable non-loopback IPv4 interface available");
+      return;
+    }
+    const [a, b, c] = address.split(".");
+    await startProxy(`${a}.${b}.${c}.0/24`, "https://openchamber.example.com");
+
+    const response = await requestFromNonLoopback(proxyPort, { method: "GET", path: "/api/provider" });
+    if (!response) {
+      t.skip("request from the non-loopback interface failed");
+      return;
+    }
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body, "ok");
+  });
+
+  it("refuses non-trusted sources with 403 when no redirect URL is set", async (t) => {
+    await startProxy("", undefined);
+
+    const response = await requestFromNonLoopback(proxyPort, { method: "GET", path: "/api/provider" });
+    if (!response) {
+      t.skip("no usable non-loopback IPv4 interface available");
+      return;
+    }
+
+    assert.equal(response.statusCode, 403);
+  });
+
+  it("redirects a non-trusted WebSocket upgrade instead of proxying it", async (t) => {
+    const address = nonLoopbackIPv4Addresses()[0];
+    if (!address) {
+      t.skip("no usable non-loopback IPv4 interface available");
+      return;
+    }
+    await startProxy("", "https://openchamber.example.com");
+
+    const received = await new Promise((resolve, reject) => {
+      const client = net.connect({ port: proxyPort, host: "127.0.0.1", localAddress: address }, () => {
+        client.write(
+          "GET /socket HTTP/1.1\r\nHost: test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n"
+          + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n",
+        );
+      });
+      client.once("data", (chunk) => { client.destroy(); resolve(String(chunk)); });
+      client.once("error", (error) => {
+        if (["EADDRNOTAVAIL", "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "ETIMEDOUT"].includes(error.code)) {
+          resolve(null);
+        } else {
+          reject(error);
+        }
+      });
+    });
+
+    if (!received) {
+      t.skip("non-loopback interface could not reach the proxy");
+      return;
+    }
+    assert.match(received, /^HTTP\/1\.1 302 Found/);
+    assert.match(received, /Location: https:\/\/openchamber\.example\.com/);
+  });
+});
+
 describe("openchamber ingress proxy: basic authentication (LAN instance)", () => {
   let proxy;
   let proxyPort;

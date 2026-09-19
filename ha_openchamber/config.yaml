@@ -1,7 +1,7 @@
 ---
 name: "OpenChamber"
 description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
-version: "1.0.1"
+version: "1.1.0"
 slug: "ha_openchamber"
 image: "flapperdeflipper/addon-ha-openchamber"
 url: "https://github.com/flapperdeflipper/addons"
@@ -20,7 +20,7 @@ panel_title: OpenChamber
 ports:
   4097/tcp: null
 ports_description:
-  4097/tcp: "OpenChamber web UI with basic auth — for reverse proxies and tunnels; Ingress needs no port"
+  4097/tcp: "OpenChamber web UI for the trusted reverse proxy — other sources are redirected; Ingress needs no port"
 
 # OpenChamber talks to the OpenCode add-on's LAN server over HTTP and holds no
 # Home Assistant API access of its own. Directory mounts mirror the OpenCode
@@ -59,12 +59,24 @@ options:
   # Basic-auth password for the OpenCode server. Required.
   # A !secret <key> value resolves from secrets.yaml at start.
   opencode_password: null
+  # --- 2. LAN exposure ----------------------------------------------------
+  # Addresses (IP or CIDR) the reverse proxy connects from. Only these and
+  # loopback are proxied on 4097/tcp. Empty = loopback only; every other
+  # source is rejected and logged with its address — watch the add-on log to
+  # discover the proxy's real source IP, then add it here.
+  lan_allowed_remotes: []
+  # Where untrusted sources are redirected (the public URL behind your OAuth
+  # proxy). Empty disables the redirect and refuses with 403 instead.
+  lan_redirect_url: ""
 
 schema:
   opencode_host: str?
   opencode_port: port
   opencode_username: password?
   opencode_password: password
+  lan_allowed_remotes:
+    - str
+  lan_redirect_url: str?
 
 # OpenChamber's own settings are small; exclude its npm-owned cache paths.
 backup_exclude:

@@ -44,34 +44,59 @@ afterwards (the UI shows a "waiting for server" state until OpenCode answers).
 | **OpenCode server address** | *(auto)* | Origin of the OpenCode LAN server, scheme included, no port (e.g. `http://192.168.1.50`). Empty auto-discovers the Docker host gateway. |
 | **OpenCode server port** | `4096` | Host port that the OpenCode add-on's `4096/tcp` is mapped to. |
 | **OpenCode server username** | *(empty)* | Basic-auth username; empty means `opencode`, the OpenCode server's default. |
-| **OpenCode server password** | — | Basic-auth password shared with the OpenCode add-on. Required; `!secret <key>` works. Also protects the mapped `4097/tcp` UI port. |
+| **OpenCode server password** | — | Basic-auth password shared with the OpenCode add-on. Required; `!secret <key>` works. |
+| **LAN trusted remotes** | *(empty)* | IP addresses or CIDRs the reverse proxy connects from. Only these and loopback are proxied on `4097/tcp`. |
+| **LAN redirect URL** | *(empty)* | Where untrusted sources are sent (e.g. `https://openchamber.pl4.dev` behind your OAuth proxy). Empty = plain 403. |
 
 ## Network
 
 | Port | Purpose |
 |------|---------|
-| `4097/tcp` | OpenChamber web UI at `/` with basic auth — point a reverse proxy or tunnel straight at it. Leave unmapped for Ingress-only use. |
+| `4097/tcp` | OpenChamber web UI at `/` for the **trusted reverse proxy only** — every other source is redirected to **LAN redirect URL**. Leave unmapped for Ingress-only use. |
+
+The intended pattern is an authenticating reverse proxy (nginx with an OAuth
+proxy, Cloudflare Access, ...) on the public hostname, forwarding to this
+port. Only loopback and the addresses in **LAN trusted remotes** are proxied;
+anything else — including anyone guessing the raw `host:port` — is sent to the
+public URL, where the proxy makes them log in.
 
 Example nginx location for a public hostname:
 
 ```nginx
 location / {
-    proxy_pass http://<home-assistant-host>:4097;
+    # Ride the docker-proxy path from the same host: use loopback, and the
+    # connection arrives as a trusted source.
+    proxy_pass http://127.0.0.1:<mapped-4097-port>;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
 }
 ```
+
+### Discovering the proxy's source address
+
+If the reverse proxy does not connect from loopback, its requests are rejected
+and logged. Watch the add-on log while sending one request through the proxy:
+
+```text
+Rejected 10.20.0.9: not in trusted remotes — redirecting to https://openchamber.pl4.dev. [...]
+```
+
+Add the logged address (or its CIDR) to **LAN trusted remotes** and restart.
+An empty list means loopback-only: nothing off-box is proxied.
 
 ## Security model
 
 - **Ingress path**: Home Assistant login only, same as every Ingress app.
   The ingress proxy refuses any client that is not the Supervisor's ingress
   proxy or loopback.
-- **Mapped `4097/tcp`**: HTTP Basic auth enforced by the proxy (constant-time
-  credential comparison). Use unique credentials for this purpose — they travel
-  as base64 on every request, so serve the port over TLS (e.g. through your
-  reverse proxy) whenever it leaves a trusted network.
+- **Mapped `4097/tcp`**: loopback + trusted-remotes allowlist enforced by the
+  proxy; untrusted sources are redirected to the public URL (or refused with
+  403 when no redirect URL is set) and logged. Authentication itself is
+  delegated to whatever fronts the public URL (OAuth proxy, Cloudflare
+  Access, ...) — nothing is proxied unless the connection comes from a
+  trusted address.
 - The add-on holds no Supervisor or Home Assistant API access — its only
   network privilege is the outbound connection to the OpenCode server. It
   mounts the same directories as the OpenCode add-on (`/homeassistant`,
@@ -84,7 +109,8 @@ location / {
   Check the OpenCode add-on is running, its LAN server is enabled, the port
   mapping matches **OpenCode server port**, and the credentials match its
   **LAN server username/password**.
-- **401 in the browser**: wrong basic-auth credentials on the mapped port —
-  the same password as the OpenCode add-on's **LAN server password**.
+- **Redirected to the public URL from the raw port**: expected — the source
+  is not in **LAN trusted remotes**. Check the add-on log for the `Rejected
+  <address>` line and add it.
 - Logs: the add-on log states the discovered OpenCode origin and whether the
   server answered during the startup wait.
