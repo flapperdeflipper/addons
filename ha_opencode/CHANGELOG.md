@@ -1,3 +1,7 @@
+## 2.14.2
+
+- **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
+
 ## 2.14.1
 
 - **Crash fix: `INTERFACE_MODE: unbound variable`** — the 2.14.0 split removed the `interface_mode` option but left `${INTERFACE_MODE}` referenced in the init service's configuration log line; with `nounset` that aborted the init oneshot and stopped the container on every boot. The stale reference is gone.
@@ -7,10 +11,6 @@
 
 - **OpenChamber moved to its own add-on** — the web UI now ships as `ha_openchamber` (own image, own Ingress panel, own `/data`), attaching to this add-on's LAN server in external-server mode instead of spawning OpenCode. This add-on loses the `interface_mode` and `enable_openchamber_lan` options, the `4097/tcp` port, the OpenChamber s6 services and Ingress patch, and ~123 MB of image (`@openchamber/web`, bzip2, g++/make build tools). The init service logs a one-time pointer when it finds a non-terminal legacy configuration; old OpenChamber application settings under `/data/.config/openchamber` are left in place. Ingress now always serves the ttyd terminal.
 - **Basic authentication on the LAN server** — new `server_username`/`server_password` options feed OpenCode's own `OPENCODE_SERVER_USERNAME`/`OPENCODE_SERVER_PASSWORD` on `4096/tcp`, scoped to the LAN server service only (the TUI keeps its loopback server untouched). The service fails closed: with the LAN server enabled and no password set it idles with an error instead of listening unauthenticated. `opencode attach` callers pass the credentials in the URL (`http://user@host:port`); use a pair shared nowhere else, since basic auth travels as base64 on every request — the same pair protects the OpenChamber add-on's mapped `4097/tcp` UI port. Regression tests updated in `test/runtime-contract.test.js`; the OpenChamber proxy and s6 coverage moved to the new add-on.
-
-## 2.14.2
-
-- **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
 
 ## 2.13.0
 
