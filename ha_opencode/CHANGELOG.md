@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.13.1
+
+- **Vitest 4.1.11 + lockfiles (Dependabot alerts #1, #2)** — both `opt/ha-mcp-server` and `opt/ha-lsp-server` declared `vitest ^3.1.1` with no lockfile, which Dependabot cannot act on; the mocker path-traversal advisory (GHSA, fixed only in 4.1.11 — no safe 3.x) left both manifests flagged. The range moves to `^4.1.11` and each package now carries a `package-lock.json` (npm v3) pinning the resolved tree, so future advisories auto-PR. Dev-only: vitest never ships in the image (`--omit=dev`), which now also installs reproducibly from the lockfiles. Both suites verified against the pinned version: 31 files/510 tests and 3 files/39 tests pass. `node_modules/` added to .gitignore so local lockfile regeneration cannot be swept into a commit.
+
 ## 2.13.0
 
 - **Toolchain bumps** — opencode-ai 1.18.31 (was 1.18.25), @openchamber/web 1.24.1 (was 1.21.0), ppq-private-mode 0.6.0 (was 0.1.0), tsx 4.23.13 (was 4.20.6), yq v4.53.6 (was v4.53.3), 1Password CLI 2.39.0 (was 2.30.3), Node runtime 24.21.0 (was 24.15.0). ttyd 1.7.7, cosign v3.1.3, hactl 2026.9.0 and hab 1.6.4 are already the latest releases and stay pinned. build.yaml kept in sync; the runtime-contract tests assert the pins match.

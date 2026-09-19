@@ -19,7 +19,7 @@
     "opencode"
   ],
   "devDependencies": {
-    "vitest": "^3.1.1"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=18.0.0"
