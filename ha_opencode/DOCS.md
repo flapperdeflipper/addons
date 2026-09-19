@@ -141,11 +141,11 @@ Everything else stays fully readable, and this doesn't change how the agent edit
 | **Custom OpenCode configuration** | `""` | A JSON object merged into OpenCode's configuration. See [OpenCode config docs](https://opencode.ai/docs/config) for the full schema. |
 | **Startup hooks** | `false` | Run your own `.sh` scripts from the add-on's persistent `startup.d` folder. See [Startup Hooks](#startup-hooks). |
 
-#### Config drop-ins (`opencode.d`)
+#### Config drop-ins (configuration folder)
 
-Instead of the **Custom OpenCode configuration** option, keep plain JSON files in an `opencode.d/` folder in your Home Assistant configuration directory — editable with any editor, no escaped JSON in a form field. Every `*.json` file in it must be a JSON object; the files deep-merge over the option's configuration in alphabetical filename order, so a drop-in always wins over the option and a later file wins over an earlier one. A file that is not valid JSON is skipped with a named error in the add-on log while the rest still apply, and the previous configuration is never discarded. The merged result is the `config.json` both OpenCode and the OpenChamber UI read.
+Instead of the **Custom OpenCode configuration** option, keep plain JSON files in this add-on's configuration folder — the standardized Home Assistant location, mounted at `/config` inside the add-on and exposed as `addon_configs/<repository-slug>_ha_opencode` on the host (Samba `addon_configs` share, included in HA backups). Editable with any editor, no escaped JSON in a form field. Every `*.json` file in it must be a JSON object; the files deep-merge over the option's configuration in alphabetical filename order, so a drop-in always wins over the option and a later file wins over an earlier one. A file that is not valid JSON is skipped with a named error in the add-on log while the rest still apply, and the previous configuration is never discarded. The merged result is the `config.json` both OpenCode and the OpenChamber UI read.
 
-Example `opencode.d/00-small-model.json`:
+Example `00-small-model.json` in the configuration folder:
 
 ```json
 { "small_model": "openai/gpt-5.4-mini" }
