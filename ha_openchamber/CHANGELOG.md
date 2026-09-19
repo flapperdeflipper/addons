@@ -1,3 +1,7 @@
+## 1.1.3
+
+- **LAN proxy keeps absolute asset URLs — fixes the blank terminal** — the proxy's Ingress URL rewriting rewrote `"/assets/…"` literals inside served JavaScript to relative `assets/…` on the LAN listener as well, where there is no base path; resolved against a chunk under `/assets/`, `new URL("assets/…", import.meta.url)` became `/assets/assets/…` and 404'd. The terminal surface's two lazily-fetched resources — the ghostty VT WASM (the emulator core) and the Nerd Font — were the only bundle URLs of that shape, so the terminal panel stayed blank at the public hostname while Ingress kept working. Without an Ingress path the proxy now passes content through untouched; with one, behaviour is unchanged.
+
 ## 1.1.2
 
 - **Installs `git` in the image** — the sessions UI lists branches and worktrees of the OpenCode workspace through simple-git, which shells out to the system `git` binary; 1.1.1 and earlier shipped without it, so every request failed with `spawn git ENOENT`. Dependency addition only.
