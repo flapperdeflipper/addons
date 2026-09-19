@@ -28,6 +28,7 @@ const COMPACT_TOOL_NAMES = [
   "render_template",
   "get_calendars",
   "get_calendar_events",
+  "get_todo_items",
   "detect_anomalies",
   "get_suggestions",
   "diagnose_entity",
