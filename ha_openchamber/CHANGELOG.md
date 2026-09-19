@@ -1,3 +1,7 @@
+## 1.3.1
+
+- **Fixes Node MCP clients deadlocking against the agent MCP server** — in stateless mode the SDK's `StreamableHTTPServerTransport` still opened an empty SSE stream for standalone `GET /mcp`, and Node SDK clients (opencode's remote MCP client among them) then never settled subsequent JSON POST responses: `initialize` succeeded but `tools/list` hung forever, so the tools never appeared in opencode sessions. Python clients (the LiteLLM gateway) were unaffected, which is why the earlier round-trip checks passed. The server now answers `GET /mcp` with a spec-compliant `405` (`Allow: POST, DELETE`) — it never pushes messages, so there is no stream to offer — and Node clients connect, list and call tools immediately.
+
 # Changelog
 All notable changes to this project will be documented in this file.
 
