@@ -1,3 +1,7 @@
+## 1.1.2
+
+- **Installs `git` in the image** — the sessions UI lists branches and worktrees of the OpenCode workspace through simple-git, which shells out to the system `git` binary; 1.1.1 and earlier shipped without it, so every request failed with `spawn git ENOENT`. Dependency addition only.
+
 ## 1.1.1
 
 - **Ships the real OpenCode CLI on PATH** — upstream's server resolves an `opencode` binary at startup even in external-server mode (`OPENCODE_SKIP_START`), so every boot crashed with `Unable to locate the opencode CLI on PATH` and s6 restarted the add-on forever: nothing image-less can satisfy that lookup. The Dockerfile now installs the same certified `opencode-ai` 1.18.31 pin as the OpenCode add-on (build-time version assertion, non-matching platform binaries trimmed, `opencode --version` asserted), so the binary upstream wants is genuinely on PATH. It is still never spawned: all API calls keep proxying to the OpenCode add-on's LAN server.
