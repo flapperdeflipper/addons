@@ -253,7 +253,10 @@ export async function scanConfigLayout(fsApi, configDir = DEFAULT_CONFIG_DIR) {
   );
 
   if (typeof layout.directories.packages === "number") {
-    layout.packages = { ...(layout.packages ?? {}), fileCount: layout.directories.packages, configured: true };
+    // A packages directory on disk means nothing on its own — only the
+    // `homeassistant.packages:` include makes Home Assistant read it.
+    const configured = layout.packages?.configured === true;
+    layout.packages = { ...(layout.packages ?? {}), fileCount: layout.directories.packages, configured };
   }
 
   const gitDir = await fs.stat(join(".git"));

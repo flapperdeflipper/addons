@@ -47,8 +47,7 @@ export function formatErrorLogResult({ text, source, requestedLines, lines, uniq
     meta: {
       requested_lines: requestedLines,
       returned_lines: uniqueLines.length,
-      unique,
-      duplicates_collapsed: unique ? duplicatesCollapsed : null,
+      ...(unique ? { unique, duplicates_collapsed: duplicatesCollapsed } : {}),
       source,
       fallback_used: usingCoreJournal,
       total_lines: usingCoreJournal ? null : allLines.length,

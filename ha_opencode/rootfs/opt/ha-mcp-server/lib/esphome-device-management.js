@@ -22,8 +22,11 @@ function collectScalarValues(value, target) {
     for (const item of Object.values(value)) collectScalarValues(item, target);
   } else if (value !== null && value !== undefined && String(value)) {
     const text = String(value);
+    // Only strings are plausible secrets. Short scalars (numbers, booleans,
+    // single words) would over-redact by matching all over ordinary output.
+    if (typeof value !== "string" || text.length < 4) return;
     target.add(text);
-    for (const line of text.split(/\r?\n/)) if (line) target.add(line);
+    for (const line of text.split(/\r?\n/)) if (line && line.length >= 4) target.add(line);
   }
 }
 
