@@ -1,0 +1,44 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# OpenChamber - Agent MCP server (project notes, todos, plans)
+#
+# Serves OpenChamber's Project Notes surface to agent clients such as the
+# OpenCode add-on, over streamable HTTP on 4100/tcp (internal add-on network,
+# never mapped to a host port) behind a required bearer token. Every call
+# proxies the loopback-only OpenChamber REST API owned by the ha-openchamber
+# service; no LAN/Ingress allowlist is involved and no project file is read.
+#
+# Deliberately never fails the container: when disabled or misconfigured the
+# service just idles, exactly like the LAN server service.
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NODE_OPTIONS="--max-old-space-size=256"
+
+MCP_ENABLED=$(bashio::config 'mcp_enabled' 2>/dev/null || echo "false")
+
+if ! bashio::var.true "${MCP_ENABLED}"; then
+    exec sleep infinity
+fi
+
+MCP_TOKEN=$(bashio::config 'mcp_token' 2>/dev/null || echo "")
+
+if ! bashio::var.has_value "${MCP_TOKEN}"; then
+    bashio::log.error "The agent MCP server is enabled but no bearer token is set."
+    bashio::log.error "Set 'Agent MCP bearer token' in the Configuration tab (a !secret <key> value works too), then restart."
+    exec sleep infinity
+fi
+# server.mjs reads process.env.MCP_TOKEN: without this export the exec'd
+# node never sees the token and exits at startup.
+export MCP_TOKEN
+
+# Loopback OpenChamber REST API owned by the ha-openchamber service (the
+# dependency on ha-openchamber guarantees it is up before the first proxy).
+export OPENCHAMBER_URL="http://127.0.0.1:3010"
+export MCP_PORT=4100
+
+bashio::log.info "Starting agent MCP server on ${MCP_PORT}/tcp (bearer authenticated)"
+
+exec node /opt/openchamber-mcp/server.mjs
