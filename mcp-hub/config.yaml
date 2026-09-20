@@ -1,0 +1,44 @@
+---
+name: MCP Hub
+slug: mcp_hub
+description: Shared MCP servers over HTTP for OpenCode, LiteLLM and other agents - one process per server instead of one per session.
+url: https://github.com/flapperdeflipper/addons/tree/master/mcp-hub
+image: flapperdeflipper/addon-mcp-hub
+version: 1.0.0
+
+arch:
+  - amd64
+init: true
+startup: services
+boot: auto
+
+# The ha-native forwarder reaches Home Assistant Core's native MCP endpoint
+# through the Supervisor proxy (http://supervisor/core/api/...). No Supervisor
+# (hassio) API access is needed beyond that.
+homeassistant_api: true
+
+ports:
+  8930/tcp: null
+ports_description:
+  8930/tcp: MCP gateway (streamable HTTP, bearer token) - every enabled MCP server under /mcp/<id>
+
+options:
+  token: ""
+  playwright_enabled: true
+  playwright_cdp_endpoint: "http://4e94d283-playwright-browser:9222"
+  victoriametrics_enabled: true
+  victoriametrics_url: "http://8f49de54-victoria-metrics:8428"
+  victoriametrics_username: "homeassistant"
+  victoriametrics_password: ""
+  ha_native_enabled: true
+  ha_native_api_id: "assist"
+schema:
+  token: password
+  playwright_enabled: bool
+  playwright_cdp_endpoint: str
+  victoriametrics_enabled: bool
+  victoriametrics_url: str
+  victoriametrics_username: str?
+  victoriametrics_password: password?
+  ha_native_enabled: bool
+  ha_native_api_id: str
