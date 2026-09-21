@@ -12,7 +12,7 @@
 # Base image is Alpine with bash and python3.13 preinstalled. npm/npx are
 # added for stdio MCP servers (e.g. @playwright/mcp); run.sh parses
 # /data/options.json with python3 and the health check uses python's urllib.
-FROM ghcr.io/berriai/litellm-database:v1.101.0
+FROM ghcr.io/berriai/litellm-database:v1.102.0
 
 RUN apk add --no-cache npm
 
