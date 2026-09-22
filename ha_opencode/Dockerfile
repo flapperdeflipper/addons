@@ -10,7 +10,7 @@
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
-ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.0.0
+ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.1.0
 
 ## Main add-on image
 FROM ${AGENT_BASE}

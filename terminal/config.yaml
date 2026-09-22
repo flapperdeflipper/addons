@@ -1,7 +1,7 @@
 ---
 name: "Terminal"
 description: "A familiar bash and vim environment with your dotfiles and toolset, through Home Assistant Ingress"
-version: "1.1.0"
+version: "1.1.1"
 slug: "terminal"
 image: "flapperdeflipper/addon-terminal"
 url: "https://github.com/flapperdeflipper/addons"
@@ -10,29 +10,24 @@ arch:
   - amd64
 startup: services
 init: false
-
 ingress: true
 ingress_port: 7681
 ingress_stream: true
 panel_icon: mdi:console-terminal
 panel_title: Terminal
-
 map:
   - type: homeassistant_config
     read_only: false
-
 # hab and zigporter (inherited from the OpenCode image) authenticate with the
 # Supervisor token; without this they start but every call fails.
 hassio_api: true
 hassio_role: manager
-
 options:
   # --- Terminal appearance -------------------------------------------------
   terminal_theme: "breeze"
   font_size: 14
   cursor_style: "block"
   cursor_blink: false
-
   # --- Dotfiles and toolset ------------------------------------------------
   # Clone or pull both repositories into /data at every start, then stow the
   # dotfiles profile into the /data home directory.
@@ -43,30 +38,25 @@ options:
   # (ansible, esphome, ipython, kubernetes, ...). Runs in the background on
   # first start; re-run interactively with: dotfiles-sync
   install_python_deps: true
-
   # --- Advanced ------------------------------------------------------------
   # Environment variables injected into every shell session. GH_TOKEN here
   # lets the private dotfiles repository clone over HTTPS without a key.
   env_vars: []
-
 schema:
   # --- Terminal appearance -------------------------------------------------
   terminal_theme: list(breeze|catppuccin_mocha|catppuccin_latte|dracula|nord|tokyo_night|one_dark|solarized_dark|solarized_light|gruvbox_dark)
   font_size: int(10,24)
   cursor_style: list(block|underline|bar)
   cursor_blink: bool
-
   # --- Dotfiles and toolset ------------------------------------------------
   sync_dotfiles: bool
   dotfiles_repo: str
   toolset_repo: str
   install_python_deps: bool
-
   # --- Advanced ------------------------------------------------------------
   env_vars:
     - name: str
       value: str
-
 # Rebuildable state: the virtualenv is recreated from the dotfiles
 # pyproject.toml, the cache directory is scratch space.
 backup_exclude:
