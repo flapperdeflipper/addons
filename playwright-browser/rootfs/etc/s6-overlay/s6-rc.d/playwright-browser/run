@@ -1,0 +1,8 @@
+#!/command/with-contenv bashio
+# ==============================================================================
+# Playwright Browser - headless Chromium + nginx CDP proxy (s6 longrun)
+# All logic lives in /run.sh (unchanged from the plain-image era): it launches
+# chromium, waits for CDP, starts the nginx proxy and monitors both.
+# ==============================================================================
+
+exec /run.sh

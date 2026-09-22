@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2.21.0
+
+- **Changed** — installs its own chromium (+ fonts-liberation) instead of inheriting it from the shared agent-base image (which drops it in 1.1.0). Only this add-on's screenshot tool launches a local browser; OpenChamber and Terminal stop shipping the ~590 MB Chromium stack. `PUPPETEER_EXECUTABLE_PATH` now lives in this Dockerfile. Works unchanged on agent-base 1.0.0 and 1.1.0 alike.
+
 ## 2.20.1
 
 - **external_directory: allow /share/worktrees and /data** — the opencode file-tool permission allowlist covered only `/homeassistant/**`, so agents could reach the shared add-on worktrees and the add-on data/worktree dirs via bash but not with the file tools. Both trees (plus `/**` globs) are now allowed; the `read` denylist for secrets/`.storage`/ssl/key/pem still applies on top.
