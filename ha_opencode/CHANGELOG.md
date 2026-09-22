@@ -1,3 +1,7 @@
+## 2.21.1
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.0` (automated base-image update).
+
 # Changelog
 All notable changes to this project will be documented in this file.
 

@@ -14,7 +14,7 @@
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
-ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.0.0
+ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.1.0
 
 FROM ${AGENT_BASE}
 

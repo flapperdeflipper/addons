@@ -1,7 +1,7 @@
 ---
 name: "OpenChamber"
 description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
-version: "1.3.1"
+version: "1.3.2"
 slug: "ha_openchamber"
 image: "flapperdeflipper/addon-ha-openchamber"
 url: "https://github.com/flapperdeflipper/addons"
@@ -10,7 +10,6 @@ arch:
   - amd64
 startup: application
 init: false
-
 # Ingress configuration
 ingress: true
 ingress_port: 8099
@@ -21,7 +20,6 @@ ports:
   4097/tcp: null
 ports_description:
   4097/tcp: "OpenChamber web UI for the trusted reverse proxy — other sources are redirected; Ingress needs no port"
-
 # OpenChamber talks to the OpenCode add-on's LAN server over HTTP and holds no
 # Home Assistant API access of its own. Directory mounts mirror the OpenCode
 # add-on's so workspace paths behave identically in both containers.
@@ -29,7 +27,6 @@ hassio_api: false
 homeassistant_api: false
 host_network: false
 privileged: []
-
 # File access - same mounts as the OpenCode add-on
 map:
   - type: homeassistant_config
@@ -41,7 +38,6 @@ map:
     path: /addon_configs
   - type: share
     read_only: false
-
 # The Configuration tab renders one flat list in schema key order; the grouping
 # below is presentation only.
 options:
@@ -80,7 +76,6 @@ options:
   # secrets.yaml at start (surrounding quotes are stripped, and only the key
   # name is ever logged — the resolved value never lands in options or logs).
   mcp_token: ""
-
 schema:
   opencode_host: str?
   opencode_port: port
@@ -91,7 +86,6 @@ schema:
   lan_redirect_url: str?
   mcp_enabled: bool
   mcp_token: password
-
 # OpenChamber's own settings are small; exclude its npm-owned cache paths.
 backup_exclude:
   - ".npm/*"
