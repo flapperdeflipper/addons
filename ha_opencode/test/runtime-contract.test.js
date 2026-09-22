@@ -66,8 +66,14 @@ describe(`${CHANNEL} runtime pin`, () => {
     assert.match(dockerfile, /^FROM \$\{AGENT_BASE\}$/m);
     // The toolchain must come from the base image, not be reinstalled here:
     // divergence between the add-ons is exactly what agent-base exists to
-    // prevent.
-    assert.doesNotMatch(dockerfile, /apt-get install/);
+    // prevent. The single exception is chromium: only this add-on launches a
+    // browser (screenshot tool), so it owns that layer since agent-base 1.1.0.
+    const aptInstalls = dockerfile.match(/apt-get install[^\n]*/g) ?? [];
+    assert.deepEqual(
+      aptInstalls.map((l) => /--no-install-recommends\s+(\S+)/.exec(l)?.[1]),
+      ["chromium"],
+      "only the chromium layer may apt-install; everything else comes from agent-base",
+    );
     assert.doesNotMatch(dockerfile, /npm install -g/);
     assert.doesNotMatch(dockerfile, /FROM node:/);
   });
