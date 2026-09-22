@@ -30,6 +30,19 @@ ENV ADDON_CHANNEL=${ADDON_CHANNEL}
 
 RUN case "${BUILD_ARCH}" in amd64|aarch64) ;; *) echo "Unsupported BUILD_ARCH: ${BUILD_ARCH:-unset}" >&2; exit 1;; esac
 
+# Chromium for the MCP screenshot tool (puppeteer-core). This is deliberately
+# the only toolchain piece installed here rather than in agent-base: only this
+# add-on's screenshot tool launches a local browser, so OpenChamber and
+# Terminal do not ship the ~590 MB Chromium stack. agent-base carried it until
+# 1.0.0; from agent-base 1.1.0 this layer is the single chromium owner.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium fonts-liberation \
+    && rm -rf /var/lib/apt/lists/* \
+    && test -x /usr/bin/chromium
+
+# Browser path for puppeteer-core (screenshot MCP tool)
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
 # The certified runtime comes from agent-base. Assert the image really
 # inherited the certified build: this catches a base image built from a fork
 # or a broken pin without failing every later layer with a confusing error.
