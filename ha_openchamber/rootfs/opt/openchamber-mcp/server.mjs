@@ -314,6 +314,22 @@ export async function start({ url, token, port = 4100, host = "0.0.0.0" }) {
       bearerRealmUnauthorized(res);
       return;
     }
+    // This server never pushes messages, so the standalone GET stream gets a
+    // spec-compliant 405 instead of the transport's empty SSE stream: with
+    // sessionIdGenerator undefined the SDK still opens that stream, and Node
+    // SDK clients (opencode among them) deadlock on the zombie stream while
+    // processing later JSON POST responses. Python clients never notice.
+    if (req.method === "GET") {
+      res.writeHead(405, { "content-type": "application/json", allow: "POST, DELETE" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "no standalone SSE stream: stateless server" },
+          id: null,
+        }),
+      );
+      return;
+    }
     chain = chain.then(async () => {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,

@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.09.21
+
+- **Rebuilt on the Home Assistant Debian base** — replaces `mcr.microsoft.com/playwright:v1.63.0-noble` (~2.5 GB: Ubuntu with Chromium, Firefox and WebKit) with `ghcr.io/home-assistant/base-debian:trixie` + Debian's `chromium` + `nginx`, roughly a third of the size. Only Chromium was ever launched (`run.sh`), so Firefox and WebKit were dead weight. s6-overlay + bashio come with the base image; the add-on is now a supervised longrun service instead of a raw `CMD`. The browser tracks Debian security updates instead of Playwright image bumps — update flow in `PLAYWRIGHT-MCP.md`. CDP is stable, so the MCP bridges (opencode, litellm) are unaffected and keep versioning independently.
+
 ## 2026.09.19
 
 - **CalVer versioning** — the add-on version no longer mirrors the Playwright image version; it is now CalVer (`YYYY.MM.DD`). The mirroring rule already broke once (the 1.62.3 release shipped image v1.63.0-noble without bumping the version field). The bundled Playwright version now lives only in the Dockerfile `FROM` line and this changelog. Image stays v1.63.0-noble; no functional changes.

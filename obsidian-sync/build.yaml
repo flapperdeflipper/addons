@@ -1,0 +1,3 @@
+---
+build_from:
+  amd64: couchdb:3.5.2
