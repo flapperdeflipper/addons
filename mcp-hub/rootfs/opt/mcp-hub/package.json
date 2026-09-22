@@ -1,0 +1,17 @@
+{
+  "name": "mcp-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared MCP servers over streamable HTTP: one process per server, reused by every agent session on the host.",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@playwright/mcp": "0.0.80"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
