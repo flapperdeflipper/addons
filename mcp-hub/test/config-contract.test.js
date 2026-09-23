@@ -70,6 +70,13 @@ describe("config contract", () => {
         path.join(serversDir, dir, "index.js")
       );
       assert.ok(manifest.default?.id, `server '${dir}' must default-export a manifest with an id`);
+      if (manifest.default.kind === "forwarder") {
+        assert.equal(
+          typeof manifest.default.validateJsonRpcMessage,
+          "function",
+          `forwarder server '${dir}' must expose validateJsonRpcMessage on its manifest (1.0.1)`
+        );
+      }
       assert.ok(
         manifest.default.enabledOption in config.options,
         `server '${dir}' references option '${manifest.default.enabledOption}' missing from config.yaml`

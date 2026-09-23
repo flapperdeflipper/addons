@@ -62,7 +62,7 @@ function fakeUpstreamModule() {
   const script = `
     require("http").createServer((req, res) => {
       res.writeHead(200, { "content-type": "text/plain" });
-      res.end("upstream-ok");
+      res.end("upstream-ok:" + req.url);
     }).listen(${UPSTREAM_PORT}, "127.0.0.1");
   `;
   return {
@@ -106,9 +106,18 @@ before(async () => {
       echo_enabled: true,
       fwd_enabled: true,
       up_enabled: true,
+      brokenfwd_enabled: true,
       off_enabled: false,
     },
     modules: [echoMcpModule(), fakeForwarderModule(), fakeUpstreamModule(), {
+      id: "brokenfwd",
+      title: "Broken Forwarder",
+      kind: "forwarder",
+      enabledOption: "brokenfwd_enabled",
+      createForwarder() {
+        throw new Error("must not be called");
+      },
+    }, {
       id: "off",
       title: "Disabled",
       kind: "forwarder",
@@ -166,6 +175,18 @@ describe("gateway auth and routing", () => {
     assert.equal((await authed("/mcp/nope")).status, 404);
   });
 
+  it("marks a forwarder missing validateJsonRpcMessage as failed (1.0.1)", async () => {
+    const res = await fetch(`${baseUrl}/healthz`);
+    const body = await res.json();
+    assert.equal(body.servers.brokenfwd, "failed");
+    const path = await authed("/mcp/brokenfwd", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    assert.equal(path.status, 503);
+  });
+
   it("answers 503 for a disabled server", async () => {
     const res = await authed("/mcp/off", {
       method: "POST",
@@ -203,6 +224,15 @@ describe("gateway mcp kind", () => {
 
   it("rejects GET on a stateless server", async () => {
     assert.equal((await authed("/mcp/echo")).status, 405);
+  });
+
+  it("rejects sub-paths on a stateless server (1.0.1)", async () => {
+    const res = await authed("/mcp/echo/sub", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: MCP_ACCEPT },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+    });
+    assert.equal(res.status, 404);
   });
 });
 
@@ -249,6 +279,12 @@ describe("gateway upstream kind", () => {
   it("streams-proxies requests to the supervised child", async () => {
     const res = await authed("/mcp/up");
     assert.equal(res.status, 200);
-    assert.equal(await res.text(), "upstream-ok");
+    assert.equal(await res.text(), "upstream-ok:/");
+  });
+
+  it("passes sub-paths and query strings through to the child (1.0.1)", async () => {
+    const res = await authed("/mcp/up/child/path?x=1");
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), "upstream-ok:/child/path?x=1");
   });
 });

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- **Fix**: ha-native answered every request with `internal error` - the gateway calls `validateJsonRpcMessage` on the module manifest, but ha-native exported it as a module named export instead of a manifest property. The validator now lives on the manifest, and forwarder modules missing it fail at startup (state `failed` in `/healthz`, 503 on their path) instead of 500ing per request.
+- **Fix**: playwright answered 404 on its own sub-paths - @playwright/mcp serves streamable HTTP at its `/mcp` and legacy SSE at its `/sse`, but gateway routing was exact-match. `upstream` modules now pass sub-paths and query strings through (`/mcp/playwright/mcp`, `/mcp/playwright/sse`); stateless `mcp`/`forwarder` kinds still reject sub-paths with 404.
 ## 1.0.0
 
 - **Add**: initial release - shared MCP gateway add-on serving one process per tool set over streamable HTTP behind a single bearer token (`/mcp/<id>`, port 8930). Bundled servers: **VictoriaMetrics** (fork of the prometheus-mcp-server 1.0.1 tool set, exact tool contract, plain-fetch client), **Home Assistant native MCP forwarder** (fork of ha_opencode's ha-native-mcp bridge with keyed-endpoint negotiation and 404 fallback) and **Playwright** (one shared @playwright/mcp 0.0.80 instance over CDP to the playwright-browser add-on, loopback-bound behind the gateway).

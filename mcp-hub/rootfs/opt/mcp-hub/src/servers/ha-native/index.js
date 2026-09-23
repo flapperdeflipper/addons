@@ -8,13 +8,14 @@ import {
   validateJsonRpcMessage,
 } from "./native-mcp.js";
 
-export { validateJsonRpcMessage };
-
 export default {
   id: "ha-native",
   title: "Home Assistant native MCP (Assist)",
   kind: "forwarder",
   enabledOption: "ha_native_enabled",
+  // The gateway validates every forwarded message before it leaves the hub
+  // (Home Assistant Core has crashed on malformed /api/mcp POSTs before).
+  validateJsonRpcMessage,
 
   createForwarder(ctx) {
     const { config, env, log } = ctx;
