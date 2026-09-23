@@ -108,7 +108,7 @@ describe(`${CHANNEL} skills`, () => {
     }
   });
 
-  it("keeps the live help injection markers AGENTS.md deployment depends on", () => {
+  it("no longer ships live help injection markers (help is one --help away)", () => {
     const agents = fs.readFileSync(path.join(MCP_DIR, "AGENTS.md"), "utf8");
     for (const marker of [
       "<!-- HAB_LIVE_HELP_START -->",
@@ -116,7 +116,7 @@ describe(`${CHANNEL} skills`, () => {
       "<!-- ZIGPORTER_LIVE_HELP_START -->",
       "<!-- ZIGPORTER_LIVE_HELP_END -->",
     ]) {
-      assert.ok(agents.includes(marker), `AGENTS.md lost ${marker}`);
+      assert.ok(!agents.includes(marker), `AGENTS.md still carries ${marker}`);
     }
   });
 

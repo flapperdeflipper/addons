@@ -53,9 +53,6 @@ const CONFIGURATION_TOOL_NAMES = [
   "esphome_device_metadata",
   "esphome_yaml_search",
   "esphome_file",
-  "remember_decision",
-  "recall_decisions",
-  "supersede_decision",
 ];
 
 export const TOOL_PROFILES = Object.freeze({

@@ -67,8 +67,8 @@ something vague ("the house feels off") rather than a specific failure.
   changed by the time the action runs.
 - Two automations fighting over the same entity.
 - A recorder exclusion hiding the history you are looking for.
-- A change the user made deliberately — check `recall_decisions` before calling
-  something a bug. A note may already explain it.
+- A change the user made deliberately — ask the user before calling something
+  a bug; it may be intentional.
 
 ## Reporting
 

@@ -1,6 +1,6 @@
 # Configuration Home Assistant MCP Profile
 
-The built-in `homeassistant` MCP server is in the **configuration** profile. It includes compact read-only diagnostics plus current documentation, syntax checks, full configuration validation, `write_config_safe`, guarded ESPHome source management, and decision notes.
+The built-in `homeassistant` MCP server is in the **configuration** profile. It includes compact read-only diagnostics plus current documentation, syntax checks, full configuration validation, `write_config_safe`, and guarded ESPHome source management.
 
 Before proposing a configuration change, check the Home Assistant version and `get_integration_docs`, then read the complete existing file. Use `write_config_safe` with `dry_run: true` before presenting a change. Only persist after the user approves the validated complete-file update.
 

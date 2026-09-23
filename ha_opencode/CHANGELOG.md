@@ -1,3 +1,8 @@
+## 2.22.0
+
+- **Removed** — **decision notes**: the `remember_decision`/`recall_decisions`/`supersede_decision` MCP tools, the `decisions.yaml` storage and digest, the `ha-context notes` command, the per-session digest refresh, and the Decision Notes documentation in AGENTS.md/DOCS.md. The feature retired in favour of users keeping durable knowledge in plain markdown (skills, `AGENTS.local.md`). The `decision_notes_enabled` option stays in the schema as a no-op so stored configurations from older versions keep validating; `ha-context reset` no longer takes `--notes`.
+- **Changed** — AGENTS.md no longer embeds live `hab --help`/`zigporter --help` output (the two `*_LIVE_HELP` marker blocks and their init-script injection are gone; `--help` is one command away at runtime), slimming the standing instructions by roughly half.
+
 ## 2.21.2
 
 - **Add**: remote MCP mode - `mcp_remote_enabled` with `mcp_remote_homeassistant_url` / `mcp_remote_native_url` generates `homeassistant` / `homeassistant_native` as remote (streamable HTTP) entries instead of per-session stdio spawns, for use with the shared mcp-hub add-on or this add-on's own 8927 endpoint. Sessions need `MCP_HTTP_TOKEN` (and `MCP_HUB_TOKEN` for the native entry via a hub) in `env_vars`; ~260 MB/session of helper processes move into shared servers.

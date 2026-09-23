@@ -116,36 +116,6 @@ The add-on assembles context about *this specific installation* and loads it bef
 
 - **Install briefing** — a generated snapshot: Home Assistant version, areas, entity counts per domain, how the configuration is split up, which custom components are installed. It is orientation, **not live state** — re-check anything current with the MCP tools or `hab`. It may be absent or partial when Home Assistant was still starting.
 - **`AGENTS.local.md`** — the user's own standing instructions, if they created that file. Follow them. This file (`AGENTS.md`) takes precedence where the two conflict, and the consent and safety rules above are never overridden.
-- **Decision notes** — decisions the user has confirmed about their setup, injected as a short digest.
-
-### Decision Notes
-
-Decision notes record *why* an installation is the way it is. That reasoning cannot be recovered by re-reading the YAML, which is exactly why it is worth storing.
-
-**When a request conflicts with a note**, say so before acting. Never silently reverse a recorded decision — tell the user which note applies and ask whether they want to change it.
-
-**The digest is a summary, not the whole record.** It states how many active notes it is showing; when that is fewer than the total, the notes it left out are still in force. `recall_decisions` is the authority. Before changing something that looks deliberate, odd, or redundant — an inverted switch, a disabled integration, a duplicate-looking entity — check there first. An empty search result means *that query* found nothing, never that nothing was decided; search again in different words, or with no query at all, before concluding a thing is safe to "fix".
-
-**To read more**, use `recall_decisions`. The injected digest carries only the decisions themselves; the rationale and the superseded history are retrieved on demand. Check it when a note looks relevant but you need the reasoning, or when the user asks what was decided before.
-
-**To record**, offer first and then wait. Say what you would store, in the words you would store it, and call `remember_decision` with `user_approved: true` only after the user agrees. A general instruction to "remember this" for the current task is not approval to write a permanent note; asking costs one sentence.
-
-Worth recording:
-
-- Deliberate removals and disables ("that integration was removed because it fought with X")
-- Intentional deviations from the obvious approach, and why
-- Things to leave alone
-- Constraints that will still be true in six months
-
-Not worth recording — do not write these:
-
-- What you did this session, or how you troubleshot something. **This is not a session log.**
-- Anything already readable from the configuration files
-- Anything the user has not explicitly approved
-
-**Pinning** (`pin: true`) keeps a note in the digest when older notes stop fitting. It is for the small number of constraints where being forgotten causes real damage — something deliberately removed, something that must be left alone. Ask for the pin as well as for the note, and use it rarely: pinning everything pins nothing.
-
-**Never** put passwords, tokens, or any value from `secrets.yaml` into a note. The tool rejects them, and a note is sent to the model in every future session.
 
 ## Home Assistant Interaction Model
 
@@ -171,7 +141,6 @@ Real-time interaction with the running instance:
 - `get_integration_docs`, `get_breaking_changes` — current syntax, before writing any integration configuration
 - `diagnose_entity`, `get_error_log`, `detect_anomalies`, `get_suggestions` — diagnosis
 - `get_supervisor_health`, `get_supervisor_resolution`, `get_backup_posture`, `get_store_audit`, `get_supervisor_metrics`, `get_support_logs` — bounded, credential-redacted system evidence
-- `remember_decision`, `recall_decisions`, `supersede_decision` — decision notes
 - `watch_firmware_update`, `get_available_updates`, `update_component` — updates
 - `screenshot_url` — visual verification (requires the `screenshot_enabled` option)
 - `get_agent_capabilities`, `get_ha_llm_development_guide` — capability and native-LLM development information
@@ -181,33 +150,24 @@ is missing, the profile is reduced — say so instead of working around it.
 
 ### 3. hab CLI (Home Assistant Builder)
 
-A CLI designed for AI agents, pre-authenticated via the Supervisor token. It is
-the primary path for dashboards, areas/floors/zones/labels, helpers, scripts,
-scenes, blueprints, backups, people, categories, to-do lists, notifications,
-integrations, repairs, events and templates — the registry-level work that has
-no YAML file behind it.
-
-`hab` prints human-readable text by default; use `--json` for structured output.
-Run `hab --help` or `hab <command> --help` for full usage.
-
-<!-- HAB_LIVE_HELP_START -->
-*(Live hab command reference will be injected here at container startup)*
-<!-- HAB_LIVE_HELP_END -->
+A CLI designed for AI agents, pre-authenticated via the Supervisor token. It
+is the primary path for dashboards, areas/floors/zones/labels, helpers,
+scripts, scenes, blueprints, backups, people, categories, to-do lists,
+notifications, integrations, repairs, events and templates — the registry-level
+work that has no YAML file behind it. `hab` prints human-readable text by
+default; use `--json` for structured output; `hab --help` or
+`hab <command> --help` for full, version-accurate usage at runtime.
 
 ### 4. zigporter CLI (Zigbee toolkit)
 
 Zigbee device management, and the only tool here that **cascades a rename**
 across automations, scripts, scenes and every Lovelace dashboard atomically.
-`hab` renames one thing and leaves the references dangling. Also handles device
-inspection across ZHA/Z2M/HA, stale-device cleanup, and mesh visualization.
-
-Dry-run is the default for renames — always preview before `--apply`. The
-`migrate` command is interactive and must NOT be used by an agent. Load
-`home-assistant-zigbee-esphome` before any of this work.
-
-<!-- ZIGPORTER_LIVE_HELP_START -->
-*(Live zigporter command reference will be injected here at container startup)*
-<!-- ZIGPORTER_LIVE_HELP_END -->
+`hab` renames one thing and leaves the references dangling. Also handles
+device inspection across ZHA/Z2M/HA, stale-device cleanup, and mesh
+visualization. Dry-run is the default for renames — always preview before
+`--apply`; the `migrate` command is interactive and must NOT be used by an
+agent; `zigporter --help` for version-accurate usage. Load the
+`home-assistant-zigbee-esphome` skill before any of this work.
 
 ### Choosing between them
 

@@ -3,7 +3,6 @@
  * Generate the context files the add-on injects into OpenCode's prompt.
  *
  *   /data/context/home-briefing.md   what this Home Assistant installation is
- *   /data/context/decision-notes.md  digest of the user's active decision notes
  *
  * Run detached from `init-opencode` so add-on start-up never waits on Home
  * Assistant, and again on demand from `ha-context refresh`.
@@ -17,7 +16,6 @@
  * Environment:
  *   SUPERVISOR_TOKEN               required for anything live
  *   OPENCODE_HOME_BRIEFING         "true" to generate the briefing
- *   OPENCODE_DECISION_NOTES        "true" to render the notes digest
  *   OPENCODE_ADDON_ACCESS_ENABLED, SCREENSHOT_ENABLED, OPENCODE_MCP_ENABLED,
  *   OPENCODE_MCP_TOOL_PROFILE,
  *   OPENCODE_LSP_ENABLED, OPENCODE_RESTRICT_SENSITIVE_FILES, Z2M_URL
@@ -26,7 +24,6 @@
  *                                  retrying (used by `ha-context refresh`)
  *   HOME_CONTEXT_CONFIG_DIR        override the configuration directory to scan
  *   HOME_CONTEXT_OUTPUT_DIR        override where the context files are written
- *   HOME_CONTEXT_NOTES_PATH        override the decision-notes source file
  */
 
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "fs/promises";
@@ -35,14 +32,6 @@ import { dirname } from "path";
 import { buildBriefingFacts, scanConfigLayout, DEFAULT_CONFIG_DIR } from "/opt/ha-mcp-server/lib/home-facts.js";
 import { CONTEXT_DIR, HOME_BRIEFING_PATH, renderHomeBriefing } from "/opt/ha-mcp-server/lib/home-briefing.js";
 import { collectLiveFacts } from "/opt/ha-mcp-server/lib/ha-live.js";
-import { extractSecretValues } from "/opt/ha-mcp-server/lib/context-budget.js";
-import {
-  DECISION_DIGEST_PATH,
-  DECISION_NOTES_DISPLAY_PATH,
-  DECISION_NOTES_PATH,
-  parseDecisionNotes,
-  renderDecisionDigest,
-} from "/opt/ha-mcp-server/lib/decision-notes.js";
 
 const FS_API = { readFile, readdir, stat };
 
@@ -55,10 +44,6 @@ const OUTPUT_DIR = process.env.HOME_CONTEXT_OUTPUT_DIR || CONTEXT_DIR;
 const BRIEFING_OUT = process.env.HOME_CONTEXT_OUTPUT_DIR
   ? `${OUTPUT_DIR}/home-briefing.md`
   : HOME_BRIEFING_PATH;
-const DIGEST_OUT = process.env.HOME_CONTEXT_OUTPUT_DIR
-  ? `${OUTPUT_DIR}/decision-notes.md`
-  : DECISION_DIGEST_PATH;
-const NOTES_IN = process.env.HOME_CONTEXT_NOTES_PATH || DECISION_NOTES_PATH;
 
 /**
  * How long to keep waiting for Home Assistant to finish starting.
@@ -108,70 +93,6 @@ async function readTextOrNull(path) {
   } catch {
     return null;
   }
-}
-
-/**
- * Render the decision-notes digest from the user's file.
- *
- * Offline and cheap, so it runs before the briefing and again is never allowed
- * to fail the whole generator.
- */
-async function generateDecisionDigest() {
-  if (!flag("OPENCODE_DECISION_NOTES")) {
-    await removeIfPresent(DIGEST_OUT);
-    return;
-  }
-
-  const source = await readTextOrNull(NOTES_IN);
-  if (source === null) {
-    // No notes recorded yet — nothing to inject, and no empty file to explain.
-    await removeIfPresent(DIGEST_OUT);
-    return;
-  }
-
-  const parsed = parseDecisionNotes(source);
-  if (!parsed.ok) {
-    log(`decisions.yaml could not be fully parsed (${parsed.errors.length} problem(s)); using the notes that are readable`);
-  }
-
-  // The notes file is the user's and is meant to be hand-edited, so the digest
-  // is screened as it is built rather than trusting what was written earlier.
-  const secretsYaml = await readTextOrNull(`${CONFIG_DIR}/secrets.yaml`);
-  const digest = renderDecisionDigest(parsed.notes, {
-    secretValues: secretsYaml ? extractSecretValues(secretsYaml) : [],
-    // Entries the parser had to skip are still decisions the user made; the
-    // digest has to say they are missing rather than imply they never existed.
-    unreadable: parsed.rejected,
-  });
-
-  // A file that exists but yields nothing readable must not silently remove the
-  // digest — this runs at every session start, so that would quietly drop the
-  // user's standing context and leave the model believing nothing was decided.
-  if (!digest.markdown && !parsed.ok) {
-    const notice =
-      "# Decision notes\n\n" +
-      `\`${DECISION_NOTES_DISPLAY_PATH}\` exists but could not be read (${parsed.errors.length} problem(s)), so ` +
-      "the decisions it holds are not available this session. Tell the user, and do not treat this as an absence " +
-      "of decisions — offer to help fix the file.\n";
-    await writeFileAtomic(DIGEST_OUT, notice);
-    log("decisions.yaml is unreadable; wrote a notice instead of removing the digest");
-    return;
-  }
-
-  if (digest.withheldNotes.length) {
-    log(
-      `withheld ${digest.withheldNotes.length} note(s) from the session context because they contain ` +
-        `credential-shaped text: ${digest.withheldNotes.join(", ")}`,
-    );
-  }
-
-  if (!digest.markdown) {
-    await removeIfPresent(DIGEST_OUT);
-    return;
-  }
-
-  await writeFileAtomic(DIGEST_OUT, digest.markdown);
-  log(`decision notes digest: ${digest.includedNotes.length} active note(s), ${digest.bytes} bytes`);
 }
 
 async function writeBriefing(layout, live) {
@@ -258,20 +179,7 @@ async function generateBriefing() {
 
 async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
-
-  // `digest` is the cheap, offline half. Session start runs it on its own so a
-  // note the user edited or deleted by hand takes effect at the next session
-  // instead of waiting for an add-on restart.
-  if (process.env.HOME_CONTEXT_ONLY === "digest") {
-    await generateDecisionDigest();
-    return;
-  }
-
-  // Independent artifacts: a failure in one must not take out the other.
-  const results = await Promise.allSettled([generateDecisionDigest(), generateBriefing()]);
-  for (const result of results) {
-    if (result.status === "rejected") log(`error: ${result.reason?.message ?? result.reason}`);
-  }
+  await generateBriefing();
 }
 
 main().catch((error) => {
