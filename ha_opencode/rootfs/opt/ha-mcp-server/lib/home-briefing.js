@@ -351,7 +351,7 @@ export function renderHomeBriefing(facts, options = {}) {
     { id: "addon", priority: 6, text: renderAddon(facts.addon) },
   ];
 
-  // Two passes, as with the decision digest: assemble optimistically, and if
+  // Two passes: assemble optimistically, and if
   // anything had to be left out, redo it with room set aside to say so.
   let assembled = assembleSections(build(budgetBytes), budgetBytes);
   let notice = "";

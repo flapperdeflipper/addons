@@ -14,13 +14,6 @@ import { join } from "path";
 
 import { buildBriefingFacts, scanConfigLayout } from "../lib/home-facts.js";
 import { HOME_BRIEFING_BUDGET_BYTES, renderHomeBriefing } from "../lib/home-briefing.js";
-import {
-  DECISION_DIGEST_BUDGET_BYTES,
-  addNote,
-  parseDecisionNotes,
-  renderDecisionDigest,
-  serializeDecisionNotes,
-} from "../lib/decision-notes.js";
 import { byteLength } from "../lib/context-budget.js";
 
 const FS_API = { readFile, readdir, stat };
@@ -147,63 +140,5 @@ describe("home context generation", () => {
     const briefing = renderHomeBriefing(facts);
     expect(briefing.markdown).toContain("Core was not reachable");
     expect(briefing.markdown).toContain("areas");
-  });
-
-  it("round-trips decision notes through disk and renders a digest", async () => {
-    const notesPath = join(configDir, "decisions.yaml");
-
-    const created = addNote(
-      { version: 1, notes: [] },
-      {
-        title: "Packages hold all new configuration",
-        decision: "New integrations and template entities go in packages/, not configuration.yaml.",
-        rationale: "Keeps configuration.yaml readable and makes each feature self-contained.",
-        files: ["packages/lights.yaml"],
-      },
-      { now: new Date("2026-07-26T12:00:00Z") },
-    );
-    expect(created.error).toBeUndefined();
-
-    await writeFile(notesPath, created.serialized, "utf8");
-    const parsed = parseDecisionNotes(await readFile(notesPath, "utf8"));
-
-    expect(parsed.ok).toBe(true);
-    expect(parsed.notes).toEqual(created.state.notes);
-
-    const digest = renderDecisionDigest(parsed.notes);
-    expect(digest.markdown).toContain("Packages hold all new configuration");
-    expect(digest.markdown).not.toContain("self-contained"); // rationale stays out of the prompt
-    expect(byteLength(digest.markdown)).toBeLessThanOrEqual(DECISION_DIGEST_BUDGET_BYTES + 1);
-  });
-
-  it("refuses to record a note that repeats a value from secrets.yaml", async () => {
-    const secrets = await readFile(join(configDir, "secrets.yaml"), "utf8");
-    const { extractSecretValues } = await import("../lib/context-budget.js");
-
-    const result = addNote(
-      { version: 1, notes: [] },
-      { title: "HTTP password", decision: "The API password is hunter2hunter2 as configured." },
-      { now: new Date("2026-07-26T12:00:00Z"), secretValues: extractSecretValues(secrets) },
-    );
-
-    expect(result.error).toBeTruthy();
-    expect(result.error).not.toContain("hunter2hunter2");
-  });
-
-  it("keeps a hand-broken notes file readable and refuses to overwrite it", async () => {
-    const broken = ["version: 1", "notes:", "  - id: a", "    date: 2026-07-01", "    title: Missing a decision"].join("\n");
-    const parsed = parseDecisionNotes(broken);
-
-    expect(parsed.ok).toBe(false);
-    expect(parsed.errors.join(" ")).toContain("'decision' is required");
-    // The digest still renders from whatever parsed cleanly, which here is nothing
-    expect(renderDecisionDigest(parsed.notes).markdown).toBe("");
-  });
-
-  it("serializes a stable file that re-parses identically", () => {
-    const state = { version: 1, notes: [] };
-    const first = addNote(state, { title: "A", decision: "B." }, { now: new Date("2026-07-26T00:00:00Z") });
-    const second = serializeDecisionNotes(parseDecisionNotes(first.serialized));
-    expect(second).toBe(first.serialized);
   });
 });
