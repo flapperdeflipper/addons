@@ -1,3 +1,7 @@
+## 1.3.3
+
+- **Changed** — upstream OpenChamber bundle pin `@openchamber/web` -> `1.24.2` (bugfix release; notably stops the app from starting MCP servers and background work for every saved project/worktree on open - a runaway-memory fix that pairs well with the shared mcp-hub migration - plus chat/git/mobile fixes).
+
 ## 1.3.2
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.0` (automated base-image update).
