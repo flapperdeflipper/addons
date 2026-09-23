@@ -1,3 +1,7 @@
+## 2.21.2
+
+- **Add**: remote MCP mode - `mcp_remote_enabled` with `mcp_remote_homeassistant_url` / `mcp_remote_native_url` generates `homeassistant` / `homeassistant_native` as remote (streamable HTTP) entries instead of per-session stdio spawns, for use with the shared mcp-hub add-on or this add-on's own 8927 endpoint. Sessions need `MCP_HTTP_TOKEN` (and `MCP_HUB_TOKEN` for the native entry via a hub) in `env_vars`; ~260 MB/session of helper processes move into shared servers.
+
 ## 2.21.1
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.0` (automated base-image update).
