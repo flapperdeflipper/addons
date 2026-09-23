@@ -21,8 +21,6 @@ You have access to the Home Assistant MCP server which provides deep integration
 5. **For troubleshooting**: Use `diagnose_entity` for comprehensive analysis
 6. **For overview**: Use `get_states` with `summarize: true` for human-readable summaries
 7. **For agent capability status**: Use `get_agent_capabilities` to see this add-on's MCP surface and whether Home Assistant reports the native `llm` component or native `/api/mcp/<API ID>` endpoints
-8. **For past decisions**: Use `recall_decisions` when a request may conflict with something the user already decided, or when you need the reasoning behind a note in the session digest. Use `remember_decision` only after the user has explicitly approved recording a lasting decision — never to log what you did.
-
 ### Compact MCP Output
 
 Some tools return machine-readable JSON text with `summary`, `data`, and `meta` fields. If `meta.truncated` is true, do not treat the result as complete. Re-run the tool with narrower filters such as `entity_id`, `domain`, shorter time ranges, fewer log lines, or a more specific CLI command.

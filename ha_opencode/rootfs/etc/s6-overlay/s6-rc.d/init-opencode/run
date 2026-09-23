@@ -35,7 +35,6 @@ PPQ_PRIVATE_ENABLED=$(bashio::config 'ppq_private_enabled' || echo "false")
 RESTRICT_SENSITIVE_FILES=$(bashio::config 'restrict_sensitive_files' 2>/dev/null || echo "true")
 FOCUS_MODE=$(bashio::config 'focus_mode' 2>/dev/null || echo "false")
 HOME_BRIEFING_ENABLED=$(bashio::config 'home_briefing_enabled' 2>/dev/null || echo "true")
-DECISION_NOTES_ENABLED=$(bashio::config 'decision_notes_enabled' 2>/dev/null || echo "true")
 USER_HOOKS_ENABLED=$(bashio::config 'user_hooks_enabled' 2>/dev/null || echo "false")
 
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
@@ -63,9 +62,6 @@ fi
 if [ "${HOME_BRIEFING_ENABLED}" != "false" ]; then
     HOME_BRIEFING_ENABLED="true"
 fi
-if [ "${DECISION_NOTES_ENABLED}" != "false" ]; then
-    DECISION_NOTES_ENABLED="true"
-fi
 
 # Startup hooks run arbitrary code the add-on did not write, so this one is an
 # allow-list rather than the "anything but false" form used above: an option
@@ -75,7 +71,7 @@ if [ "${USER_HOOKS_ENABLED}" != "true" ]; then
     USER_HOOKS_ENABLED="false"
 fi
 
-bashio::log.info "Configuration: MCP=${MCP_ENABLED} MCP_REMOTE=${MCP_REMOTE_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
+bashio::log.info "Configuration: MCP=${MCP_ENABLED} MCP_REMOTE=${MCP_REMOTE_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
 
 # ==============================================================================
 # Runtime paths
@@ -364,13 +360,11 @@ fi
 
 # ==============================================================================
 # Export home context flags
-# The MCP server reads OPENCODE_DECISION_NOTES to decide whether to offer the
-# decision-note tools; the context generator reads all of these to describe
-# which add-on capabilities are actually active.
+# The context generator reads these to describe which add-on capabilities are
+# actually active.
 # ==============================================================================
 
 printf 'export OPENCODE_HOME_BRIEFING=%s\n' "${HOME_BRIEFING_ENABLED}" >> "${ENV_VARS_FILE}"
-printf 'export OPENCODE_DECISION_NOTES=%s\n' "${DECISION_NOTES_ENABLED}" >> "${ENV_VARS_FILE}"
 printf 'export OPENCODE_MCP_ENABLED=%s\n' "${MCP_ENABLED}" >> "${ENV_VARS_FILE}"
 printf 'export OPENCODE_MCP_TOOL_PROFILE=%q\n' "${MCP_TOOL_PROFILE}" >> "${ENV_VARS_FILE}"
 printf 'export OPENCODE_NATIVE_HA_MCP_ENABLED=%s\n' "${NATIVE_HA_MCP_ENABLED}" >> "${ENV_VARS_FILE}"
@@ -573,70 +567,9 @@ setup_opencode_runtime
 # ==============================================================================
 # Verify hab and zigporter CLIs are available
 # CLI versions only change with an addon update, so they're cached in the
-# help stamp alongside the addon version — a matching stamp skips the version
-# spawns AND the AGENTS.md help re-injection below.
+# help stamp alongside the addon version — a matching stamp skips the
+# version spawns and the AGENTS.md refresh below.
 # ==============================================================================
-
-HELP_STAMP_FILE="/data/.help_stamp"
-STAMP_ADDON=""
-STAMP_HAB=""
-STAMP_ZIGPORTER=""
-if [ -f "${HELP_STAMP_FILE}" ]; then
-    IFS=':' read -r STAMP_ADDON STAMP_HAB STAMP_ZIGPORTER < "${HELP_STAMP_FILE}" || true
-fi
-HELP_STAMP_FRESH=false
-if [ "${STAMP_ADDON}" = "${ADDON_VERSION}" ] && [ -n "${STAMP_HAB}" ]; then
-    HELP_STAMP_FRESH=true
-fi
-
-if command -v hab &>/dev/null; then
-    if [ "${HELP_STAMP_FRESH}" = "true" ]; then
-        HAB_VERSION="${STAMP_HAB}"
-    else
-        HAB_VERSION=$(hab version 2>/dev/null | grep -oP '[\d.]+' | head -1 || echo "unknown")
-    fi
-    bashio::log.info "hab CLI available (v${HAB_VERSION}) - pre-authenticated via Supervisor"
-else
-    bashio::log.warning "hab CLI not found - some admin features will be unavailable"
-fi
-
-if command -v zigporter &>/dev/null; then
-    if [ "${HELP_STAMP_FRESH}" = "true" ]; then
-        ZIGPORTER_VERSION="${STAMP_ZIGPORTER}"
-    else
-        ZIGPORTER_VERSION=$(zigporter --version 2>/dev/null | grep -oP '[\d.]+' | head -1 || echo "unknown")
-    fi
-    bashio::log.info "zigporter CLI available (v${ZIGPORTER_VERSION}) - Zigbee rename, inspect, mesh tools"
-else
-    bashio::log.warning "zigporter CLI not found - Zigbee management features will be unavailable"
-fi
-
-# ==============================================================================
-# Carry decision notes over to this channel's own directory (one time)
-#
-# Notes live in the configuration directory so they survive a reinstall and are
-# included in Home Assistant backups. That directory is mounted by both add-ons,
-# so each channel now keeps its own set: a note recorded while trying something
-# out in beta must not be injected into every stable session for good.
-#
-# Beta previously shared stable's directory. Copy the notes across once so an
-# existing beta user does not open the add-on to an empty history. Copy rather
-# than move — stable may be installed too, and those notes are equally its own.
-# The directory itself is created lazily by the MCP server when the first note
-# is recorded, so nothing is created here unless there is something to carry.
-# ==============================================================================
-
-LEGACY_NOTES="/homeassistant/opencode/decisions.yaml"
-if [ "${ADDON_STATE_DIR}" != "/homeassistant/opencode" ] \
-    && [ ! -f "${ADDON_STATE_DIR}/decisions.yaml" ] \
-    && [ -f "${LEGACY_NOTES}" ]; then
-    if mkdir -p "${ADDON_STATE_DIR}" && cp "${LEGACY_NOTES}" "${ADDON_STATE_DIR}/decisions.yaml"; then
-        bashio::log.info "Copied your existing decision notes into ${ADDON_STATE_DIR}"
-        bashio::log.info "Each channel keeps its own notes now; the stable add-on still has ${LEGACY_NOTES}"
-    else
-        bashio::log.warning "Could not copy existing decision notes into ${ADDON_STATE_DIR} - starting empty"
-    fi
-fi
 
 # ==============================================================================
 # Deploy this channel's AGENTS.md
@@ -650,8 +583,8 @@ fi
 # supported place for user instructions is now /homeassistant/AGENTS.local.md,
 # which the add-on never writes.
 #
-# A fresh help stamp means the deployed copy already has current help injected,
-# so both the refresh-copy and the injection passes are skipped.
+# A fresh help stamp means the deployed copy already matches this addon
+# version, so the refresh-copy pass is skipped.
 #
 # WHERE it is deployed depends on the channel — see channel.sh. Stable owns
 # /homeassistant/AGENTS.md; beta keeps its copy in /data and has OpenCode load
@@ -732,87 +665,6 @@ else
 fi
 
 # ==============================================================================
-# Inject live hab help output into AGENTS.md
-# Replaces the content between HAB_LIVE_HELP markers with current `hab --help`
-# output so the AI always sees the exact commands available in the installed
-# hab version — regardless of what was documented when the addon was built.
-# Only runs when AGENTS.md was (re)deployed this boot.
-# ==============================================================================
-
-if [ "${AGENTS_REFRESHED}" = "true" ] && command -v hab &>/dev/null && [ -f "${AGENTS_TARGET}" ]; then
-    if grep -q "<!-- HAB_LIVE_HELP_START -->" "${AGENTS_TARGET}" 2>/dev/null; then
-        HAB_HELP_OUTPUT=$(hab --help 2>/dev/null || echo "")
-        if [ -n "${HAB_HELP_OUTPUT}" ]; then
-            printf '%s\n' "${HAB_HELP_OUTPUT}" > /tmp/hab_help.txt
-            awk '
-                /<!-- HAB_LIVE_HELP_START -->/ {
-                    print
-                    print "```"
-                    while ((getline line < "/tmp/hab_help.txt") > 0) print line
-                    print "```"
-                    skip=1
-                    next
-                }
-                /<!-- HAB_LIVE_HELP_END -->/ {
-                    skip=0
-                    print
-                    next
-                }
-                !skip { print }
-            ' "${AGENTS_TARGET}" > /tmp/agents_tmp \
-                && mv /tmp/agents_tmp "${AGENTS_TARGET}"
-            rm -f /tmp/hab_help.txt
-            bashio::log.info "Injected live hab help (v${HAB_VERSION}) into AGENTS.md"
-        fi
-    fi
-fi
-
-# ==============================================================================
-# Inject live zigporter help output into AGENTS.md
-# Same pattern as hab — replaces content between ZIGPORTER_LIVE_HELP markers
-# so the AI always sees the exact commands available in the installed version.
-# ==============================================================================
-
-if [ "${AGENTS_REFRESHED}" = "true" ] && command -v zigporter &>/dev/null && [ -f "${AGENTS_TARGET}" ]; then
-    if grep -q "<!-- ZIGPORTER_LIVE_HELP_START -->" "${AGENTS_TARGET}" 2>/dev/null; then
-        ZIGPORTER_HELP_OUTPUT=$(zigporter --help 2>/dev/null || echo "")
-        if [ -n "${ZIGPORTER_HELP_OUTPUT}" ]; then
-            printf '%s\n' "${ZIGPORTER_HELP_OUTPUT}" > /tmp/zigporter_help.txt
-            awk '
-                /<!-- ZIGPORTER_LIVE_HELP_START -->/ {
-                    print
-                    print "```"
-                    while ((getline line < "/tmp/zigporter_help.txt") > 0) print line
-                    print "```"
-                    skip=1
-                    next
-                }
-                /<!-- ZIGPORTER_LIVE_HELP_END -->/ {
-                    skip=0
-                    print
-                    next
-                }
-                !skip { print }
-            ' "${AGENTS_TARGET}" > /tmp/agents_tmp \
-                && mv /tmp/agents_tmp "${AGENTS_TARGET}"
-            rm -f /tmp/zigporter_help.txt
-            bashio::log.info "Injected live zigporter help (v${ZIGPORTER_VERSION}) into AGENTS.md"
-        fi
-    fi
-fi
-
-# Remember exactly what we wrote, including any injected help, so the next
-# update can tell an untouched file from one the user has edited.
-if [ "${AGENTS_REFRESHED}" = "true" ] && [ -f "${AGENTS_TARGET}" ]; then
-    agents_md_hash "${AGENTS_TARGET}" > "${AGENTS_HASH_FILE}"
-fi
-
-# Record the stamp so unchanged boots skip the version spawns and re-injection
-if [ "${HELP_STAMP_FRESH}" != "true" ]; then
-    printf '%s:%s:%s\n' "${ADDON_VERSION}" "${HAB_VERSION:-unknown}" "${ZIGPORTER_VERSION:-unknown}" > "${HELP_STAMP_FILE}"
-fi
-
-# ==============================================================================
 # Deploy the AGENTS.local.md example (first install only)
 # Shipped as .example so it is inert: an example file cannot be loaded as
 # instructions by accident, and cannot be silently overwritten later. The user
@@ -872,7 +724,6 @@ PPQ_PROVIDER_ENABLED=$([ "${PPQ_PRIVATE_ENABLED}" = "true" ] && [ "${PPQ_API_KEY
 RESTRICT_BOOL=$([ "${RESTRICT_SENSITIVE_FILES}" = "true" ] && echo "true" || echo "false")
 FOCUS_BOOL=$([ "${FOCUS_MODE}" = "true" ] && echo "true" || echo "false")
 BRIEFING_BOOL=$([ "${HOME_BRIEFING_ENABLED}" = "true" ] && echo "true" || echo "false")
-NOTES_BOOL=$([ "${DECISION_NOTES_ENABLED}" = "true" ] && echo "true" || echo "false")
 # Only loaded when hooks are on. The instructions cost tokens on every request,
 # and describing a feature the user has not enabled would train the model to
 # recommend it.
@@ -887,7 +738,7 @@ if [ "${ADDON_AGENTS_IN_CONFIG_DIR}" != "true" ]; then
     CHANNEL_AGENTS_INSTRUCTION="${ADDON_AGENTS_FILE}"
 fi
 
-jq --arg native_ha_mcp_api_id "${NATIVE_HA_MCP_API_ID}" --arg mcp_tool_profile "${MCP_TOOL_PROFILE}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_$(echo "${MCP_TOOL_PROFILE}" | tr "[:lower:]" "[:upper:]").md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" --arg mcp_remote_homeassistant_url "${MCP_REMOTE_HOMEASSISTANT_URL}" --arg mcp_remote_native_url "${MCP_REMOTE_NATIVE_URL}" --argjson mcp "${MCP_BOOL}" --argjson mcp_remote "${MCP_REMOTE_BOOL}" --argjson native_ha_mcp "${NATIVE_HA_MCP_BOOL}" --argjson lsp_disabled "${LSP_DISABLED}" --argjson ppq "${PPQ_PROVIDER_ENABLED}" --argjson restrict "${RESTRICT_BOOL}" --argjson focus "${FOCUS_BOOL}" --argjson briefing "${BRIEFING_BOOL}" --argjson notes "${NOTES_BOOL}" --argjson hooks "${HOOKS_BOOL}" '
+jq --arg native_ha_mcp_api_id "${NATIVE_HA_MCP_API_ID}" --arg mcp_tool_profile "${MCP_TOOL_PROFILE}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_$(echo "${MCP_TOOL_PROFILE}" | tr "[:lower:]" "[:upper:]").md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" --arg mcp_remote_homeassistant_url "${MCP_REMOTE_HOMEASSISTANT_URL}" --arg mcp_remote_native_url "${MCP_REMOTE_NATIVE_URL}" --argjson mcp "${MCP_BOOL}" --argjson mcp_remote "${MCP_REMOTE_BOOL}" --argjson native_ha_mcp "${NATIVE_HA_MCP_BOOL}" --argjson lsp_disabled "${LSP_DISABLED}" --argjson ppq "${PPQ_PROVIDER_ENABLED}" --argjson restrict "${RESTRICT_BOOL}" --argjson focus "${FOCUS_BOOL}" --argjson briefing "${BRIEFING_BOOL}" --argjson hooks "${HOOKS_BOOL}" '
     if $mcp_remote and ($mcp_remote_homeassistant_url | length) > 0 then
         .mcp.homeassistant = ((.mcp.homeassistant * {
             "type": "remote",
@@ -933,9 +784,6 @@ jq --arg native_ha_mcp_api_id "${NATIVE_HA_MCP_API_ID}" --arg mcp_tool_profile "
     if $mcp then .instructions = ((.instructions // []) + [$profile_instruction]) else . end |
     if $briefing then
         .instructions = ((.instructions // []) + ["/data/context/home-briefing.md"])
-    else . end |
-    if $notes then
-        .instructions = ((.instructions // []) + ["/data/context/decision-notes.md"])
     else . end |
     if $hooks then
         .instructions = ((.instructions // []) + ["/opt/ha-mcp-server/USER_HOOKS.md"])
@@ -997,21 +845,19 @@ bashio::log.info "OpenCode configuration generated successfully"
 
 # ==============================================================================
 # Generate the home context files
-# Writes /data/context/home-briefing.md (what this installation is) and
-# /data/context/decision-notes.md (digest of the user's approved decisions).
+# Writes /data/context/home-briefing.md (what this installation is).
 #
 # Fully detached, like service discovery above: the configuration-directory
 # scan lands immediately, and the parts that need Home Assistant are retried in
 # the background because Core is often still starting when the add-on does.
-# Both files are regenerated from scratch every start, so they cannot grow.
+# The file is regenerated from scratch every start, so it cannot grow.
 # ==============================================================================
 
 mkdir -p /data/context
 
-if [ "${HOME_BRIEFING_ENABLED}" = "true" ] || [ "${DECISION_NOTES_ENABLED}" = "true" ]; then
-    bashio::log.info "Generating home context in the background (briefing=${HOME_BRIEFING_ENABLED} decision notes=${DECISION_NOTES_ENABLED})..."
+if [ "${HOME_BRIEFING_ENABLED}" = "true" ]; then
+    bashio::log.info "Generating home context in the background (briefing=${HOME_BRIEFING_ENABLED})..."
     OPENCODE_HOME_BRIEFING="${HOME_BRIEFING_ENABLED}" \
-    OPENCODE_DECISION_NOTES="${DECISION_NOTES_ENABLED}" \
     OPENCODE_MCP_ENABLED="${MCP_ENABLED}" \
     OPENCODE_MCP_TOOL_PROFILE="${MCP_TOOL_PROFILE}" \
     OPENCODE_LSP_ENABLED="${LSP_ENABLED}" \

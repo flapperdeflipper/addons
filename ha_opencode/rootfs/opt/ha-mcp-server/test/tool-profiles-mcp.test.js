@@ -91,7 +91,6 @@ const MUTATING_TOOLS = [
   { name: "hab_run", arguments: { args: ["entity", "list"] } },
   { name: "zigporter_run", arguments: { args: ["list-devices"] } },
   { name: "screenshot_url", arguments: { url: "http://homeassistant.local:8123/" } },
-  { name: "remember_decision", arguments: { decision: "x", user_approved: true } },
 ];
 
 describe("MCP tool-profile enforcement", () => {

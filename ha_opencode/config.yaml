@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "2.21.2"
+version: "2.22.0"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -82,10 +82,12 @@ options:
   native_ha_mcp_enabled: false
   native_ha_mcp_api_id: "assist"
   # Home context: what OpenCode knows about this installation before you type.
-  # The briefing is regenerated on every start (never appended to) and the
-  # decision-notes digest is capped, so neither grows over time.
+  # The briefing is regenerated on every start (never appended to), so it
+  # cannot grow over time.
   home_briefing_enabled: true
-  decision_notes_enabled: true
+  # Deprecated: decision notes were removed; the key is kept so stored
+  # options from older versions keep validating. It has no effect.
+  decision_notes_enabled: false
   # --- 3. Access control -------------------------------------------------
   # Deny OpenCode read access to secret files (secrets.yaml, .storage, .cloud,
   # ssl, *.key, *.pem) so their contents cannot reach the model. Set to false

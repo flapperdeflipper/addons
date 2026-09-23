@@ -67,8 +67,8 @@ Keep queries small. `get_home_context` before broad listings, short history
 windows first, `get_error_log` before `get_support_logs`. A read-only session
 that fills its context with an unfiltered state dump has not helped anyone.
 
-Check `recall_decisions` before calling something a bug. Something that looks
-wrong is often deliberate and already recorded.
+Ask the user before calling something a bug. Something that looks wrong is
+often deliberate.
 
 ## Ending a session
 

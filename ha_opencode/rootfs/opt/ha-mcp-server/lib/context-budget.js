@@ -280,7 +280,7 @@ export function extractSecretValues(secretsYamlText, options = {}) {
  * Every value in that file is compared as a plain substring, and plenty of them
  * are not credentials: `mqtt_user: homeassistant`, a hostname, a directory name.
  * "homeassistant" appears in every path this add-on works with, so matching it
- * would withhold ordinary notes from the model — and a decision that silently
+ * would withhold ordinary text from the model — and text that silently
  * stops reaching the model is the failure this whole area exists to prevent.
  *
  * The write path stays stricter: there, a false positive is an error the model
