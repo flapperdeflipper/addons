@@ -254,6 +254,10 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
     }
     const headers = { ...req.headers };
     for (const header of HOP_BY_HOP_HEADERS) delete headers[header];
+    // @playwright/mcp validates the Host header against its bind address
+    // (anti-DNS-rebinding) and only accepts localhost - 127.0.0.1 is
+    // rejected. Speak the child's own name, not the hub's, not the IP.
+    headers.host = `localhost:${entry.spec.port}`;
     const upstream = httpRequest({
       host: "127.0.0.1",
       port: entry.spec.port,

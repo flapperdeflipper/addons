@@ -62,7 +62,7 @@ function fakeUpstreamModule() {
   const script = `
     require("http").createServer((req, res) => {
       res.writeHead(200, { "content-type": "text/plain" });
-      res.end("upstream-ok:" + req.url);
+      res.end("upstream-ok:" + req.url + " host=" + req.headers.host);
     }).listen(${UPSTREAM_PORT}, "127.0.0.1");
   `;
   return {
@@ -279,12 +279,17 @@ describe("gateway upstream kind", () => {
   it("streams-proxies requests to the supervised child", async () => {
     const res = await authed("/mcp/up");
     assert.equal(res.status, 200);
-    assert.equal(await res.text(), "upstream-ok:/");
+    assert.equal(await res.text(), `upstream-ok:/ host=localhost:${UPSTREAM_PORT}`);
   });
 
   it("passes sub-paths and query strings through to the child (1.0.1)", async () => {
     const res = await authed("/mcp/up/child/path?x=1");
     assert.equal(res.status, 200);
-    assert.equal(await res.text(), "upstream-ok:/child/path?x=1");
+    assert.equal(await res.text(), `upstream-ok:/child/path?x=1 host=localhost:${UPSTREAM_PORT}`);
+  });
+
+  it("rewrites the Host header to the child's localhost name (1.0.2)", async () => {
+    const res = await authed("/mcp/up");
+    assert.match(await res.text(), new RegExp(`host=localhost:${UPSTREAM_PORT}$`));
   });
 });

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.2
+
+- **Fix**: playwright answered proxied requests with `Access is only allowed at localhost:7101` - @playwright/mcp validates the Host header (anti-DNS-rebinding) and rejects the hub's rewritten `127.0.0.1:7101`. The proxy now sends `Host: localhost:<port>` so both the streamable `/mcp` and legacy `/sse` endpoints work through the gateway.
 ## 1.0.1
 
 - **Fix**: ha-native answered every request with `internal error` - the gateway calls `validateJsonRpcMessage` on the module manifest, but ha-native exported it as a module named export instead of a manifest property. The validator now lives on the manifest, and forwarder modules missing it fail at startup (state `failed` in `/healthz`, 503 on their path) instead of 500ing per request.
