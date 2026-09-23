@@ -22,7 +22,7 @@ ARG BUILD_ARCH
 # is Ingress-patched at build time (see /opt/openchamber/patch-ingress.js), so
 # it changes only through a tested add-on release. build.yaml carries the same
 # value and is what CI reads.
-ARG OPENCHAMBER_VERSION=1.24.1
+ARG OPENCHAMBER_VERSION=1.24.2
 
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
