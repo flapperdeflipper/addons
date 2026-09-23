@@ -175,6 +175,9 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
           handler: createStatelessMcpHandler(server),
         });
       } else if (module.kind === "forwarder") {
+        if (typeof module.validateJsonRpcMessage !== "function") {
+          throw new Error("forwarder modules must expose validateJsonRpcMessage(message)");
+        }
         routes.set(module.id, {
           module,
           state: "running",
@@ -244,7 +247,7 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
     sendJson(res, 200, reply);
   }
 
-  function proxyToUpstream(req, res, entry) {
+  function proxyToUpstream(req, res, entry, childPath) {
     if (!entry.supervisor || entry.state !== "running") {
       sendJsonRpcError(res, 503, -32003, `upstream '${entry.module.id}' is ${entry.state}`);
       return;
@@ -255,7 +258,7 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
       host: "127.0.0.1",
       port: entry.spec.port,
       method: req.method,
-      path: req.url,
+      path: childPath,
       headers,
     });
     upstream.on("response", (upRes) => {
@@ -301,11 +304,12 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
       return;
     }
 
-    const match = /^\/mcp\/([a-z0-9_-]+)$/.exec(pathname);
+    const match = /^\/mcp\/([a-z0-9_-]+)(\/.*)?$/.exec(pathname);
     if (!match) {
       sendJson(res, 404, { error: "not found" });
       return;
     }
+    const subPath = match[2] || "";
     const entry = routes.get(match[1]);
     if (!entry) {
       sendJson(res, 404, { error: `unknown MCP server '${match[1]}'` });
@@ -318,6 +322,10 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
 
     try {
       if (entry.module.kind === "mcp") {
+        if (subPath) {
+          sendJson(res, 404, { error: "sub-paths are not supported for this server" });
+          return;
+        }
         if (req.method !== "POST") {
           sendJsonRpcError(res, 405, -32600, "POST required for this server", { allow: "POST" });
           return;
@@ -326,10 +334,16 @@ export function createGateway({ config, modules = MODULES, env = process.env, lo
         return;
       }
       if (entry.module.kind === "forwarder") {
+        if (subPath) {
+          sendJson(res, 404, { error: "sub-paths are not supported for this server" });
+          return;
+        }
         await handleForwarder(req, res, entry);
         return;
       }
-      proxyToUpstream(req, res, entry);
+      // Upstream children own their own sub-paths (e.g. playwright-mcp serves
+      // streamable HTTP at /mcp and legacy SSE at /sse).
+      proxyToUpstream(req, res, entry, (subPath || "/") + url.search);
     } catch (error) {
       log("error", `error serving /mcp/${match[1]}`, { error: error?.message || String(error) });
       if (!res.headersSent) {

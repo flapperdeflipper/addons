@@ -16,7 +16,7 @@ Single port (`8930/tcp`), single bearer token (the `token` option; a
 |------|--------|------|
 | `/mcp/victoriametrics` | Prometheus-compatible queries against VictoriaMetrics (fork of the prometheus-mcp-server 1.0.1 tool set: `prom_query`, `prom_range`, `prom_discover`, `prom_metadata`, `prom_targets`) | stateless MCP |
 | `/mcp/ha-native` | Home Assistant native MCP (`/api/mcp/<API ID>`, default API `assist`), forwarded through the Supervisor | JSON-RPC forwarder |
-| `/mcp/playwright` | One shared @playwright/mcp 0.0.80 instance, CDP-connected to the playwright-browser add-on (per-connection browser contexts stay isolated) | supervised upstream |
+| `/mcp/playwright/mcp` (streamable HTTP; `/mcp/playwright/sse` legacy) | One shared @playwright/mcp 0.0.80 instance, CDP-connected to the playwright-browser add-on (per-connection browser contexts stay isolated) | supervised upstream |
 
 `GET /healthz` (no auth) reports per-server state; `GET /` (auth) lists the
 routes. The playwright child binds to loopback only - it is reachable
