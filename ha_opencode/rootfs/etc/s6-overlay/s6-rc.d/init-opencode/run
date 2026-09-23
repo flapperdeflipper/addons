@@ -25,6 +25,9 @@ MCP_ENABLED=$(bashio::config 'mcp_enabled')
 MCP_TOOL_PROFILE=$(bashio::config 'mcp_tool_profile' 2>/dev/null || echo "full")
 NATIVE_HA_MCP_ENABLED=$(bashio::config 'native_ha_mcp_enabled' 2>/dev/null || echo "false")
 NATIVE_HA_MCP_API_ID=$(bashio::config 'native_ha_mcp_api_id' 2>/dev/null || echo "assist")
+MCP_REMOTE_ENABLED=$(bashio::config 'mcp_remote_enabled' 2>/dev/null || echo "false")
+MCP_REMOTE_HOMEASSISTANT_URL=$(bashio::config 'mcp_remote_homeassistant_url' 2>/dev/null || echo "")
+MCP_REMOTE_NATIVE_URL=$(bashio::config 'mcp_remote_native_url' 2>/dev/null || echo "")
 LSP_ENABLED=$(bashio::config 'lsp_enabled' || echo "true")
 SCREENSHOT_ENABLED=$(bashio::config 'screenshot_enabled' || echo "false")
 ADDON_ACCESS_ENABLED=$(bashio::config 'addon_access_enabled' || echo "false")
@@ -72,7 +75,7 @@ if [ "${USER_HOOKS_ENABLED}" != "true" ]; then
     USER_HOOKS_ENABLED="false"
 fi
 
-bashio::log.info "Configuration: MCP=${MCP_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
+bashio::log.info "Configuration: MCP=${MCP_ENABLED} MCP_REMOTE=${MCP_REMOTE_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
 
 # ==============================================================================
 # Runtime paths
@@ -862,6 +865,7 @@ done || true
 # ==============================================================================
 
 MCP_BOOL=$([ "${MCP_ENABLED}" = "true" ] && echo "true" || echo "false")
+MCP_REMOTE_BOOL=$([ "${MCP_REMOTE_ENABLED}" = "true" ] && echo "true" || echo "false")
 NATIVE_HA_MCP_BOOL=$([ "${NATIVE_HA_MCP_ENABLED}" = "true" ] && echo "true" || echo "false")
 LSP_DISABLED=$([ "${LSP_ENABLED}" = "true" ] && echo "false" || echo "true")
 PPQ_PROVIDER_ENABLED=$([ "${PPQ_PRIVATE_ENABLED}" = "true" ] && [ "${PPQ_API_KEY_CONFIGURED}" = "true" ] && echo "true" || echo "false")
@@ -883,14 +887,34 @@ if [ "${ADDON_AGENTS_IN_CONFIG_DIR}" != "true" ]; then
     CHANNEL_AGENTS_INSTRUCTION="${ADDON_AGENTS_FILE}"
 fi
 
-jq --arg native_ha_mcp_api_id "${NATIVE_HA_MCP_API_ID}" --arg mcp_tool_profile "${MCP_TOOL_PROFILE}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_$(echo "${MCP_TOOL_PROFILE}" | tr "[:lower:]" "[:upper:]").md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" --argjson mcp "${MCP_BOOL}" --argjson native_ha_mcp "${NATIVE_HA_MCP_BOOL}" --argjson lsp_disabled "${LSP_DISABLED}" --argjson ppq "${PPQ_PROVIDER_ENABLED}" --argjson restrict "${RESTRICT_BOOL}" --argjson focus "${FOCUS_BOOL}" --argjson briefing "${BRIEFING_BOOL}" --argjson notes "${NOTES_BOOL}" --argjson hooks "${HOOKS_BOOL}" '
-    .mcp.homeassistant.enabled = $mcp |
-    .mcp.homeassistant.environment.HA_NATIVE_MCP_API_ID = $native_ha_mcp_api_id |
-    .mcp.homeassistant.environment.OPENCODE_MCP_TOOL_PROFILE = $mcp_tool_profile |
-    .mcp.homeassistant.environment.OPENCODE_NATIVE_HA_MCP_ENABLED = ($native_ha_mcp | tostring) |
-    .mcp.homeassistant_native.enabled = ($mcp and $native_ha_mcp) |
-    .mcp.homeassistant_native.command = ["node", "/opt/ha-mcp-server/ha-native-mcp-proxy.js", $native_ha_mcp_api_id] |
-    .mcp.homeassistant_native.environment.HA_NATIVE_MCP_API_ID = $native_ha_mcp_api_id |
+jq --arg native_ha_mcp_api_id "${NATIVE_HA_MCP_API_ID}" --arg mcp_tool_profile "${MCP_TOOL_PROFILE}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_$(echo "${MCP_TOOL_PROFILE}" | tr "[:lower:]" "[:upper:]").md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" --arg mcp_remote_homeassistant_url "${MCP_REMOTE_HOMEASSISTANT_URL}" --arg mcp_remote_native_url "${MCP_REMOTE_NATIVE_URL}" --argjson mcp "${MCP_BOOL}" --argjson mcp_remote "${MCP_REMOTE_BOOL}" --argjson native_ha_mcp "${NATIVE_HA_MCP_BOOL}" --argjson lsp_disabled "${LSP_DISABLED}" --argjson ppq "${PPQ_PROVIDER_ENABLED}" --argjson restrict "${RESTRICT_BOOL}" --argjson focus "${FOCUS_BOOL}" --argjson briefing "${BRIEFING_BOOL}" --argjson notes "${NOTES_BOOL}" --argjson hooks "${HOOKS_BOOL}" '
+    if $mcp_remote and ($mcp_remote_homeassistant_url | length) > 0 then
+        .mcp.homeassistant = ((.mcp.homeassistant * {
+            "type": "remote",
+            "url": $mcp_remote_homeassistant_url,
+            "enabled": $mcp,
+            "timeout": 65000,
+            "headers": {"Authorization": "Bearer {env:MCP_HTTP_TOKEN}"}
+        }) | del(.command, .environment))
+    else
+        .mcp.homeassistant.enabled = $mcp |
+        .mcp.homeassistant.environment.HA_NATIVE_MCP_API_ID = $native_ha_mcp_api_id |
+        .mcp.homeassistant.environment.OPENCODE_MCP_TOOL_PROFILE = $mcp_tool_profile |
+        .mcp.homeassistant.environment.OPENCODE_NATIVE_HA_MCP_ENABLED = ($native_ha_mcp | tostring)
+    end |
+    if $mcp_remote and ($mcp_remote_native_url | length) > 0 then
+        .mcp.homeassistant_native = {
+            "type": "remote",
+            "url": $mcp_remote_native_url,
+            "enabled": ($mcp and $native_ha_mcp),
+            "timeout": 10000,
+            "headers": {"Authorization": "Bearer {env:MCP_HUB_TOKEN}"}
+        }
+    else
+        .mcp.homeassistant_native.enabled = ($mcp and $native_ha_mcp) |
+        .mcp.homeassistant_native.command = ["node", "/opt/ha-mcp-server/ha-native-mcp-proxy.js", $native_ha_mcp_api_id] |
+        .mcp.homeassistant_native.environment.HA_NATIVE_MCP_API_ID = $native_ha_mcp_api_id
+    end |
     if $lsp_disabled then .lsp["ha-yaml"].disabled = true else del(.lsp["ha-yaml"].disabled) end |
     if $restrict then
         .permission.read = {

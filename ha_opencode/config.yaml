@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "2.21.1"
+version: "2.21.2"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -121,6 +121,14 @@ options:
   # Token clients must present as `Authorization: Bearer <token>`.
   # A !secret <key> value resolves from secrets.yaml at start.
   mcp_http_token: ""
+  # Serve the homeassistant/homeassistant_native MCP entries as remote
+  # (streamable HTTP) instead of per-session stdio spawns - for use with a
+  # shared MCP hub (see the mcp-hub add-on) or this add-on's own 8927
+  # endpoint. Sessions then need MCP_HTTP_TOKEN (and, for the native entry,
+  # MCP_HUB_TOKEN) in env_vars; the profile is fixed server-side.
+  mcp_remote_enabled: false
+  mcp_remote_homeassistant_url: ""
+  mcp_remote_native_url: ""
   # --- 6. Model providers ------------------------------------------------
   # PPQ private mode (beta): routes OpenCode through a local encryption proxy
   # for TEE-backed models. Requires a PPQ API key.
@@ -172,6 +180,9 @@ schema:
     - str
   mcp_http_enabled: bool
   mcp_http_token: password
+  mcp_remote_enabled: bool
+  mcp_remote_homeassistant_url: str?
+  mcp_remote_native_url: str?
   # --- 6. Model providers ------------------------------------------------
   ppq_private_enabled: bool
   ppq_api_key: password
