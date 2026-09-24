@@ -70,7 +70,7 @@ RUN chmod +x /usr/local/bin/* \
     && chmod +x /etc/s6-overlay/s6-rc.d/init-opencode/run \
     && chmod +x /etc/s6-overlay/s6-rc.d/ha-opencode/run \
     && chmod +x /etc/s6-overlay/s6-rc.d/ha-opencode-server/run \
-    && chmod +x /etc/s6-overlay/s6-rc.d/ppq-private-proxy/run \
+    && chmod +x /etc/s6-overlay/s6-rc.d/ha-opencode-mcp-http/run \
     && mkdir -p /data/.local/share/opencode /data/.config/opencode
 
 # Set working directory to HA config (mounted at runtime)

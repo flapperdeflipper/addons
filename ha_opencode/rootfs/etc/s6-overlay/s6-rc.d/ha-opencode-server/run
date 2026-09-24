@@ -1,6 +1,10 @@
 #!/command/with-contenv bashio
 # ==============================================================================
-# OpenCode - Optional LAN Server Service
+# OpenCode - LAN Server Service (always on)
+#
+# The OpenChamber add-on attaches to this server on 4096/tcp, so it runs
+# unconditionally. It refuses to serve without a basic-auth password
+# (the server_password option).
 # ==============================================================================
 
 export HOME="/data"
@@ -29,51 +33,38 @@ fi
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
 export OPENCODE_DISABLE_AUTOUPDATE=true
 
-ENABLE_SERVER=$(bashio::config 'enable_server' 2>/dev/null || echo "false")
 SERVER_PORT=4096
-
-if ! bashio::var.true "${ENABLE_SERVER}"; then
-    exec sleep infinity
-fi
 
 # ==============================================================================
 # Basic authentication. OPENCODE_SERVER_PASSWORD is the OpenCode server's own
 # mechanism; without it the LAN listener is unauthenticated. Fail closed: a
 # mapped port without credentials would expose the full agent API to anyone
-# who can reach it. The username defaults to 'opencode' upstream when unset,
-# on both the server and every matching client (OpenChamber, opencode attach).
+# who can reach it. The username defaults to 'opencode' upstream, on both the
+# server and every matching client (OpenChamber, opencode attach).
 # This stays scoped to this service on purpose: the TUI in the terminal
 # service talks to its own loopback server and must not inherit the gate.
 # ==============================================================================
-SERVER_USERNAME=$(bashio::config 'server_username' 2>/dev/null || echo "")
 SERVER_PASSWORD=$(bashio::config 'server_password' 2>/dev/null || echo "")
 
 if ! bashio::var.has_value "${SERVER_PASSWORD}"; then
-    bashio::log.error "LAN server mode is enabled but no basic-auth password is set."
-    bashio::log.error "Set 'LAN server password' in the add-on Configuration tab (a !secret <key> value works too), then restart."
+    bashio::log.error "The LAN server needs a basic-auth password."
+    bashio::log.error "Set 'server_password' in the add-on Configuration tab (a !secret <key> value works too), then restart."
     exec sleep infinity
 fi
 export OPENCODE_SERVER_PASSWORD="${SERVER_PASSWORD}"
-if bashio::var.has_value "${SERVER_USERNAME}"; then
-    export OPENCODE_SERVER_USERNAME="${SERVER_USERNAME}"
-    bashio::log.info "LAN server: HTTP basic auth required (username '${SERVER_USERNAME}')."
-else
-    bashio::log.info "LAN server: HTTP basic auth required (default username 'opencode')."
-fi
+bashio::log.info "LAN server: HTTP basic auth required (default username 'opencode')."
 
-HOST_PORT=$(bashio::addon.port "${SERVER_PORT}" 2>/dev/null || true)
+HOST_PORT=$(bashio::addon.port "${SERVER_PORT}/tcp" 2>/dev/null || true)
 
-bashio::log.info "LAN server config: ENABLE_SERVER=${ENABLE_SERVER} INTERNAL_PORT=${SERVER_PORT} HOST_PORT=${HOST_PORT:-unmapped}"
-bashio::log.warning "LAN server mode is enabled. OpenCode will listen on 0.0.0.0:${SERVER_PORT} inside the container."
-bashio::log.warning "Only map this port on trusted networks. Do not expose it to the internet."
+bashio::log.info "LAN server config: INTERNAL_PORT=${SERVER_PORT} HOST_PORT=${HOST_PORT:-unmapped}"
 if bashio::var.has_value "${HOST_PORT}"; then
     bashio::log.info "Home Assistant port mapping: ${SERVER_PORT}/tcp -> ${HOST_PORT}"
-    bashio::log.info "Connect from another computer with: opencode attach http://<username>@<home-assistant-host>:${HOST_PORT}"
+    bashio::log.warning "LAN server mode is enabled. OpenCode listens on 0.0.0.0:${SERVER_PORT}; only map this on trusted networks."
+    bashio::log.info "Connect from another computer with: opencode attach http://opencode@<home-assistant-host>:${HOST_PORT}"
 else
-    bashio::log.warning "Home Assistant port mapping for ${SERVER_PORT}/tcp is disabled; LAN clients cannot connect yet."
-    bashio::log.info "Map ${SERVER_PORT}/tcp in the add-on Network settings, then connect with: opencode attach http://<home-assistant-host>:<mapped-host-port>"
+    bashio::log.info "No host port mapping for ${SERVER_PORT}/tcp; sibling add-ons (OpenChamber) still reach it directly."
+    bashio::log.info "Map ${SERVER_PORT}/tcp in the add-on Network settings to connect from outside."
 fi
-bashio::log.info "If OpenCode prints http://0.0.0.0:${SERVER_PORT}, that is the internal container listener."
 
 # ==============================================================================
 # Optional browser CORS origins

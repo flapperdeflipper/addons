@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- **Add**: `/mcp/homeassistant` - a forwarder route to the full ha-mcp-server (entity/state, safe config writing, supervisor tools, MQTT, todo, hab/zigporter/ESPHome companions) hosted by the ha_opencode add-on's always-on 8927 HTTP endpoint. The server process stays in ha_opencode (it execs the hab CLI and launches Chromium for screenshots); the hub only makes it reachable at the single entrypoint with the single hub token. New options `homeassistant_enabled` (default on), `homeassistant_url` and `homeassistant_token` (the ha_opencode `mcp_http_token`); with the URL unset the route reports `failed` in `/healthz` and answers 503 while the rest of the hub keeps working.
+
 ## 1.0.2
 
 - **Fix**: playwright answered proxied requests with `Access is only allowed at localhost:7101` - @playwright/mcp validates the Host header (anti-DNS-rebinding) and rejects the hub's rewritten `127.0.0.1:7101`. The proxy now sends `Host: localhost:<port>` so both the streamable `/mcp` and legacy `/sse` endpoints work through the gateway.

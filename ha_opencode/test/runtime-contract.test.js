@@ -180,26 +180,15 @@ describe(`${CHANNEL} bundled runtime precedence`, () => {
     assert.ok(!/opencode_update_policy/.test(read(ADDON_DIR, "config.yaml")));
     assert.ok(!/opencode_update_policy/.test(read(ADDON_DIR, "translations", "en.yaml")));
     for (const [file, contents] of sources) {
-      // The init service still recognises a persisted legacy value so it can
-      // log the migration notice; nothing else may branch on one.
-      if (file.endsWith(path.join("init-opencode", "run"))) continue;
       assert.ok(
         !/OPENCODE_UPDATE_POLICY/.test(contents),
         `${file} still branches on the removed update policy`,
       );
     }
-  });
-
-  it("treats a persisted legacy 'latest' policy as bundled and says so", () => {
+    // The legacy marker file of pre-3.0.0 versions is not read either; nothing
+    // migrates it anymore.
     const init = read(ROOTFS, "etc", "s6-overlay", "s6-rc.d", "init-opencode", "run");
-    // The marker every previous version wrote is the reliable evidence; the
-    // saved options file is only a fallback, because the Supervisor drops keys
-    // the current schema no longer declares.
-    assert.match(init, /cat \/data\/\.opencode_update_policy/);
-    assert.match(init, /jq -r '\.opencode_update_policy \/\/ empty' \/data\/options\.json/);
-    assert.match(init, /LEGACY_UPDATE_POLICY.*=.*"latest"/);
-    // The old install is the user's data. It stops being used; it is not deleted.
-    assert.ok(!/rm -rf.*npm-global/.test(init));
+    assert.ok(!/\.opencode_update_policy/.test(init), "init service still reads the legacy update-policy marker");
   });
 });
 
@@ -221,8 +210,12 @@ describe(`${CHANNEL} generated OpenCode configuration contract`, () => {
     assert.deepEqual(template.formatter.prettier.command, ["prettier", "--write", "$FILE"]);
   });
 
-  it("keeps the native MCP bridge opt-in", () => {
-    assert.equal(template.mcp.homeassistant_native.enabled, false);
+  it("keeps the native MCP bridge on (fixed in this fork)", () => {
+    assert.equal(template.mcp.homeassistant_native.enabled, true);
+    assert.equal(
+      template.mcp.homeassistant.environment.OPENCODE_NATIVE_HA_MCP_ENABLED,
+      "true",
+    );
   });
 
   it("loads the core MCP instructions", () => {
@@ -240,9 +233,13 @@ describe(`${CHANNEL} generated OpenCode configuration contract`, () => {
     }
   });
 
-  it("names every profile instruction file the init service can select", () => {
+  it("references the profile instruction files that are actually selected", () => {
+    // The init service fixes the profile to full (the hub server is shared
+    // full-profile); only ha-readonly swaps in the compact text.
     const init = read(ROOTFS, "etc", "s6-overlay", "s6-rc.d", "init-opencode", "run");
-    assert.match(init, /MCP_PROFILE_\$\(echo "\$\{MCP_TOOL_PROFILE\}"/);
+    assert.match(init, /MCP_PROFILE_FULL\.md/);
+    const readonly = read(ROOTFS, "usr", "local", "bin", "ha-readonly");
+    assert.match(readonly, /MCP_PROFILE_COMPACT\.md/);
     for (const profile of ["COMPACT", "CONFIGURATION", "FULL"]) {
       assert.ok(
         fs.existsSync(path.join(ROOTFS, "opt", "ha-mcp-server", `MCP_PROFILE_${profile}.md`)),

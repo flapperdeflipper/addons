@@ -4,7 +4,7 @@ slug: mcp_hub
 description: Shared MCP servers over HTTP for OpenCode, LiteLLM and other agents - one process per server instead of one per session.
 url: https://github.com/flapperdeflipper/addons/tree/master/mcp-hub
 image: flapperdeflipper/addon-mcp-hub
-version: 1.0.2
+version: 1.1.0
 
 arch:
   - amd64
@@ -32,6 +32,9 @@ options:
   victoriametrics_password: ""
   ha_native_enabled: true
   ha_native_api_id: "assist"
+  homeassistant_enabled: true
+  homeassistant_url: ""
+  homeassistant_token: ""
 schema:
   token: password
   playwright_enabled: bool
@@ -42,3 +45,6 @@ schema:
   victoriametrics_password: password?
   ha_native_enabled: bool
   ha_native_api_id: str
+  homeassistant_enabled: bool
+  homeassistant_url: str
+  homeassistant_token: password

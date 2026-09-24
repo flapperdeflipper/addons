@@ -33,8 +33,14 @@
   },
   "mcp": {
     "homeassistant": {
+      "type": "local",
+      "command": ["node", "/opt/ha-mcp-server/index.js"],
+      "enabled": true,
+      "timeout": 65000,
       "environment": {
-        "OPENCODE_MCP_TOOL_PROFILE": "compact"
+        "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
+        "OPENCODE_MCP_TOOL_PROFILE": "compact",
+        "OPENCODE_NATIVE_HA_MCP_ENABLED": "false"
       }
     },
     "homeassistant_native": {

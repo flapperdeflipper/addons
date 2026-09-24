@@ -14,24 +14,22 @@ at `/usr/share/doc/ha-opencode/NOTICE` and in this repository's
 ## Features
 
 - **AI-Powered Editing**: Use natural language to modify your Home Assistant configuration
-- **Modern Terminal**: Beautiful web-based terminal with 10 theme options
+- **Modern Terminal**: Web-based terminal (ttyd + tmux) with ingress access
 - **Log Access**: View Home Assistant Core, Supervisor, and host logs
 - **Ingress Support**: Access directly from the Home Assistant sidebar
 - **Provider Agnostic**: Works with Anthropic, OpenAI, Google, and 70+ other AI providers
-- **MCP Integration**: Deep Home Assistant integration with Tools, Resources, Prompts, and Intelligence
+- **MCP Integration**: Deep Home Assistant integration with Tools, Resources, Prompts, and Intelligence, shared through the mcp-hub add-on so every session (and every other harness on the host) reuses one server process
 - **MQTT Tools**: `mqtt_publish`, `mqtt_listen` and `mqtt_clear_retained` ride the Home Assistant MCP server and its own broker connection - no MQTT credentials needed
 - **Certified Runtime**: Runs the pinned OpenCode build tested with this add-on; runtime upgrades arrive through add-on releases
 - **On-Demand Skills**: Loads detailed Home Assistant procedures only when a task needs them
 - **Read-Only Session**: Offers a separate terminal session for investigation without write or control capabilities
 - **Home Context**: Sessions start knowing your installation — a generated briefing of your setup and your own instructions in `AGENTS.local.md`
 - **Home Assistant Native LLM Readiness**: Detects HA's emerging native `llm` component and documents how OpenCode will adopt HA-native agent capabilities as they become available
-- **Focus-friendly responses (Beta)**: Optional action-first, concise, progress-aware response guidance
+- **Focus-friendly responses**: Action-first, concise, progress-aware response guidance (always on in this fork)
 - **Visual Verification**: Screenshot tool for verifying dashboard changes with AI vision
 - **LSP Integration**: Intelligent YAML editing with entity autocomplete, hover info, and diagnostics
-- **PPQ Private TEE Models (Beta)**: Optional encrypted proxy for PPQ private models running in remote TEEs. Included in stable releases, but still considered beta.
-- **Serial Device Access**: Optionally map selected host serial devices into the add-on for USB flashing and adapter inspection workflows
-- **Optional LAN Server Mode**: Attach from another computer on your local network using the OpenCode CLI
-- **Startup Hooks**: Optional persistent shell scripts that run at add-on startup
+- **LAN Server**: The OpenCode server on 4096 that OpenChamber attaches to; `opencode attach` works from other computers when the port is mapped
+- **Startup Hooks**: Persistent shell scripts in `startup.d` run at add-on startup when present (no option; an empty folder runs nothing)
 - **Session Cleanup**: `session-cleanup` companion tool that classifies stored sessions (archived / superseded / stale) and removes them via the opencode API after exporting transcripts
 
 ## Configuration
@@ -40,31 +38,29 @@ Configure the app from the **Configuration** tab in the app page.
 
 The options below appear in the same order and groups as the Configuration tab.
 
+This is a personal fork: everything the owner never changes is hardcoded on —
+the full MCP tool profile (server-side), the native MCP bridge, LSP, the
+screenshot tool, focus-friendly responses, the install briefing, sensitive-file
+restriction, add-on folder access, CPU auto-detection, terminal appearance
+(Breeze, 14px, block cursor) and startup hooks. What remains configurable is
+the short list below.
+
 The sidebar always shows the ttyd terminal; the OpenChamber web UI moved to
 its own **OpenChamber** add-on (ha_openchamber), which attaches to this
 add-on's LAN server.
-
-### Terminal Appearance
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| **Terminal theme** | `breeze` | Color scheme for the terminal. Options: `breeze`, `catppuccin_mocha`, `catppuccin_latte`, `dracula`, `nord`, `tokyo_night`, `one_dark`, `solarized_dark`, `solarized_light`, `gruvbox_dark`. See [Theme Previews](#theme-previews). |
-| **Font size** | `14` | Terminal font size in pixels (10-24). |
-| **Cursor style** | `block` | Cursor appearance: `block`, `underline`, or `bar`. |
-| **Cursor blinking** | `false` | Whether the cursor should blink. |
 
 ### Home Assistant Integration
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| **MCP integration** | `true` | Let OpenCode query entities and call services through its built-in Model Context Protocol server. |
-| **MCP tool profile** | `full` | Select `compact` for read-only diagnostics, `configuration` to add documentation, validation, and safe config writes, or `full` for every tool. Smaller profiles reduce tool-selection ambiguity and prompt size for local models. |
-| **LSP integration** | `true` | Give OpenCode live diagnostics, entity and service auto-completion, and validation while it edits Home Assistant YAML. |
-| **Screenshot tool** | `false` | Requires the access token below. Lets OpenCode photograph Home Assistant pages in a headless browser to check dashboard changes. |
 | **Home Assistant access token** | `""` | Long-lived access token for Home Assistant Core. Required by the screenshot tool and ESPHome commands. |
-| **Native Home Assistant MCP bridge (beta)** | `false` | Adds an optional second MCP server for Home Assistant's native LLM MCP endpoint. Needs the MCP Server integration set up in Home Assistant; the keyed endpoints and native LLM tool platforms ship in Home Assistant 2026.8. |
-| **Native MCP API ID** | `assist` | Applies only when the native bridge is on. The default `assist` targets `/api/mcp/assist`; leave empty to use the configured `/api/mcp` endpoint. |
-| **Install briefing** | `true` | Give OpenCode a generated summary of your installation — version, areas, entity counts, configuration layout — so it does not rediscover them each session. See [Home Context](#home-context). |
+
+### Shared MCP Hub (mcp-hub add-on)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| **MCP hub URL** | `""` | Base URL of the mcp-hub add-on (e.g. `http://10.20.0.3:8930`). Sessions reach both Home Assistant MCP servers through the hub — `/mcp/homeassistant` forwards back to this add-on's always-on 8927 endpoint, `/mcp/ha-native` is the hub's own forwarder — sharing one process instead of spawning per session. Sessions need `MCP_HUB_TOKEN` in **Environment variables**. Empty falls back to per-session local servers. |
+| **MCP HTTP bearer token** | `""` | Bearer token this add-on's 8927 MCP endpoint demands; the hub's homeassistant forwarder uses the same value. `!secret <key>` works. |
 
 #### MQTT tools
 
@@ -78,67 +74,26 @@ The Home Assistant MCP server exposes MQTT tools (full profile only; not in the 
 
 `mqtt_listen` runs up to 60s, so be patient when debugging traffic. Sibling add-ons such as the LiteLLM MCP gateway get the same tools through the HTTP MCP server on port 8927.
 
-### Access Control
+### LAN Server (OpenChamber attaches here)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| **Restrict access to sensitive files** | `true` | Deny OpenCode read access to secret and credential files so their contents cannot reach the model. See [Sensitive File Protection](#sensitive-file-protection). |
-| **Add-on folder guidance** | `false` | Show guidance for working in the mounted `/addons` and `/addon_configs` folders. This is guidance only, not a filesystem permission boundary. |
+| **LAN server password** | required | Basic-auth password for the LAN server on 4096. `!secret <key>` works. The service refuses to start without it. |
+| **LAN server CORS origins** | `[]` | Exact browser origins allowed to call the LAN server directly. `opencode attach` and OpenChamber do not need this. |
 
-### Focus-Friendly Responses (Beta)
-
-Turn on **Focus-friendly responses (beta)** in the add-on **Configuration** tab to ask OpenCode for action-first, concise, progress-aware replies. This changes response wording only; it does not change permissions or safety confirmations.
-
-### Sensitive File Protection
-
-By default (**Restrict access to sensitive files** = `true`), the add-on adds an OpenCode `permission.read` rule that blocks the AI's file-**read** tool from opening files that typically hold secrets or credentials, so their contents can't be pulled into the model's context:
-
-- `secrets.yaml` (and any path ending in `secrets.yaml`)
-- the `.storage/` directory (auth/refresh tokens, cloud, application credentials)
-- the `.cloud/` directory (Nabu Casa cloud)
-- the `ssl/` directory, and any `*.key` / `*.pem` files
-
-Everything else stays fully readable, and this doesn't change how the agent edits normal configuration that *references* secrets via `!secret` — it never needs the secret's value to do that. The Home Assistant MCP tools are unaffected; they read live state through the API, not these files.
-
-**To restore the previous, fully-permissive behavior,** set **Restrict access to sensitive files** to `false` and restart the add-on. You can also fine-tune individual paths — re-allow one, add more denials, or extend the same protection to the edit tool — via **Custom OpenCode configuration** using OpenCode's [permission rules](https://opencode.ai/docs/permissions/).
-
-**Scope/limitation:** this guards OpenCode's structured file-read tool, which is the common path for accidental exposure. It does **not** restrict shell commands, so an explicit `cat secrets.yaml` in the terminal can still read the file. Treat it as a strong guardrail against inadvertent leaks, not a hard sandbox.
-
-### OpenCode Runtime
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| **CPU mode** | `auto` | Controls which OpenCode binary is used. `auto` detects your CPU capabilities automatically (recommended). `baseline` selects the build intended for older CPUs without AVX2; `regular` forces the standard build. See [CPU requirements](#cpu-requirements) — OpenCode needs SSE4.2 in every mode, and upstream currently ships the same binary in both packages, so `baseline` does not presently rescue a CPU without AVX2. |
-
-### Network Exposure
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| **OpenCode LAN server** | `false` | Start an OpenCode server on internal port `4096` for clients on your local network. Map `4096/tcp` in the add-on Network settings. |
-| **LAN server CORS origins** | `[]` | Exact browser origins allowed to call the LAN server directly. `opencode attach` does not need this. |
-
-### Model Providers
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| **PPQ private TEE models (beta)** | `false` | Start the internal PPQ private-mode encryption proxy. Requires **PPQ API key**. |
-| **PPQ API key** | `""` | API key for PPQ private-mode models. Stored as a masked add-on option. |
-
-### Optional Hardware
+### Zigbee2MQTT
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | **Zigbee2MQTT URL** | `""` | Address of your Zigbee2MQTT frontend. Only needed when the Zigbee2MQTT add-on is not discovered automatically. |
 | **Zigbee2MQTT base topic** | `zigbee2mqtt` | MQTT base topic that Zigbee2MQTT publishes on. |
-| **Serial devices** | `[]` | Optional list of host UART/serial devices to map into the add-on. Use this for workflows that need direct serial access, such as local USB flashing or adapter inspection. See [Serial Devices](#serial-devices). |
 
 ### Advanced Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| **Environment variables** | `[]` | Define extra environment variables for OpenCode and the terminal shell. Critical system variables cannot be overridden. |
+| **Environment variables** | `[]` | Define extra environment variables for OpenCode and the terminal shell. `MCP_HUB_TOKEN` belongs here when the MCP hub URL is set. Critical system variables cannot be overridden. |
 | **Custom OpenCode configuration** | `""` | A JSON object merged into OpenCode's configuration. See [OpenCode config docs](https://opencode.ai/docs/config) for the full schema. |
-| **Startup hooks** | `false` | Run your own `.sh` scripts from the add-on's persistent `startup.d` folder. See [Startup Hooks](#startup-hooks). |
 
 #### Config drop-ins (configuration folder)
 
@@ -233,7 +188,7 @@ OpenCode is distributed as a Bun-compiled binary, so Bun's CPU floor is OpenCode
 
 Above that floor there are two x64 builds. The regular build additionally requires **AVX2** (Intel Haswell, 2013, or newer); when AVX2 is not visible the add-on automatically selects OpenCode's *baseline* build. Two things to know about that fallback:
 
-- **Upstream currently publishes the regular AVX2 binary inside the baseline package** ([anomalyco/opencode#33595](https://github.com/anomalyco/opencode/issues/33595)). For the OpenCode versions currently shipped, `opencode-linux-x64-baseline` and `opencode-linux-x64` are byte-identical, so baseline mode does not currently help a CPU that lacks AVX2. This is an upstream packaging problem the add-on cannot work around; the **CPU mode** option is kept because it starts working again the moment upstream publishes a genuine baseline build.
+- **Upstream currently publishes the regular AVX2 binary inside the baseline package** ([anomalyco/opencode#33595](https://github.com/anomalyco/opencode/issues/33595)). For the OpenCode versions currently shipped, `opencode-linux-x64-baseline` and `opencode-linux-x64` are byte-identical, so baseline mode does not currently help a CPU that lacks AVX2. This is an upstream packaging problem the add-on cannot work around; CPU detection is automatic in this fork and starts favoring the baseline package again the moment upstream publishes a genuine baseline build.
 - If the add-on runs in a VM on an AVX2-capable host, enable host CPU passthrough — generic QEMU/KVM CPU models hide AVX2 and force baseline mode unnecessarily.
 
 There is also a known upstream baseline OOM issue tracked at [anomalyco/opencode#20988](https://github.com/anomalyco/opencode/issues/20988).
@@ -251,47 +206,9 @@ After saving and restarting the add-on, these variables will be available in the
 
 > **Note:** Environment variable values are stored on disk inside the container and are excluded from Home Assistant backups. However, they are visible in the add-on's Configuration tab. Treat them with the same care as any stored credential.
 
-### PPQ Private TEE Models (Beta)
-
-PPQ private mode routes OpenCode requests through a local encryption proxy before forwarding them to PPQ's private inference API. The proxy verifies the remote enclave, encrypts the request locally, and decrypts the response locally.
-
-This feature is included in stable releases, but should still be considered beta while provider behavior and proxy integration are validated.
-
-Flow:
-
-```text
-OpenCode -> 127.0.0.1:8787 PPQ proxy -> PPQ API -> remote TEE
-```
-
-To enable PPQ private models:
-
-1. Get a PPQ API key from PPQ.
-2. In the add-on **Configuration** tab, set **Enable PPQ Private TEE Models (Beta)** to `true`.
-3. Paste the key into **PPQ API key**. Alternatively, set `PPQ_API_KEY` through **Environment variables** if you manage credentials that way.
-4. Save and restart the add-on.
-5. In OpenCode, select the `PPQ Private (TEE)` provider and one of the `private/...` models.
-
-Security notes:
-
-- The proxy binds only to `127.0.0.1:8787` inside the add-on container.
-- No Home Assistant network port is exposed for PPQ private mode.
-- The preferred PPQ API key path is the masked add-on option; `PPQ_API_KEY` in **Environment variables** is also supported for advanced setups.
-- The PPQ API key is not logged.
-- The proxy package is pinned at image build time; the add-on does not run `npx latest` at startup.
-
-Bundled model IDs come from the pinned `ppq-private-mode` package version:
-
-| Model ID | Description |
-|----------|-------------|
-| `private/kimi-k2-5` | Recommended fast general model, 262K context window |
-| `private/deepseek-r1-0528` | Reasoning and analysis |
-| `private/gpt-oss-120b` | Budget-friendly general use |
-| `private/llama3-3-70b` | Open-source tasks |
-| `private/qwen3-vl-30b` | Vision and text, 262K context window |
-
 ### Startup Hooks
 
-Startup hooks are the supported way to add your own script, bridge, or small service without editing the container. Turn on **Startup hooks** in the Configuration tab and restart the add-on. It creates an `startup.d` folder in this add-on's directory under your Home Assistant configuration folder, with a README and inert example; run `ha-hooks list` in the terminal to see its exact path.
+Startup hooks are the supported way to add your own script, bridge, or small service without editing the container. They are always available in this fork: a `startup.d` folder in this add-on's directory under your Home Assistant configuration folder, with a README and inert example; an empty or missing folder simply runs nothing. Run `ha-hooks list` in the terminal to see its exact path.
 
 Every `.sh` file in that folder runs as root, in filename order, each time the add-on starts. Keep a number prefix such as `10-` or `20-`; rename a file so it no longer ends in `.sh` to disable it. The add-on runs hooks but does not validate, supervise, or restart anything they start.
 
@@ -303,28 +220,19 @@ setsid /data/venvs/mybridge/bin/python3 -u /data/mybridge/server.py \
     >/data/mybridge.log 2>&1 </dev/null &
 ```
 
-Keep persistent dependencies and payload files under `/data`, not inside the container. A hook can reach Home Assistant through `http://supervisor/core` with its existing `SUPERVISOR_TOKEN`. It can reach OpenCode at `http://127.0.0.1:4096` when **OpenCode LAN server** is enabled; the port need not be mapped to the LAN for a hook to use it.
+Keep persistent dependencies and payload files under `/data`, not inside the container. A hook can reach Home Assistant through `http://supervisor/core` with its existing `SUPERVISOR_TOKEN`. It can reach OpenCode at `http://127.0.0.1:4096` (the LAN server runs unconditionally); the port need not be mapped to the LAN for a hook to use it.
 
-Security matters: hooks run with the add-on's credentials, including the Supervisor token and configured environment variables. Do not use `set -x`, review hook logs before sharing them, and leave the option off unless you intentionally want scripts in your configuration directory to execute. Hook logs are private to the add-on and excluded from backups. Turn **Startup hooks** off and restart to disable every hook if something goes wrong.
-
-### Serial Devices
-
-Serial access is disabled by default. To enable it, add one or more host serial devices to the `serial_devices` option in the add-on Configuration tab, then restart the add-on. Home Assistant Supervisor validates those paths and maps only the selected devices into the container.
-
-OpenCode and terminal commands can then use paths such as `/dev/ttyUSB0`, `/dev/ttyACM0`, or stable `/dev/serial/by-id/...` paths when they are provided by the host. The selected paths are also exported as `OPENCODE_SERIAL_DEVICES` using `:` as the separator.
-
-The Supervisor `uart` and `udev` manifest flags remain disabled by default. They are static add-on manifest permissions rather than regular user options, so they cannot be toggled from the add-on Configuration tab.
+Security matters: hooks run with the add-on's credentials, including the Supervisor token and configured environment variables. Do not use `set -x`, review hook logs before sharing them, and only keep scripts in that folder that you intentionally want to execute on every start. Hook logs are private to the add-on and excluded from backups. Remove or rename a hook (so it no longer ends in `.sh`) to disable it.
 
 ### LAN Server Mode
 
 LAN server mode lets you attach to the Home Assistant-hosted OpenCode session from a terminal outside the Home Assistant UI.
 
-To enable LAN access:
+The server runs unconditionally — the OpenChamber add-on attaches to it. To reach it from outside Home Assistant:
 
-1. In the add-on **Configuration** tab, turn on **OpenCode LAN server**.
-2. Set **LAN server username/password** — the server refuses to start without a password. A `!secret <key>` value works. Use credentials shared nowhere else: basic auth sends them on every request, in base64.
-3. In the add-on **Network** settings, map `4096/tcp` to the host port you want to use.
-4. Save and restart the add-on.
+1. In the add-on **Configuration** tab, set **LAN server password** — the server refuses to start without it. A `!secret <key>` value works. Use credentials shared nowhere else: basic auth sends them on every request, in base64. The username is always `opencode`, the OpenCode server's default.
+2. In the add-on **Network** settings, map `4096/tcp` to the host port you want to use.
+3. Save and restart the add-on.
 
 On the secondary computer, use `opencode attach` with your Home Assistant host IP and configured port:
 
@@ -332,9 +240,8 @@ On the secondary computer, use `opencode attach` with your Home Assistant host I
 opencode attach http://<username>@<home-assistant-ip>:<mapped-host-port>
 ```
 
-An empty username means `opencode`, the OpenCode server's default. The mapped
-port requires these credentials on every request — including the OpenChamber
-add-on, which attaches with the same pair.
+The mapped port requires these credentials on every request — including the
+OpenChamber add-on, which attaches with the same pair.
 
 Example, if you mapped `4096/tcp` to host port `4096`:
 
@@ -376,22 +283,9 @@ For example: `http://192.168.1.20:8080`.
 The OpenChamber web UI is no longer part of this add-on; it ships as its own
 **OpenChamber** add-on (ha_openchamber) with its own Ingress entry and a
 basic-auth-protected `4097/tcp` LAN port. It attaches to this add-on's LAN
-server: enable **OpenCode LAN server**, set the username/password, map
-`4096/tcp`, and configure the same credentials in the OpenChamber add-on.
-See its Documentation tab for details.
-
-### Theme Previews
-
-- **Breeze** - KDE Konsole default, clean and professional
-- **Catppuccin Mocha** - Soothing pastel dark theme
-- **Catppuccin Latte** - Light pastel theme for bright environments
-- **Dracula** - Popular dark theme with vibrant colors
-- **Nord** - Arctic, bluish color palette
-- **Tokyo Night** - Dark theme inspired by Tokyo city lights
-- **One Dark** - Atom editor's iconic dark theme
-- **Solarized Dark** - Precision colors for dark backgrounds
-- **Solarized Light** - Precision colors for light backgrounds
-- **Gruvbox Dark** - Retro groove color scheme
+server: set the **LAN server password**, map `4096/tcp`, and configure the
+same credentials in the OpenChamber add-on. See its Documentation tab for
+details.
 
 ## Getting Started
 
@@ -827,7 +721,7 @@ Then restart OpenCode (exit and run `opencode` again).
 
 | Tool | Description |
 |------|-------------|
-| `screenshot_url` | Take a screenshot of any Home Assistant page for visual verification. Use after making dashboard changes via hab to verify the result. Requires the `screenshot_enabled` option and a Long-Lived Access Token, and a model that accepts image input — see [Visual Verification](#visual-verification-screenshots). |
+| `screenshot_url` | Take a screenshot of any Home Assistant page for visual verification. Use after making dashboard changes via hab to verify the result. Requires the Long-Lived Access Token, and a model that accepts image input — see [Visual Verification](#visual-verification-screenshots). |
 
 ---
 

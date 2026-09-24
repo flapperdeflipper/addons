@@ -88,6 +88,12 @@ if [ -f "${GENERATED_CONFIG}" ]; then
             then { external_directory: $generated.permission.external_directory }
             else {} end) as $external |
         ($generated * $overlay)
+        # The MCP section is REPLACED, never merged: the generated config may
+        # point at the shared hub, whose server is full-profile and shared by
+        # every other session. Read-only semantics need a session-local
+        # compact stdio server and the native bridge off - the compact profile
+        # does not filter the native tools.
+        | .mcp = $overlay.mcp
         | .permission = ($overlay.permission
             * { bash: ($inherited_bash * ($overlay.permission.bash // {})) }
             * $external)
