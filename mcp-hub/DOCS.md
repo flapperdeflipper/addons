@@ -16,6 +16,7 @@ Single port (`8930/tcp`), single bearer token (the `token` option; a
 |------|--------|------|
 | `/mcp/victoriametrics` | Prometheus-compatible queries against VictoriaMetrics (fork of the prometheus-mcp-server 1.0.1 tool set: `prom_query`, `prom_range`, `prom_discover`, `prom_metadata`, `prom_targets`) | stateless MCP |
 | `/mcp/ha-native` | Home Assistant native MCP (`/api/mcp/<API ID>`, default API `assist`), forwarded through the Supervisor | JSON-RPC forwarder |
+| `/mcp/homeassistant` | The full ha-mcp-server from the ha_opencode add-on (entity/state, safe config writing, supervisor tools, MQTT, todo, hab/zigporter/ESPHome companions), served by that add-on's always-on 8927 endpoint | JSON-RPC forwarder |
 | `/mcp/playwright/mcp` (streamable HTTP; `/mcp/playwright/sse` legacy) | One shared @playwright/mcp 0.0.80 instance, CDP-connected to the playwright-browser add-on (per-connection browser contexts stay isolated) | supervised upstream |
 
 `GET /healthz` (no auth) reports per-server state; `GET /` (auth) lists the
@@ -40,11 +41,13 @@ OpenCode (`/data/.config/opencode/config.json`), using the stable host IP:
 }
 ```
 
-The `homeassistant` MCP stays on the ha_opencode add-on's existing
-authenticated endpoint (port 8927) - do not duplicate it here. Any other
-MCP-capable client works the same way: POST JSON-RPC to the path with the
-bearer token; no `initialize` handshake or session id is required (the same
-stateless contract as Home Assistant's own native MCP endpoint).
+The `homeassistant` route forwards to the ha_opencode add-on's own HTTP MCP
+endpoint (set `homeassistant_url` to it, e.g.
+`http://<ha-opencode-host>:8927/mcp`, and `homeassistant_token` to that
+add-on's `mcp_http_token`). The server process itself stays in ha_opencode -
+it execs the hab CLI and launches Chromium for screenshots, which only that
+add-on's image carries. Set `homeassistant_enabled: false` to drop the route
+if ha_opencode is not installed; the hub keeps serving everything else.
 
 ## Adding a server
 

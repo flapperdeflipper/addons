@@ -191,6 +191,64 @@ describe(`${CHANNEL} read-only launcher`, { skip: !hasTool("jq") && "jq is not i
     assert.match(fs.readFileSync(LAUNCHER, "utf8"), /exec opencode --agent "\$\{AGENT_NAME\}"/);
   });
 
+  it("forces the local compact server even when the generated config points at the shared hub", () => {
+    // Hub mode (3.0.0): the generated config carries remote entries for both
+    // MCP servers. The launcher must replace the whole mcp section, not merge
+    // onto it - a merged remote entry would leave this session on the shared
+    // full-profile server.
+    const scratchHub = fs.mkdtempSync(path.join(os.tmpdir(), "ha-readonly-hub-"));
+    try {
+      const generatedHub = JSON.parse(fs.readFileSync(path.join(MCP_DIR, "opencode-ha.json"), "utf8"));
+      generatedHub.mcp.homeassistant = {
+        type: "remote",
+        url: "http://10.20.0.3:8930/mcp/homeassistant",
+        enabled: true,
+        timeout: 65000,
+        headers: { Authorization: "Bearer {env:MCP_HUB_TOKEN}" },
+      };
+      generatedHub.mcp.homeassistant_native = {
+        type: "remote",
+        url: "http://10.20.0.3:8930/mcp/ha-native",
+        enabled: true,
+        timeout: 65000,
+        headers: { Authorization: "Bearer {env:MCP_HUB_TOKEN}" },
+      };
+      generatedHub.permission.read = { "*": "allow" };
+      generatedHub.instructions = [
+        ...generatedHub.instructions,
+        "/opt/ha-mcp-server/MCP_PROFILE_FULL.md",
+        "/opt/ha-mcp-server/FOCUS_MODE.md",
+      ];
+      const hubPath = path.join(scratchHub, "opencode.json");
+      fs.writeFileSync(hubPath, JSON.stringify(generatedHub, null, 2));
+
+      const hubEffective = JSON.parse(
+        execFileSync("bash", [LAUNCHER, "--print-config"], {
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            HA_READONLY_OVERLAY: OVERLAY,
+            HA_READONLY_CONFIG: hubPath,
+            HA_READONLY_AGENT: path.join(MCP_DIR, "agents", "home-assistant-read-only.md"),
+            TMPDIR: scratchHub,
+            HOME: scratchHub,
+          },
+        }),
+      );
+
+      assert.notEqual(hubEffective.mcp.homeassistant.type, "remote");
+      assert.ok(!("url" in hubEffective.mcp.homeassistant), "remote url survived the overlay replacement");
+      assert.deepEqual(hubEffective.mcp.homeassistant.command, ["node", "/opt/ha-mcp-server/index.js"]);
+      assert.equal(hubEffective.mcp.homeassistant.environment.OPENCODE_MCP_TOOL_PROFILE, "compact");
+      assert.equal(hubEffective.mcp.homeassistant.environment.OPENCODE_NATIVE_HA_MCP_ENABLED, "false");
+      assert.equal(hubEffective.mcp.homeassistant_native.enabled, false);
+      assert.ok(hubEffective.instructions.includes("/opt/ha-mcp-server/MCP_PROFILE_COMPACT.md"));
+      assert.ok(!hubEffective.instructions.includes("/opt/ha-mcp-server/MCP_PROFILE_FULL.md"));
+    } finally {
+      fs.rmSync(scratchHub, { recursive: true, force: true });
+    }
+  });
+
   it("injects the agent prompt from the markdown, frontmatter stripped", () => {
     const prompt = effective.agent["home-assistant-read-only"].prompt;
     assert.equal(typeof prompt, "string");

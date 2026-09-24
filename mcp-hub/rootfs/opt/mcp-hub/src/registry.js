@@ -32,5 +32,6 @@
 import victoriametrics from "./servers/victoriametrics/index.js";
 import haNative from "./servers/ha-native/index.js";
 import playwright from "./servers/playwright/index.js";
+import homeassistant from "./servers/homeassistant/index.js";
 
-export const MODULES = [victoriametrics, haNative, playwright];
+export const MODULES = [victoriametrics, haNative, playwright, homeassistant];

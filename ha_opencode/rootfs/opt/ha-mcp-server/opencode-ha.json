@@ -51,13 +51,13 @@
         "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
         "HA_NATIVE_MCP_API_ID": "assist",
         "OPENCODE_MCP_TOOL_PROFILE": "full",
-        "OPENCODE_NATIVE_HA_MCP_ENABLED": "false"
+        "OPENCODE_NATIVE_HA_MCP_ENABLED": "true"
       }
     },
     "homeassistant_native": {
       "type": "local",
       "command": ["node", "/opt/ha-mcp-server/ha-native-mcp-proxy.js", "assist"],
-      "enabled": false,
+      "enabled": true,
       "timeout": 10000,
       "environment": {
         "SUPERVISOR_TOKEN": "{env:SUPERVISOR_TOKEN}",
