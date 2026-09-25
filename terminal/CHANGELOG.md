@@ -1,3 +1,7 @@
+## 1.1.2
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).
+
 ## 1.1.1
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.0` (automated base-image update).

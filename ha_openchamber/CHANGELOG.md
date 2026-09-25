@@ -1,3 +1,7 @@
+## 1.3.6
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).
+
 ## 1.3.5
 
 - **Re-publish of 1.3.4** — version bump only, no code change. The 1.3.4 image was never built: its merge landed in the window between the default-branch rename (master -> main) and the build-workflow trigger update (#146), so the push matched no workflow trigger and Docker Hub has no 1.3.4 tag. 1.3.5 re-triggers the build of identical content.
