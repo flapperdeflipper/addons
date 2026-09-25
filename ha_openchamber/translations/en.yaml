@@ -21,17 +21,12 @@ configuration:
     description: >-
       Host port the OpenCode add-on's 4096/tcp is mapped to. OpenChamber shows
       no conversations until this port answers.
-  opencode_username:
-    name: OpenCode server username
-    description: >-
-      Basic-auth username the OpenCode server expects. Leave empty to use
-      'opencode', the OpenCode server's default username.
   opencode_password:
     name: OpenCode server password
     description: >-
       Basic-auth password shared with the OpenCode add-on's 'LAN server
-      password' option. OpenChamber cannot attach without it; a
-      !secret <key> value works too.
+      password' option; the username is always 'opencode'. OpenChamber cannot
+      attach without it; a !secret <key> value works too.
 
   lan_allowed_remotes:
     name: LAN trusted remotes

@@ -13,7 +13,6 @@ export XDG_DATA_HOME="/data/.local/share"
 export XDG_CONFIG_HOME="/data/.config"
 export NODE_OPTIONS="--max-old-space-size=768"
 
-OPENCODE_USERNAME=$(bashio::config 'opencode_username' 2>/dev/null || echo "")
 OPENCODE_PASSWORD=$(bashio::config 'opencode_password' 2>/dev/null || echo "")
 OPENCODE_HOST_OPT=$(bashio::config 'opencode_host' 2>/dev/null || echo "")
 OPENCODE_PORT=$(bashio::config 'opencode_port' 2>/dev/null || echo "4096")
@@ -59,9 +58,6 @@ fi
 # "waiting for server" UI.
 # ==============================================================================
 AUTH_ARGS=(-u "opencode:${OPENCODE_PASSWORD}")
-if bashio::var.has_value "${OPENCODE_USERNAME}"; then
-    AUTH_ARGS=(-u "${OPENCODE_USERNAME}:${OPENCODE_PASSWORD}")
-fi
 
 bashio::log.info "Waiting for the OpenCode server at ${OPENCODE_ORIGIN}:${OPENCODE_PORT} ..."
 SERVER_READY=false
@@ -78,19 +74,15 @@ if bashio::var.true "${SERVER_READY}"; then
     bashio::log.info "OpenCode server is reachable."
 else
     bashio::log.warning "OpenCode server did not answer within 120 seconds; starting OpenChamber anyway (it keeps retrying)."
-    bashio::log.warning "Check that the OpenCode add-on runs with 'OpenCode LAN server' enabled, ${OPENCODE_PORT}/tcp mapped in its Network settings, and the same basic-auth credentials configured."
+    bashio::log.warning "Check that the OpenCode add-on runs with ${OPENCODE_PORT}/tcp mapped in its Network settings and the same basic-auth password configured."
 fi
 
 # External-server mode: never spawn an OpenCode process (upstream documents
 # OPENCODE_HOST + OPENCODE_SKIP_START for this) and authenticate every API call
-# with the shared credentials. An unset username falls back to OpenCode's
-# default 'opencode' on both sides.
+# with the shared credentials. The username is OpenCode's default 'opencode'.
 export OPENCODE_HOST="${OPENCODE_ORIGIN}:${OPENCODE_PORT}"
 export OPENCODE_SKIP_START="true"
 export OPENCODE_SERVER_PASSWORD="${OPENCODE_PASSWORD}"
-if bashio::var.has_value "${OPENCODE_USERNAME}"; then
-    export OPENCODE_SERVER_USERNAME="${OPENCODE_USERNAME}"
-fi
 
 export OPENCHAMBER_DATA_DIR="/data/.config/openchamber"
 export OPENCHAMBER_HOST="127.0.0.1"

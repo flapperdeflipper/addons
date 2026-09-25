@@ -1,7 +1,7 @@
 ---
 name: "OpenChamber"
 description: "Browser UI for OpenCode conversations — attaches to the OpenCode add-on's LAN server"
-version: "1.3.3"
+version: "1.3.4"
 slug: "ha_openchamber"
 image: "flapperdeflipper/addon-ha-openchamber"
 url: "https://github.com/flapperdeflipper/addons"
@@ -42,17 +42,15 @@ map:
 # below is presentation only.
 options:
   # --- 1. OpenCode server -----------------------------------------------
-  # Address of the OpenCode add-on's LAN server (the 'OpenCode LAN server'
-  # feature on 4096/tcp). Leave empty to auto-discover the Docker host
-  # gateway — that reaches the published port on any single-host install.
-  # Include the scheme but no port, e.g. http://192.168.1.50
+  # Address of the OpenCode add-on's LAN server (always on, on 4096/tcp).
+  # Leave empty to auto-discover the Docker host gateway — that reaches the
+  # published port on any single-host install. Include the scheme but no
+  # port, e.g. http://192.168.1.50
   opencode_host: ""
   # Host port that 4096/tcp is mapped to on the OpenCode add-on.
   opencode_port: 4096
-  # Basic-auth username the OpenCode server expects. Empty means 'opencode',
-  # the OpenCode server's default.
-  opencode_username: ""
-  # Basic-auth password for the OpenCode server. Required.
+  # Basic-auth password for the OpenCode server (username is always
+  # 'opencode', the server's default). Required.
   # A !secret <key> value resolves from secrets.yaml at start.
   opencode_password: null
   # --- 2. LAN exposure ----------------------------------------------------
@@ -79,7 +77,6 @@ options:
 schema:
   opencode_host: str?
   opencode_port: port
-  opencode_username: password?
   opencode_password: password
   lan_allowed_remotes:
     - str
