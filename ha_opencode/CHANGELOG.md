@@ -1,3 +1,7 @@
+## 3.1.1
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).
+
 ## 3.1.0
 
 - **Add**: `mcp_litellm_url` - route all OpenCode MCP traffic through a LiteLLM MCP gateway as a single entrypoint (models and tools on one host, toolset-scoped virtual keys). The generated opencode.json carries exactly one remote `litellm` MCP entry (`<url>/mcp`, bearer key via the `mcp_litellm_key_env` env var name, default `LITELLM_HASS_KEY`); the option takes precedence over `mcp_hub_url`. For the setup where every self-hosted MCP server (ha-mcp-server, HA native, playwright, victoriametrics, searxng, context7) is registered on the gateway and per-key `mcp_servers` allowlists define the hass/home/remote toolsets.

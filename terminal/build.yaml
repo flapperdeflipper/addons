@@ -6,7 +6,7 @@ build_from:
   aarch64: ghcr.io/flapperdeflipper/agent-base:1.0.0
   amd64: ghcr.io/flapperdeflipper/agent-base:1.0.0
 args:
-  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.1.0"
+  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.1.1"
 labels:
   org.opencontainers.image.title: "Terminal"
   org.opencontainers.image.description: "Personal bash and vim terminal add-on built on the agent-base image"
