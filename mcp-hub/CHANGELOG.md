@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- **Fix**: `/mcp/homeassistant` answered every request with `HTTP 406 Not Acceptable` - the forwarder sent `Accept: application/json`, but ha-mcp-server's streamable HTTP transport (per the MCP spec) requires clients to accept both `application/json` and `text/event-stream`. The forwarder now sends the combined Accept header; ha-mcp-server replies with plain JSON, which the existing parsing already handles.
+
 ## 1.1.0
 
 - **Add**: `/mcp/homeassistant` - a forwarder route to the full ha-mcp-server (entity/state, safe config writing, supervisor tools, MQTT, todo, hab/zigporter/ESPHome companions) hosted by the ha_opencode add-on's always-on 8927 HTTP endpoint. The server process stays in ha_opencode (it execs the hab CLI and launches Chromium for screenshots); the hub only makes it reachable at the single entrypoint with the single hub token. New options `homeassistant_enabled` (default on), `homeassistant_url` and `homeassistant_token` (the ha_opencode `mcp_http_token`); with the URL unset the route reports `failed` in `/healthz` and answers 503 while the rest of the hub keeps working.

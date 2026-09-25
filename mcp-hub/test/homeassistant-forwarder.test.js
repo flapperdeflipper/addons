@@ -55,6 +55,11 @@ describe("createHaMcpForwarder", async () => {
     assert.equal(seen[0].url, "http://ha:8927/mcp");
     assert.equal(seen[0].init.headers.Authorization, "Bearer tok");
     assert.equal(seen[0].init.headers["Content-Type"], "application/json");
+    assert.equal(
+      seen[0].init.headers.Accept,
+      "application/json, text/event-stream",
+      "ha-mcp-server's streamable HTTP transport 406s a single-type Accept"
+    );
   });
 
   it("normalizes a trailing slash off the endpoint url", () => {
