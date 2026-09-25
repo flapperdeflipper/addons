@@ -62,6 +62,17 @@ add-on's LAN server.
 | **MCP hub URL** | `""` | Base URL of the mcp-hub add-on (e.g. `http://10.20.0.3:8930`). Sessions reach both Home Assistant MCP servers through the hub — `/mcp/homeassistant` forwards back to this add-on's always-on 8927 endpoint, `/mcp/ha-native` is the hub's own forwarder — sharing one process instead of spawning per session. Sessions need `MCP_HUB_TOKEN` in **Environment variables**. Empty falls back to per-session local servers. |
 | **MCP HTTP bearer token** | `""` | Bearer token this add-on's 8927 MCP endpoint demands; the hub's homeassistant forwarder uses the same value. `!secret <key>` works. |
 
+### LiteLLM MCP Gateway (single entrypoint)
+
+Takes precedence over the MCP hub: when configured, ALL session MCP traffic flows through a LiteLLM MCP gateway with toolset-scoped virtual keys — every self-hosted MCP server (ha-mcp-server, HA native, playwright, victoriametrics, searxng, context7) is registered on the gateway, and per-key `mcp_servers` allowlists define the hass/home/remote toolsets.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| **LiteLLM MCP gateway URL** | `""` | Base URL of the gateway (e.g. `https://llm.pl4.dev`); `/mcp` is appended automatically. The generated session config carries exactly one remote `litellm` MCP entry authenticating with the toolset key. |
+| **LiteLLM toolset key environment variable** | `LITELLM_HASS_KEY` | Name of the **Environment variables** entry holding the toolset key. |
+
+The gateway is also wired as the **model provider**: sessions get the `litellm` provider (`<url>/v1`, same key), `opencode-plugin-litellm` for runtime model discovery (`/v1/models` + `/v1/model/info`, disk-cached — the model picker always mirrors the gateway's model list, nothing to hand-maintain), and `litellm/glm-5.3` + `glm-5.3-flash-small` as the default model pair. Boot warns when the configured key variable is missing from **Environment variables**.
+
 #### MQTT tools
 
 The Home Assistant MCP server exposes MQTT tools (full profile only; not in the read-only session's compact profile). They speak to the broker through Home Assistant's own MQTT connection via the Supervisor API, so no broker credentials are involved:
