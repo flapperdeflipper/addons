@@ -1,3 +1,7 @@
+## 1.3.4
+
+- **Changed** — the **OpenCode server username** option is gone. ha_opencode 3.0.0 fixed the LAN server username to OpenCode's default `opencode` (its `server_username` option was removed), so this add-on now always authenticates as `opencode` with the shared password. Requires ha_opencode 3.0.0+.
+
 ## 1.3.3
 
 - **Changed** — upstream OpenChamber bundle pin `@openchamber/web` -> `1.24.2` (bugfix release; notably stops the app from starting MCP servers and background work for every saved project/worktree on open - a runaway-memory fix that pairs well with the shared mcp-hub migration - plus chat/git/mobile fixes).
