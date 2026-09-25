@@ -66,8 +66,10 @@ options:
   # Route ALL MCP traffic through a LiteLLM MCP gateway - the single-tool
   # entrypoint (models + MCP on one host, toolset-scoped virtual keys).
   # Takes precedence over mcp_hub_url; the gateway base URL is extended with
-  # /mcp. Sessions need the toolset key in env_vars under the name configured
-  # in mcp_litellm_key_env.
+  # /mcp. The gateway is also wired as the model provider (/v1, same key)
+  # with runtime model discovery via opencode-plugin-litellm, and
+  # glm-5.3/flash-small as the default model pair. Sessions need the
+  # toolset key in env_vars under the name configured in mcp_litellm_key_env.
   mcp_litellm_url: ""
   mcp_litellm_key_env: "LITELLM_HASS_KEY"
   # Bearer token this add-on's 8927 MCP endpoint demands. The hub's

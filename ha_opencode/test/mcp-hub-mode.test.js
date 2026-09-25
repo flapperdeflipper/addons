@@ -109,6 +109,31 @@ describe("litellm MCP mode (3.1.0)", () => {
     assert.equal(cfg.mcp.litellm.headers.Authorization, "Bearer {env:LITELLM_REMOTE_KEY}");
   });
 
+  it("wires the litellm provider, discovery plugin and default model pair", () => {
+    const cfg = generate({ litellmUrl: "http://10.60.0.3:4000", keyEnv: "LITELLM_HASS_KEY" });
+    assert.deepEqual(cfg.plugin, ["opencode-plugin-litellm@1.3.0"]);
+    assert.equal(cfg.model, "litellm/glm-5.3");
+    assert.equal(cfg.small_model, "litellm/glm-5.3-flash-small");
+    const p = cfg.provider.litellm;
+    assert.equal(p.npm, "@ai-sdk/openai-compatible");
+    assert.equal(p.options.baseURL, "http://10.60.0.3:4000/v1");
+    assert.equal(p.options.apiKey, "{env:LITELLM_HASS_KEY}");
+    assert.equal(p.options.timeout, 600000);
+  });
+
+  it("keeps provider wiring consistent with a custom key env name", () => {
+    const cfg = generate({ litellmUrl: "http://h:4000", keyEnv: "LITELLM_REMOTE_KEY" });
+    assert.equal(cfg.provider.litellm.options.apiKey, "{env:LITELLM_REMOTE_KEY}");
+    assert.equal(cfg.mcp.litellm.headers.Authorization, "Bearer {env:LITELLM_REMOTE_KEY}");
+  });
+
+  it("leaves provider, plugin and model untouched without a gateway", () => {
+    const cfg = generate({ hubUrl: "http://10.20.0.3:8930" });
+    assert.equal(cfg.plugin, undefined);
+    assert.equal(cfg.model, undefined);
+    assert.equal(cfg.provider, undefined);
+  });
+
   it("keeps the fixed instructions and read restrictions in litellm mode too", () => {
     const cfg = generate({ litellmUrl: "http://10.60.0.3:4000" });
     assert.equal(cfg.permission.read["*secrets.yaml"], "deny");

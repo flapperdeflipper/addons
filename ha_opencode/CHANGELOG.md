@@ -1,6 +1,7 @@
 ## 3.1.0
 
 - **Add**: `mcp_litellm_url` - route all OpenCode MCP traffic through a LiteLLM MCP gateway as a single entrypoint (models and tools on one host, toolset-scoped virtual keys). The generated opencode.json carries exactly one remote `litellm` MCP entry (`<url>/mcp`, bearer key via the `mcp_litellm_key_env` env var name, default `LITELLM_HASS_KEY`); the option takes precedence over `mcp_hub_url`. For the setup where every self-hosted MCP server (ha-mcp-server, HA native, playwright, victoriametrics, searxng, context7) is registered on the gateway and per-key `mcp_servers` allowlists define the hass/home/remote toolsets.
+- **Add**: the gateway is also wired as the model provider in litellm mode - the generated config gains the `litellm` provider (`<url>/v1`, key via the same env var name), `opencode-plugin-litellm@1.3.0` for runtime model discovery (`/v1/models` + `/v1/model/info`, disk-cached; no hand-maintained model map), and `litellm/glm-5.3` + `litellm/glm-5.3-flash-small` as the default model pair. Boot warns when the configured key env var is missing from env_vars.
 
 ## 3.0.0
 
