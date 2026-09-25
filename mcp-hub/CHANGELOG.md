@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- **`memory` server: LiteLLM's /v1/memory store as stateless MCP tools** — native `mcp`-kind module (REST client, no stdio child, no dependency on the litellm add-on's :4001 server): `memory_get/set/list/delete` plus search-first recall — `memory_search` (ranked keyword/tag matches with ~160-char snippets, not full values) and `memory_tags` (tag vocabulary digest). Scoring mirrors the Python `litellm_mcp` package in the litellm add-on (exact key-segment > exact tag > substring tag > value substring; substring key matches deliberately absent).
+- **Options** — `memory_enabled` (default true), `memory_proxy_url` (stable hassio host-IP default `http://10.60.0.3:4000`), `memory_api_key` (password-typed; set a `!secret litellm_memory_key`-style value). Without a key the module lands in `failed` state on /healthz and the rest of the hub keeps serving.
+
 ## 1.1.1
 
 - **Fix**: `/mcp/homeassistant` answered every request with `HTTP 406 Not Acceptable` - the forwarder sent `Accept: application/json`, but ha-mcp-server's streamable HTTP transport (per the MCP spec) requires clients to accept both `application/json` and `text/event-stream`. The forwarder now sends the combined Accept header; ha-mcp-server replies with plain JSON, which the existing parsing already handles.
