@@ -32,7 +32,12 @@ class StubServer:
 
 
 class StubClient:
-    """Records requests; answers like the real /v1/memory API."""
+    """Records requests; answers like the real /v1/memory API.
+
+    Store values are plain strings or {"value": str, "metadata": dict}; the
+    PUT handler mimics the live API's partial-update semantics: metadata is
+    only replaced when the request body carries it (verified 2026-09-25).
+    """
 
     def __init__(self, store=None):
         self.store = store if store is not None else {}
@@ -44,22 +49,32 @@ class StubClient:
     def list_path(self, key_prefix=""):
         return "/v1/memory" + ("?key_prefix=" + key_prefix if key_prefix else "")
 
+    def _entry(self, key):
+        raw = self.store[key]
+        value = raw["value"] if isinstance(raw, dict) else raw
+        meta = raw.get("metadata") if isinstance(raw, dict) else None
+        return {"key": key, "value": value, "metadata": meta, "updated_at": "t"}
+
     def request(self, method, path, body=None):
         self.requests.append((method, path, body))
         if method == "GET" and path.startswith("/v1/memory?key_prefix="):
             prefix = path.split("key_prefix=", 1)[1]
-            hits = [{"key": k, "value": v, "updated_at": "t"} for k, v in sorted(self.store.items()) if k.startswith(prefix)]
+            hits = [self._entry(k) for k in sorted(self.store) if k.startswith(prefix)]
             return 200, {"memories": hits, "total": len(hits)}
         if method == "GET" and path == "/v1/memory":
-            hits = [{"key": k, "value": v, "updated_at": "t"} for k, v in sorted(self.store.items())]
+            hits = [self._entry(k) for k in sorted(self.store)]
             return 200, {"memories": hits, "total": len(hits)}
         key = path.rsplit("/", 1)[-1]
         if method == "GET":
             if key not in self.store:
                 return 404, {}
-            return 200, {"key": key, "value": self.store[key], "metadata": None, "updated_at": "t"}
+            return 200, self._entry(key)
         if method == "PUT":
-            self.store[key] = body["value"]
+            existing = self.store.get(key, {}) if isinstance(self.store.get(key), dict) else {}
+            self.store[key] = {
+                "value": body["value"],
+                "metadata": body.get("metadata", existing.get("metadata")),
+            }
             return 200, {"key": key, "updated_at": "t"}
         if method == "DELETE":
             if key not in self.store:
@@ -124,7 +139,9 @@ def test_registry_and_registration():
     assert "admin" in REGISTRY, "admin tool must be registered"
     server, client = StubServer(), StubClient({"opencode:probe": "v"})
     REGISTRY["memory"].register(server, client)
-    assert sorted(server.tools) == ["memory_delete", "memory_get", "memory_list", "memory_set"]
+    assert sorted(server.tools) == [
+        "memory_delete", "memory_get", "memory_list", "memory_search", "memory_set", "memory_tags",
+    ]
 
 
 def test_tool_behaviour():
@@ -137,7 +154,8 @@ def test_tool_behaviour():
     assert server.tools["memory_get"]("missing") == "not found: missing"
 
     server.tools["memory_set"]("opencode:new", "val")
-    assert client.store["opencode:new"] == "val", "set must upsert through the client"
+    assert client.store["opencode:new"]["value"] == "val", "set must upsert through the client"
+    assert "metadata" not in [r for r in client.requests if r[0] == "PUT"][-1][2], "tagless set sends no metadata"
 
     listed = server.tools["memory_list"]("opencode:")
     assert "opencode:new" in listed and "total" in listed
@@ -371,6 +389,92 @@ def test_run_sh_launches_standalone_server():
     # starter config heredoc must be untouched by the launcher work
     assert "deepseek/deepseek-v4-pro" in run_sh and "coding/paas/v4" in run_sh
     assert "ollama:11434" in run_sh
+
+
+
+def test_set_with_tags_metadata_contract():
+    import json
+
+    server, client = StubServer(), StubClient()
+    REGISTRY["memory"].register(server, client)
+
+    out = json.loads(server.tools["memory_set"]("opencode:ha:quirk", "sensor flips at night", tags="esphome, ha mqtt"))
+    assert out["ok"] is True and out["tags"] == ["esphome", "ha", "mqtt"], "tags normalize to a list"
+    put = [r for r in client.requests if r[0] == "PUT"][-1]
+    assert put[2] == {"value": "sensor flips at night", "metadata": {"tags": ["esphome", "ha", "mqtt"]}}
+
+    server.tools["memory_set"]("opencode:ha:quirk", "v2")
+    stored = client.store["opencode:ha:quirk"]
+    assert stored["value"] == "v2" and stored["metadata"] == {"tags": ["esphome", "ha", "mqtt"]}, "update without tags keeps tags"
+
+    got = json.loads(server.tools["memory_get"]("opencode:ha:quirk"))
+    assert got["tags"] == ["esphome", "ha", "mqtt"], "get surfaces normalized tags"
+
+
+def test_search_ranks_snippets_and_filters():
+    import json
+
+    store = {
+        "opencode:global:redis-cache": {"value": "cache_params bootstrap needs the YAML block", "metadata": {"tags": ["litellm", "redis"]}},
+        "opencode:global:infra-map": {"value": "which repo holds what", "metadata": {"tags": ["infra"]}},
+        "opencode:global:unrelated": {"value": "garden watering schedule", "metadata": None},
+        "opencode:global:cache-note": "cache lives in redis",
+    }
+    server, client = StubServer(), StubClient(store)
+    REGISTRY["memory"].register(server, client)
+
+    assert server.tools["memory_search"]() == "provide a query and/or tag"
+
+    out = json.loads(server.tools["memory_search"]("redis cache"))
+    keys = [m["key"] for m in out["matches"]]
+    assert keys[0] == "opencode:global:redis-cache", "key-segment matches outrank value matches"
+    assert keys[1] == "opencode:global:cache-note", "key match beats value-only match"
+    assert "opencode:global:unrelated" not in keys and "opencode:global:infra-map" not in keys
+    assert out["scanned"] == 4 and out["candidates"] == len(keys)
+    top = out["matches"][0]
+    assert top["score"] > 0 and "tags" in top and len(top["snippet"]) <= 165, "snippet bounded"
+
+    tagged = json.loads(server.tools["memory_search"](tag="redis"))
+    assert [m["key"] for m in tagged["matches"]] == ["opencode:global:redis-cache"], "tag-only search filters"
+    assert "score" not in tagged["matches"][0], "no score when there are no terms"
+
+    none = json.loads(server.tools["memory_search"]("zzz-not-there"))
+    assert none["matches"] == [] and none["scanned"] == 4
+
+
+def test_search_limit_and_tag_term_scoring():
+    import json
+
+    store = {"esphome:%d" % i: {"value": "kitchen sensor %d" % i, "metadata": {"tags": ["esphome"]}} for i in range(30)}
+    server, client = StubServer(), StubClient(store)
+    REGISTRY["memory"].register(server, client)
+
+    out = json.loads(server.tools["memory_search"]("esphome kitchen", limit=5))
+    assert out["shown"] == 5 and out["candidates"] == 30, "limit caps shown, not candidates"
+
+    capped = json.loads(server.tools["memory_search"]("esphome", limit=999))
+    assert capped["shown"] <= 25, "hard cap on limit"
+
+
+def test_tags_digest():
+    import json
+
+    store = {
+        "a:1": {"value": "x", "metadata": {"tags": ["esphome", "mqtt"]}},
+        "a:2": {"value": "y", "metadata": {"tags": "esphome"}},
+        "a:3": {"value": "z", "metadata": {"tags": ["litellm"]}},
+        "a:4": {"value": "plain"},
+    }
+    server, client = StubServer(), StubClient(store)
+    REGISTRY["memory"].register(server, client)
+
+    out = json.loads(server.tools["memory_tags"]())
+    assert out["entries"] == 4 and out["untagged"] == 1 and out["tag_kinds"] == 3
+    assert out["tags"][0]["tag"] == "esphome" and out["tags"][0]["count"] == 2, "sorted by count desc"
+    assert out["tags"][0]["keys"] == ["a:1", "a:2"], "up to three sample keys"
+
+    listed = json.loads(server.tools["memory_list"]("a:"))
+    assert listed["entries"][0]["tags"] == ["esphome", "mqtt"], "list surfaces tags"
 
 
 if __name__ == "__main__":

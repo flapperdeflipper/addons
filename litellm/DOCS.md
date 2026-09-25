@@ -89,8 +89,10 @@ agents get durable cross-session memory. Enabled by the `mcp_memory` option
 
 | Tool | Purpose |
 |------|---------|
-| `memory_get(key)` | Read one entry (key, value, metadata, updated_at) |
-| `memory_set(key, value)` | Create/update (upsert) an entry |
+| `memory_get(key)` | Read one entry (key, value, tags, metadata, updated_at) |
+| `memory_set(key, value, tags?)` | Create/update (upsert) an entry; comma/space-separated tags stored as metadata (omitting tags on update keeps existing ones) |
+| `memory_search(query?, tag?, limit?)` | Ranked keyword/tag search; returns snippets, not full values |
+| `memory_tags()` | Tag vocabulary digest: counts + sample keys |
 | `memory_list(key_prefix?)` | List entries, optional key-prefix filter |
 | `memory_delete(key)` | Delete one entry |
 
