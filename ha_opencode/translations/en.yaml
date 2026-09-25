@@ -17,6 +17,14 @@ configuration:
   mcp_hub_url:
     name: "MCP hub URL"
     description: "Base URL of the mcp-hub add-on, for example http://10.20.0.3:8930. OpenCode sessions reach the Home Assistant MCP servers through the hub, sharing one server process instead of spawning their own. Sessions also need MCP_HUB_TOKEN in the environment variables below. Leave empty to fall back to per-session local servers."
+  mcp_litellm_url:
+    name: "LiteLLM MCP gateway URL"
+    description: "Base URL of a LiteLLM MCP gateway, for example http://10.60.0.3:4000. All MCP traffic (models and tools) flows through the gateway as a single entrypoint with toolset-scoped keys; /mcp is appended automatically. Takes precedence over the MCP hub URL. The toolset key must be in the environment variables below, under the name set in mcp_litellm_key_env."
+
+  mcp_litellm_key_env:
+    name: "LiteLLM toolset key environment variable"
+    description: "Name of the env_vars entry that holds the LiteLLM toolset key OpenCode authenticates with (default LITELLM_HASS_KEY)."
+
 
   mcp_http_token:
     name: "MCP HTTP bearer token"

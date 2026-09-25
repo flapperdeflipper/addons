@@ -27,6 +27,9 @@ printf '%s\n' "${ADDON_CHANNEL}" > /data/.addon_channel
 # ==============================================================================
 
 MCP_HUB_URL=$(bashio::config 'mcp_hub_url' 2>/dev/null || echo "")
+MCP_LITELLM_URL=$(bashio::config 'mcp_litellm_url' 2>/dev/null || echo "")
+MCP_LITELLM_KEY_ENV=$(bashio::config 'mcp_litellm_key_env' 2>/dev/null || echo "")
+[ -n "${MCP_LITELLM_KEY_ENV}" ] || MCP_LITELLM_KEY_ENV="LITELLM_HASS_KEY"
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
 
 # Fixed capability set - see the file header.
@@ -41,14 +44,17 @@ MCP_ENABLED="true"
 NATIVE_HA_MCP_ENABLED="true"
 USER_HOOKS_ENABLED="true"
 
-# The hub base URL carries no trailing slash so it can be extended in jq.
+# The base URLs carry no trailing slash so they can be extended in jq.
 MCP_HUB_URL="${MCP_HUB_URL%/}"
+MCP_LITELLM_URL="${MCP_LITELLM_URL%/}"
 
-if [ -n "${MCP_HUB_URL}" ]; then
+if [ -n "${MCP_LITELLM_URL}" ]; then
+    bashio::log.info "Configuration: MCP via LiteLLM gateway (${MCP_LITELLM_URL}), toolset key env ${MCP_LITELLM_KEY_ENV}"
+elif [ -n "${MCP_HUB_URL}" ]; then
     bashio::log.info "Configuration: MCP via shared hub (${MCP_HUB_URL}), profile=${MCP_TOOL_PROFILE} (server-side)"
 else
-    bashio::log.warning "No mcp_hub_url set - sessions fall back to per-session local MCP servers (~260 MB each)"
-    bashio::log.warning "Set mcp_hub_url to the mcp-hub add-on's address to share one server process"
+    bashio::log.warning "No mcp_litellm_url / mcp_hub_url set - sessions fall back to per-session local MCP servers (~260 MB each)"
+    bashio::log.warning "Set mcp_litellm_url to the LiteLLM gateway, or mcp_hub_url to the mcp-hub add-on"
 fi
 
 # ==============================================================================
@@ -577,8 +583,19 @@ if [ "${ADDON_AGENTS_IN_CONFIG_DIR}" != "true" ]; then
     CHANNEL_AGENTS_INSTRUCTION="${ADDON_AGENTS_FILE}"
 fi
 
-jq --arg mcp_hub_url "${MCP_HUB_URL}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_FULL.md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" '
-    if ($mcp_hub_url | length) > 0 then
+jq --arg mcp_hub_url "${MCP_HUB_URL}" --arg mcp_litellm_url "${MCP_LITELLM_URL}" --arg mcp_litellm_key_env "${MCP_LITELLM_KEY_ENV}" --arg profile_instruction "/opt/ha-mcp-server/MCP_PROFILE_FULL.md" --arg channel_agents "${CHANNEL_AGENTS_INSTRUCTION}" '
+    if ($mcp_litellm_url | length) > 0 then
+        .mcp = {
+            "litellm": {
+                "type": "remote",
+                "url": (($mcp_litellm_url | rtrimstr("/")) + "/mcp"),
+                "enabled": true,
+                "timeout": 120000,
+                "headers": {"Authorization": ("Bearer {env:" + $mcp_litellm_key_env + "}")}
+            }
+        } |
+        .mcp.litellm.enabled = true
+    elif ($mcp_hub_url | length) > 0 then
         .mcp.homeassistant = ((.mcp.homeassistant * {
             "type": "remote",
             "url": (($mcp_hub_url | rtrimstr("/")) + "/mcp/homeassistant"),
