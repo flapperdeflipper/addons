@@ -154,11 +154,17 @@ printf 'export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"\n' >> "${ENV_VARS_FIL
 printf 'export OPENCODE_DISABLE_AUTOUPDATE=true\n' >> "${ENV_VARS_FILE}"
 chmod 600 "${ENV_VARS_FILE}"
 
-# Sessions reach the MCP hub with a bearer token from env_vars; say so at
-# boot instead of leaving every session to fail its first tool call.
+# Sessions reach the MCP hub / LiteLLM gateway with bearer tokens from
+# env_vars; say so at boot instead of leaving every session to fail its
+# first tool call.
 if [ -n "${MCP_HUB_URL}" ]; then
     if ! grep -qE '^export MCP_HUB_TOKEN=' "${ENV_VARS_FILE}" 2>/dev/null; then
         bashio::log.warning "mcp_hub_url is set but MCP_HUB_TOKEN is not in env_vars - MCP tool calls will fail with 401"
+    fi
+fi
+if [ -n "${MCP_LITELLM_URL}" ] && [ -n "${MCP_LITELLM_KEY_ENV}" ]; then
+    if ! grep -qE "^export ${MCP_LITELLM_KEY_ENV}=" "${ENV_VARS_FILE}" 2>/dev/null; then
+        bashio::log.warning "mcp_litellm_url is set but ${MCP_LITELLM_KEY_ENV} is not in env_vars - model and MCP calls will fail with 401"
     fi
 fi
 
@@ -594,7 +600,21 @@ jq --arg mcp_hub_url "${MCP_HUB_URL}" --arg mcp_litellm_url "${MCP_LITELLM_URL}"
                 "headers": {"Authorization": ("Bearer {env:" + $mcp_litellm_key_env + "}")}
             }
         } |
-        .mcp.litellm.enabled = true
+        # The gateway is also the model provider: the litellm plugin
+        # discovers its model list at runtime (/v1/models + /v1/model/info,
+        # disk-cached), so the model map is never hand-maintained here.
+        .plugin = ((.plugin // []) + ["opencode-plugin-litellm@1.3.0"]) |
+        .model = "litellm/glm-5.3" |
+        .small_model = "litellm/glm-5.3-flash-small" |
+        .provider.litellm = {
+            "npm": "@ai-sdk/openai-compatible",
+            "name": "LiteLLM",
+            "options": {
+                "baseURL": (($mcp_litellm_url | rtrimstr("/")) + "/v1"),
+                "apiKey": ("{env:" + $mcp_litellm_key_env + "}"),
+                "timeout": 600000
+            }
+        }
     elif ($mcp_hub_url | length) > 0 then
         .mcp.homeassistant = ((.mcp.homeassistant * {
             "type": "remote",
