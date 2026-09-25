@@ -8,9 +8,9 @@ env:
 
 on:
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
   push:
-    branches: ["master"]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -120,7 +120,7 @@ jobs:
         with:
           # --cosign: keyless-sign pushed images with the workflow's GitHub
           # OIDC identity. Signing runs only after the Docker Hub push
-          # (master builds); PR/--test builds never reach it.
+          # (main builds); PR/--test builds never reach it.
           # --no-cosign-verify: all add-on base images (node/debian/litellm/
           # golang/playwright/searxng) are third-party and unsigned, so
           # base-image signature validation cannot pass and is disabled —
@@ -135,7 +135,7 @@ jobs:
             --addon
 
   ## Stable, always-running gate job. Mark "CI checks passed" as a required
-  ## status check in branch protection for master; GitHub then blocks merging
+  ## status check in branch protection for the default branch; GitHub then blocks merging
   ## while it is pending or failed. Docs-only PRs (where `build` is skipped)
   ## still pass, and an `init` failure fails the gate instead of being
   ## silently skipped.

@@ -9,11 +9,11 @@ Install by going to Supervisor -> Add-on store -> Add new repository by url and 
 
 ## Verifying images
 
-Images pushed from `master` are signed with [cosign](https://github.com/sigstore/cosign) keyless, via the build workflow's GitHub OIDC identity. Verify any published tag with:
+Images pushed from `main` are signed with [cosign](https://github.com/sigstore/cosign) keyless, via the build workflow's GitHub OIDC identity. Verify any published tag with:
 
 ```console
 cosign verify \
-  --certificate-identity-regexp '^https://github\.com/flapperdeflipper/addons/\.github/workflows/builder\.yml@refs/heads/master$' \
+  --certificate-identity-regexp '^https://github\.com/flapperdeflipper/addons/\.github/workflows/builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer-regexp '^https://token\.actions\.githubusercontent\.com$' \
   flapperdeflipper/addon-ha-opencode:2.9.0
 ```
