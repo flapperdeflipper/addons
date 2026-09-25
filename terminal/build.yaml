@@ -3,8 +3,8 @@
 # shared base image this terminal layers on top of; releases of
 # flapperdeflipper/agent-base open the bump as a pull request automatically.
 build_from:
-  aarch64: ghcr.io/flapperdeflipper/agent-base:1.0.0
-  amd64: ghcr.io/flapperdeflipper/agent-base:1.0.0
+  aarch64: ghcr.io/flapperdeflipper/agent-base:1.1.1
+  amd64: ghcr.io/flapperdeflipper/agent-base:1.1.1
 args:
   AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.1.1"
 labels:
