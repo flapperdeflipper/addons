@@ -42,7 +42,7 @@ export function createHaMcpForwarder({
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json",
+          Accept: "application/json, text/event-stream",
           "Content-Type": "application/json",
         },
         body: JSON.stringify(message),
