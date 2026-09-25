@@ -23,14 +23,13 @@ OpenCode process and stores no sessions of its own.
 
 ## Requirements
 
-This add-on depends on the **OpenCode add-on** (ha_opencode 2.14.0+):
+This add-on depends on the **OpenCode add-on** (ha_opencode 3.0.0+):
 
-1. In the OpenCode add-on's Configuration tab, turn on **OpenCode LAN server**
-   and set its **LAN server username/password** options
-   (`!secret <key>` values work).
+1. In the OpenCode add-on's Configuration tab, set its **LAN server password**
+   (`!secret <key>` values work). The LAN server itself is always on.
 2. In its Network settings, map `4096/tcp` to a host port.
 3. In OpenChamber's Configuration tab, set **OpenCode server port** to that
-   host port and the same username/password.
+   host port and the same password. The username is always `opencode`.
 
 The Supervisor has no generic app-to-app dependency mechanism, so this
 dependency is enforced behaviourally: OpenChamber waits up to two minutes for
@@ -43,8 +42,7 @@ afterwards (the UI shows a "waiting for server" state until OpenCode answers).
 |--------|---------|-------------|
 | **OpenCode server address** | *(auto)* | Origin of the OpenCode LAN server, scheme included, no port (e.g. `http://192.168.1.50`). Empty auto-discovers the Docker host gateway. |
 | **OpenCode server port** | `4096` | Host port that the OpenCode add-on's `4096/tcp` is mapped to. |
-| **OpenCode server username** | *(empty)* | Basic-auth username; empty means `opencode`, the OpenCode server's default. |
-| **OpenCode server password** | — | Basic-auth password shared with the OpenCode add-on. Required; `!secret <key>` works. |
+| **OpenCode server password** | — | Basic-auth password shared with the OpenCode add-on (username is always `opencode`). Required; `!secret <key>` works. |
 | **LAN trusted remotes** | *(empty)* | IP addresses or CIDRs the reverse proxy connects from. Only these and loopback are proxied on `4097/tcp`. |
 | **LAN redirect URL** | *(empty)* | Where untrusted sources are sent (e.g. `https://openchamber.pl4.dev` behind your OAuth proxy). Empty = plain 403. |
 
@@ -132,9 +130,9 @@ from other add-ons on the internal network (e.g.
 ## Troubleshooting
 
 - **"Waiting for server"** in the UI: the OpenCode server is not reachable.
-  Check the OpenCode add-on is running, its LAN server is enabled, the port
-  mapping matches **OpenCode server port**, and the credentials match its
-  **LAN server username/password**.
+  Check the OpenCode add-on is running, the port mapping matches
+  **OpenCode server port**, and the password matches its **LAN server
+  password**.
 - **Redirected to the public URL from the raw port**: expected — the source
   is not in **LAN trusted remotes**. Check the add-on log for the `Rejected
   <address>` line and add it.
