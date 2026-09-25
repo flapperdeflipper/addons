@@ -1,3 +1,7 @@
+## 3.1.0
+
+- **Add**: `mcp_litellm_url` - route all OpenCode MCP traffic through a LiteLLM MCP gateway as a single entrypoint (models and tools on one host, toolset-scoped virtual keys). The generated opencode.json carries exactly one remote `litellm` MCP entry (`<url>/mcp`, bearer key via the `mcp_litellm_key_env` env var name, default `LITELLM_HASS_KEY`); the option takes precedence over `mcp_hub_url`. For the setup where every self-hosted MCP server (ha-mcp-server, HA native, playwright, victoriametrics, searxng, context7) is registered on the gateway and per-key `mcp_servers` allowlists define the hass/home/remote toolsets.
+
 ## 3.0.0
 
 - **Changed — sessions reach the MCP servers through the mcp-hub add-on**: with the new `mcp_hub_url` option set, the generated session config points `homeassistant` at the hub's `/mcp/homeassistant` route (which forwards back to this add-on's 8927 endpoint) and `homeassistant_native` at the hub's `/mcp/ha-native`, both with `Bearer {env:MCP_HUB_TOKEN}`. No session spawns its own MCP server processes anymore (~260 MB saved per session); the tool profile is fixed to full server-side. Sessions need `MCP_HUB_TOKEN` in `env_vars`. Without `mcp_hub_url` the add-on falls back to the previous per-session stdio servers. The 8927 HTTP MCP service is now always on (still bearer-token gated by `mcp_http_token`, which the hub's forwarder must use too); `mcp_http_enabled`, `mcp_remote_enabled`, `mcp_remote_homeassistant_url` and `mcp_remote_native_url` are gone. Requires mcp-hub 1.1.0 for the `homeassistant` forwarder.
