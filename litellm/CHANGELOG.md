@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.100.0
+
+- **`memory_search(query, tag, limit)` — keyword + tag search with ranked snippets** — one list call scores every entry locally (exact key-segment match > exact tag > substring tag > substring in value; substring key matching deliberately excluded — "not" inside "note" is noise, not recall), returning top-N matches with a ~160-char snippet around the first term hit instead of full values, plus `candidates`/`scanned` counters so truncation is visible. Recall no longer depends on knowing exact keys.
+- **`memory_tags()` — the store's tag vocabulary as a digest** — every tag with count and up to three sample keys, entries/untagged totals; the cheap "what's in there" call before searching.
+- **`memory_set(key, value, tags="")` gains tags** — comma/space-separated labels stored in the API's `metadata` field (verified against the live proxy: metadata survives value-only updates, so omitting tags keeps existing ones). `memory_get`/`memory_list` surface normalized tags. Existing tagless callers are unchanged.
+- **Tool docstrings teach search-first recall** — memory_search/memory_tags descriptions steer agents to discover by topic before guessing keys.
+
 ## 1.99.2
 
 - **Standalone memory MCP server is real** — run.sh now launches `litellm-mcp memory` on **port 4001** (streamable HTTP, `mcp_memory` option, default on, supervised restart loop, log at `/data/litellm/mcp_server.log`), matching what DOCS.md and the Dockerfile `EXPOSE` already promised. Direct MCP clients (opencode, claude code) no longer need the LLM gateway's aggregated `/mcp` endpoint, which would hand them every registered tool server (65 ha-mcp tools, playwright, docs, search) instead of just memory.
