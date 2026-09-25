@@ -1,7 +1,7 @@
 ---
 name: "OpenCode"
 description: "AI coding agent for editing Home Assistant configuration with deep MCP integration and LSP support"
-version: "3.0.0"
+version: "3.1.0"
 slug: "ha_opencode"
 image: "flapperdeflipper/addon-ha-opencode"
 url: "https://github.com/magnusoverli/opencode"
@@ -63,6 +63,13 @@ options:
   # instead of spawning per-session. Sessions need MCP_HUB_TOKEN in env_vars.
   # Empty = fall back to per-session local stdio servers.
   mcp_hub_url: ""
+  # Route ALL MCP traffic through a LiteLLM MCP gateway - the single-tool
+  # entrypoint (models + MCP on one host, toolset-scoped virtual keys).
+  # Takes precedence over mcp_hub_url; the gateway base URL is extended with
+  # /mcp. Sessions need the toolset key in env_vars under the name configured
+  # in mcp_litellm_key_env.
+  mcp_litellm_url: ""
+  mcp_litellm_key_env: "LITELLM_HASS_KEY"
   # Bearer token this add-on's 8927 MCP endpoint demands. The hub's
   # homeassistant forwarder must be configured with the same value.
   # A !secret <key> value resolves from secrets.yaml at start.
@@ -89,6 +96,8 @@ schema:
   access_token: password
   # --- 2. Shared MCP hub (mcp-hub add-on) ---------------------------------
   mcp_hub_url: str?
+  mcp_litellm_url: str?
+  mcp_litellm_key_env: str
   mcp_http_token: password
   # --- 3. LAN server (OpenChamber attaches here) ---------------------------
   server_password: password

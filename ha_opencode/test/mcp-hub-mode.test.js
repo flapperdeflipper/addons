@@ -22,9 +22,11 @@ const closeIdx = lines.findIndex((line, i) => i > openIdx && line === "' /opt/ha
 assert.ok(openIdx !== -1 && closeIdx !== -1, "generator jq not found in init service");
 const program = lines.slice(openIdx + 1, closeIdx).join("\n");
 
-function generate({ hubUrl }) {
+function generate({ hubUrl = "", litellmUrl = "", keyEnv = "LITELLM_HASS_KEY" } = {}) {
   const out = execFileSync("jq", [
     "--arg", "mcp_hub_url", hubUrl,
+    "--arg", "mcp_litellm_url", litellmUrl,
+    "--arg", "mcp_litellm_key_env", keyEnv,
     "--arg", "profile_instruction", "/x",
     "--arg", "channel_agents", "",
     program,
@@ -84,12 +86,47 @@ describe("hub MCP mode (3.0.0)", () => {
   });
 });
 
+describe("litellm MCP mode (3.1.0)", () => {
+  it("replaces the whole mcp section with a single litellm entry", () => {
+    const cfg = generate({ litellmUrl: "http://10.60.0.3:4000" });
+    assert.deepEqual(Object.keys(cfg.mcp), ["litellm"]);
+    const l = cfg.mcp.litellm;
+    assert.equal(l.type, "remote");
+    assert.equal(l.url, "http://10.60.0.3:4000/mcp");
+    assert.equal(l.enabled, true);
+    assert.equal(l.timeout, 120000);
+    assert.equal(l.headers.Authorization, "Bearer {env:LITELLM_HASS_KEY}");
+  });
+
+  it("takes precedence over the hub mode", () => {
+    const cfg = generate({ litellmUrl: "http://10.60.0.3:4000", hubUrl: "http://10.60.0.3:8930" });
+    assert.deepEqual(Object.keys(cfg.mcp), ["litellm"]);
+  });
+
+  it("honors a custom key env name and trims a trailing slash", () => {
+    const cfg = generate({ litellmUrl: "http://h:4000/", keyEnv: "LITELLM_REMOTE_KEY" });
+    assert.equal(cfg.mcp.litellm.url, "http://h:4000/mcp");
+    assert.equal(cfg.mcp.litellm.headers.Authorization, "Bearer {env:LITELLM_REMOTE_KEY}");
+  });
+
+  it("keeps the fixed instructions and read restrictions in litellm mode too", () => {
+    const cfg = generate({ litellmUrl: "http://10.60.0.3:4000" });
+    assert.equal(cfg.permission.read["*secrets.yaml"], "deny");
+    assert.ok(cfg.instructions.includes("/homeassistant/AGENTS.local.md"));
+  });
+});
+
 describe("hub MCP option contract (3.0.0)", () => {
   const config = fs.readFileSync(path.join(ADDON_ROOT, "config.yaml"), "utf8");
   const init = fs.readFileSync(RUN, "utf8");
 
   it("declares mcp_hub_url in options and schema", () => {
     assert.equal((config.match(/^  mcp_hub_url:/gm) || []).length, 2);
+  });
+
+  it("declares the litellm gateway options in options and schema", () => {
+    assert.equal((config.match(/^  mcp_litellm_url:/gm) || []).length, 2);
+    assert.equal((config.match(/^  mcp_litellm_key_env:/gm) || []).length, 2);
   });
 
   it("does not reserve the MCP token env names", () => {
