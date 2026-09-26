@@ -13,7 +13,7 @@
     "puppeteer-core": "^25.0.0",
     "ws": "^8.18.0",
     "yaml": "^2.9.0",
-    "zod": "^3.25.0"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "vitest": "^4.1.11"
