@@ -1,3 +1,7 @@
+## 1.1.3
+
+- **Changed** — align `build_from` pins with the `AGENT_BASE` roll-up (agent-base `1.1.1`) — merged without a release; catch-up bump.
+
 ## 1.1.2
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).
