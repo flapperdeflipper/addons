@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.3
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.2.2
 
 - **Fixed:** refuse to start (or degrade loudly) when an option is still a literal `!secret …` reference — a secrets.yaml key was missing at container start; a reference string must never be used as a credential
