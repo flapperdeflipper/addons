@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.6
+
+- **Fixed:** refuse to start (or degrade loudly) when an option is still a literal `!secret …` reference — a secrets.yaml key was missing at container start; a reference string must never be used as a credential
+- enforced in the options parser for every string option
+
 ## 1.0.5
 
 - **Fix**: find the Supervisor token under both `SUPERVISOR_TOKEN` and the legacy `HASSIO_TOKEN` name, in the environment or in s6's `/run/s6/container_environment/` - the base image's s6-overlay runs CMD without the Docker env, which silently broke MQTT service discovery.

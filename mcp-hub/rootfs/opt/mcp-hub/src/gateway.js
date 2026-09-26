@@ -57,6 +57,18 @@ export function loadConfig({ optionsPath = process.env.HUB_OPTIONS_PATH || "/dat
   } catch {
     // Tests and local runs inject config through HUB_* env instead.
   }
+  // An option that is still a literal "!secret ..." means the key was missing
+  // from secrets.yaml when the Supervisor wrote options.json. Serving with a
+  // reference string as a credential would be silent auth theater - refuse.
+  const unresolved = Object.entries(fileConfig)
+    .filter(([, v]) => typeof v === "string" && v.startsWith("!secret "))
+    .map(([k]) => k);
+  if (unresolved.length > 0) {
+    throw new Error(
+      'unresolved !secret reference in option(s): ' + unresolved.join(', ') +
+      ' (key missing in secrets.yaml) - refusing to start',
+    );
+  }
   return {
     ...fileConfig,
     token: process.env.HUB_TOKEN || fileConfig.token || "",

@@ -99,7 +99,15 @@ def load_options() -> dict:
 
     def s(key: str) -> str:
         v = raw.get(key)
-        return "" if not v or v == "null" else str(v)
+        if not v or v == "null":
+            return ""
+        v = str(v)
+        if v.startswith("!secret "):
+            raise SystemExit(
+                f"option '{key}' is an unresolved !secret reference "
+                f"(key missing in secrets.yaml); refusing to run with it"
+            )
+        return v
 
     return {
         "poll_interval": _as_int(raw.get("poll_interval"), 60, 10, 3600),

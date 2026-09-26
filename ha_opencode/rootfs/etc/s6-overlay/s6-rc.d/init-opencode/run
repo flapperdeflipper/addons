@@ -31,6 +31,12 @@ MCP_LITELLM_URL=$(bashio::config 'mcp_litellm_url' 2>/dev/null || echo "")
 MCP_LITELLM_KEY_ENV=$(bashio::config 'mcp_litellm_key_env' 2>/dev/null || echo "")
 [ -n "${MCP_LITELLM_KEY_ENV}" ] || MCP_LITELLM_KEY_ENV="LITELLM_HASS_KEY"
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
+case "${ACCESS_TOKEN}" in
+    '!secret '*)
+        bashio::log.error "access_token is an unresolved !secret reference (key missing in secrets.yaml) - continuing without it"
+        ACCESS_TOKEN=""
+        ;;
+esac
 
 # Fixed capability set - see the file header.
 MCP_TOOL_PROFILE="full"
