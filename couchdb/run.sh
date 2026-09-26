@@ -361,8 +361,17 @@ if [[ "$DOCSTORE_ENABLED" == "true" ]]; then
         "$OPTIONS_JSON" > /dev/null \
         || die "docstore.username '${DOCSTORE_USERNAME}' has no matching login"
 
+    # Resolve the docstore user's password the same way provisioning does:
+    # options value, else the generated file. options.json alone would only
+    # ever hold a blank for generated accounts (the 3.6.0 startup bug).
+    DOCSTORE_PASSWORD="$(resolve_password "$DOCSTORE_USERNAME" \
+        "$(jq -r --arg u "$DOCSTORE_USERNAME" \
+            'first((.logins // [])[] | select(.username == $u) | .password // "") // ""' \
+            "$OPTIONS_JSON")")"
+
     log "Starting docstore MCP endpoint on :${DOCSTORE_PORT} (internal only)"
     DOCSTORE_PORT="$DOCSTORE_PORT" DOCSTORE_TOKEN="$DOCSTORE_TOKEN" \
+        DOCSTORE_USERNAME="$DOCSTORE_USERNAME" DOCSTORE_PASSWORD="$DOCSTORE_PASSWORD" \
         python3 /docstore/server.py &
     DOCSTORE_PID=$!
     log "Ready. Fauxton: http://<host>:5984/_utils (review docs as '${DOCSTORE_USERNAME}')"
