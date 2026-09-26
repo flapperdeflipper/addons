@@ -25,8 +25,10 @@ fi
 # committed earlier in the branch's life, or modified in the pending update.
 changed_dirs() {
     {
-        git diff --name-only "${BASE_REF}" -- '*/Dockerfile' '*/build.yaml' '*/requirements*.txt' 2>/dev/null || true
+        git diff --name-only "${BASE_REF}" -- '*/Dockerfile' '*/build.yaml' '*/requirements*.txt' \
+            '*/rootfs/**/package.json' '*/rootfs/**/package-lock.json' 2>/dev/null || true
         git status --porcelain -- '*/Dockerfile' '*/build.yaml' '*/requirements*.txt' \
+            '*/rootfs/**/package.json' '*/rootfs/**/package-lock.json' \
             | sed -e 's/^...//' -e 's/^"//' -e 's/"$//'
     } | cut -d/ -f1 | sort -u
 }
