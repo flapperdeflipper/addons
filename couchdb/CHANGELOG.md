@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.2 (2026-09-26)
+
+- **Changed:** map type `addon_config` -> `app_config` (same volume, new Supervisor naming); clears the Supervisor legacy-map validation warning
+
 ## 3.8.1 (2026-09-26)
 
 - **Fixed:** server-admin assertion could invalidate its own credentials mid-run — asserting the bootstrap admin with a changed password broke authentication for the remaining iterations (requests went out unauthenticated) and for the rest of provisioning (`401` at `require_valid_user`). The convergence loop now runs LAST, skips no-op self-assertions, and adopts a changed bootstrap password immediately
