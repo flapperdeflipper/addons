@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.11
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2026.9.10
 
 - **Fixed crash scraping search results** — `trafilatura.extract()` was called with `favor_readability` and `timeout` kwargs that no longer exist in trafilatura 2.x (2.0 removed the `**kwargs` catch-all that had silently swallowed them on 1.x). Every content scrape by `searxng_search_web` and `searxng_get_website` failed with `TypeError: extract() got an unexpected keyword argument`. Both dead kwargs dropped; `include_comments`/`include_tables` are valid on 2.x and unchanged.
