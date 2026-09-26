@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "docstore"))
 
-from server import DocstoreServer, check_token  # noqa: E402
+from server import DocstoreServer, check_token, resolve_credentials  # noqa: E402
 
 REGISTRY = {
     "databases": ["agent_handoffs", "agent_tasks", "agent_memory"],
@@ -221,6 +221,23 @@ class TestTasks(unittest.TestCase):
         done_doc = couch.docs[("agent_tasks", "task/q/a")]
         self.assertEqual(done_doc["status"], "done")
         self.assertIn("expires", done_doc)
+
+
+class TestResolveCredentials(unittest.TestCase):
+    def test_env_password_wins(self):
+        opts = {"docstore": {"username": "agent"}, "logins": [{"username": "agent", "password": "from-options"}]}
+        u, p = resolve_credentials(opts, {"DOCSTORE_PASSWORD": "generated", "DOCSTORE_USERNAME": "agent"})
+        self.assertEqual((u, p), ("agent", "generated"))
+
+    def test_options_fallback(self):
+        opts = {"docstore": {"username": "agent"}, "logins": [{"username": "agent", "password": "from-options"}]}
+        u, p = resolve_credentials(opts, {})
+        self.assertEqual((u, p), ("agent", "from-options"))
+
+    def test_blank_everywhere_is_fatal(self):
+        opts = {"docstore": {"username": "agent"}, "logins": [{"username": "agent", "password": ""}]}
+        with self.assertRaises(SystemExit):
+            resolve_credentials(opts, {})
 
 
 if __name__ == "__main__":

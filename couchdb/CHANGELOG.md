@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.6.1 (2026-09-26)
+
+- **Fixed:** docstore MCP exited at startup when the docstore user's password was generated (blank in options) — run.sh now passes the resolved password via `DOCSTORE_PASSWORD`/`DOCSTORE_USERNAME` env instead of the server re-reading options.json
+
 ## 3.6.0 (2026-09-26)
 
 **Renamed `obsidian-sync` → `couchdb`** and generalized into a plain CouchDB add-on with MariaDB-style declarative management. The new slug makes Supervisor treat this as a new add-on; see DOCS.md "Migrating from obsidian-sync" for the one-step data move.

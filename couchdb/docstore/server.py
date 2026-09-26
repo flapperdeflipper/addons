@@ -369,17 +369,33 @@ def load_registry(path, default_path):
     raise SystemExit("no registry found")
 
 
+
+def resolve_credentials(options, env):
+    """The CouchDB login the MCP tools use.
+
+    run.sh resolves blank option passwords into generated files and hands the
+    result here via DOCSTORE_PASSWORD/DOCSTORE_USERNAME — options.json alone
+    only ever holds blanks for generated accounts.
+    """
+    docstore = options.get("docstore") or {}
+    username = env.get("DOCSTORE_USERNAME") or docstore.get("username") or "agent"
+    password = env.get("DOCSTORE_PASSWORD") or ""
+    if not password:
+        for login in options.get("logins") or []:
+            if login.get("username") == username:
+                password = login.get("password") or ""
+    if not password:
+        raise SystemExit(f"login {username!r} (docstore.username) has no password")
+    return username, password
+
+
 def main():
     options_path = os.environ.get("OPTIONS_JSON", "/data/options.json")
     with open(options_path) as fh:
         options = json.load(fh)
     docstore = options.get("docstore") or {}
 
-    username = docstore.get("username", "agent")
-    password = ""
-    for login in options.get("logins") or []:
-        if login.get("username") == username:
-            password = login.get("password") or ""
+    username, password = resolve_credentials(options, os.environ)
     token = docstore.get("token") or os.environ.get("DOCSTORE_TOKEN") or ""
     if not token:
         raise SystemExit("docstore token is empty; run.sh must generate or configure one")
