@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.1 (2026-09-26)
+
+- **Changed:** map type `addon_config` -> `app_config` (same volume, new Supervisor naming); clears the Supervisor legacy-map validation warning
+
 ## 3.8.0 (2026-09-26)
 
 The options are leading: every start converges the full declared state.
