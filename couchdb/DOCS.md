@@ -30,6 +30,14 @@ this repo's `obsidian-sync` → generalized into `couchdb` in 3.6.0.
 
 Hand-edits to these in Fauxton are repaired on the next start.
 
+**The options are leading.** Every start converges the declared state:
+databases are created, user passwords re-asserted (`_users` upsert), server
+administrators re-asserted (`_config/admins`), rights applied at their
+declared level (a member<->admin change moves the user on the next start),
+CORS and hardening re-applied. Change the options, restart, done. The one
+deliberate exception: *removing* an entry from the options never deletes or
+revokes the live object — clean-up stays a manual act.
+
 **Non-destructive by design:** provisioning only creates and adds. Removing a
 database, login or right from the options never deletes or revokes anything
 inside CouchDB — clean-up is a manual, deliberate act. The only automated
