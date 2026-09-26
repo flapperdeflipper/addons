@@ -1,0 +1,29 @@
+{
+  "databases": ["agent_handoffs", "agent_tasks", "agent_reports", "agent_memory"],
+  "types": {
+    "handoff": {
+      "db": "agent_handoffs",
+      "id_pattern": "^handoff/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$",
+      "ttl_days": 90
+    },
+    "task": {
+      "db": "agent_tasks",
+      "id_pattern": "^task/[a-z0-9-]+/[a-z0-9-]+$",
+      "ttl_days": 30,
+      "ttl_from": "done"
+    },
+    "report": {
+      "db": "agent_reports",
+      "id_pattern": "^report/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$",
+      "ttl_days": 180
+    },
+    "dossier": {
+      "db": "agent_memory",
+      "id_pattern": "^dossier/[a-z0-9-]+$"
+    },
+    "note": {
+      "db": "agent_memory",
+      "id_pattern": "^note/[a-z0-9/-]+$"
+    }
+  }
+}

@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.6.0 (2026-09-26)
+
+**Renamed `obsidian-sync` → `couchdb`** and generalized into a plain CouchDB add-on with MariaDB-style declarative management. The new slug makes Supervisor treat this as a new add-on; see DOCS.md "Migrating from obsidian-sync" for the one-step data move.
+
+- **New:** `databases` option — list of databases, created idempotently on every start
+- **New:** `logins` option — regular CouchDB users upserted in `_users`; exactly one `admin: true` login is the server administrator; blank passwords are generated per user and persisted under `/config/couchdb/users/` (never logged)
+- **New:** `rights` option — per-database `member`/`admin` grants merged into `_security`, replacing the single-vault model; databases without members stay authenticated-public
+- **New:** `cors.origins` option — CORS origins instead of hardcoded Obsidian origins (defaults preserve LiveSync behaviour; empty disables CORS)
+- **New:** agent docstore — registry-validated MCP endpoint on internal port 5985 (`doc_get/put/update/delete/query`, `task_claim/complete`), bearer token, hourly TTL sweeper; registry editable at `/config/couchdb/docstore/registry.json`; self-running tests under `test/`
+- **Kept:** LiveSync provisioning as defaults, `/config`-backed storage (backup-safe), generated-admin-password behaviour, single-node bootstrap, request/auth hardening
+- **Migration:** the obsidian-sync era generated admin password is adopted automatically; LiveSync clients need no changes (administrator bypasses per-database rights)
+
 ## 3.5.2.2 (2026-09-20)
 
 Initial release in this repository — fork of [alexbelgium/hassio-addons `obsidian_syncserver_solo`](https://github.com/alexbelgium/hassio-addons/tree/master/obsidian_syncserver_solo) (MIT), renamed to **obsidian-sync**.
