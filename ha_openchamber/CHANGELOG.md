@@ -1,3 +1,7 @@
+## 1.3.7
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.3.6
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).
