@@ -99,7 +99,7 @@ resolve_password() {
 }
 
 ADMIN_USERNAME="$(jq -r 'first((.logins // [])[] | select(.server_admin == true) | .username) // empty' "$OPTIONS_JSON")"
-[[ -n "$ADMIN_USERNAME" ]] || die "no login has server_admin: true — exactly one is required"
+[[ -n "$ADMIN_USERNAME" ]] || die "no login has server_admin: true — at least one is required"
 
 # Migration from obsidian-sync: adopt the previously generated admin password
 # so migrated vaults keep their credentials (and LiveSync clients keep working).
@@ -236,26 +236,6 @@ set_config() {
     esac
 }
 
-# Converge server administrators: every login with server_admin:true is
-# (re)asserted in the [admins] config on every start, so password or username
-# changes in the options apply on restart. Removing a login from the options
-# does NOT revoke an existing administrator (non-destructive contract) -
-# revocation is a manual, deliberate act.
-for i in $(seq 0 $((LOGINS_COUNT - 1))); do
-    [[ "$(login_field "$i" server_admin)" == "true" ]] || continue
-    username="$(login_field "$i" username)"
-    password="$(resolve_password "$username" "$(login_field "$i" password)")"
-    code="$(curl -sS -o /dev/null -w '%{http_code}' \
-        -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
-        -X PUT "${COUCH_URL}/_node/_local/_config/admins/$(printf '%s' "$username" | jq -sRr @uri)" \
-        -H "Content-Type: application/json" \
-        -d "$(printf '%s' "$password" | jq -Rs .)" 2>&1 || true)"
-    case "$code" in
-        2*) log "  server admin '${username}' asserted" ;;
-        *) die "Failed to assert server admin '${username}' (HTTP ${code})" ;;
-    esac
-done
-
 set_config "require authenticated HTTP users" "chttpd/require_valid_user" '"true"'
 set_config "require authenticated HTTP users for authentication" "chttpd_auth/require_valid_user" '"true"'
 set_config "the HTTP authentication challenge" "httpd/WWW-Authenticate" '"Basic realm=\"couchdb\""'
@@ -372,6 +352,39 @@ for i in $(seq 0 $((RIGHTS_COUNT - 1))); do
     level="$(jq -r --argjson i "$i" '.rights[$i].level // "member"' "$OPTIONS_JSON")"
     [[ -n "$db" && -n "$username" ]] || die "rights[$i] needs database and username"
     apply_right "$db" "$username" "$level"
+done
+
+# Converge server administrators - LAST, so credential churn cannot break the
+# provisioning above. Every login with server_admin:true is (re)asserted in
+# [admins] on every start; password or username changes in the options apply
+# on restart. Notes:
+#  - [admins] lives in local.ini inside the container, which is ephemeral -
+#    that is fine, because this loop re-asserts the declared admins on every
+#    start (the image entrypoint additionally recreates the bootstrap admin
+#    from COUCHDB_USER/COUCHDB_PASSWORD before this script runs).
+#  - Asserting the BOOTSTRAP admin with a changed password invalidates the
+#    running credential: adopt the new value immediately so any later call
+#    stays authenticated. A no-op self-assertion (same value) is skipped.
+#  - Removing a login from the options does NOT revoke an existing
+#    administrator (non-destructive contract) - revocation stays manual.
+for i in $(seq 0 $((LOGINS_COUNT - 1))); do
+    [[ "$(login_field "$i" server_admin)" == "true" ]] || continue
+    username="$(login_field "$i" username)"
+    password="$(resolve_password "$username" "$(login_field "$i" password)")"
+    if [[ "$username" == "$ADMIN_USERNAME" && "$password" == "$ADMIN_PASSWORD" ]]; then
+        log "  server admin '${username}' unchanged"
+        continue
+    fi
+    code="$(curl -sS -o /dev/null -w '%{http_code}' \
+        -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
+        -X PUT "${COUCH_URL}/_node/_local/_config/admins/$(printf '%s' "$username" | jq -sRr @uri)" \
+        -H "Content-Type: application/json" \
+        -d "$(printf '%s' "$password" | jq -Rs .)" 2>&1 || true)"
+    case "$code" in
+        2*) log "  server admin '${username}' asserted" ;;
+        *) die "Failed to assert server admin '${username}' (HTTP ${code})" ;;
+    esac
+    [[ "$username" == "$ADMIN_USERNAME" ]] && ADMIN_PASSWORD="$password"
 done
 
 # ---------------------------------------------------------------------------
