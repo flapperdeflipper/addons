@@ -120,7 +120,8 @@ describe(`${CHANNEL} runtime pin`, () => {
 
     assert.match(config, /^  - type: local_apps$/m);
     assert.match(config, /^  - type: all_app_configs$/m);
-    assert.doesNotMatch(config, /^  - type: (addons|all_addon_configs)$/m);
+    assert.match(config, /^  - type: app_config$/m);
+    assert.doesNotMatch(config, /^  - type: (addons|all_addon_configs|addon_config)$/m);
   });
 });
 
