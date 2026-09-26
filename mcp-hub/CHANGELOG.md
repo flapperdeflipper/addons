@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- **Branding**: add-on store icon (128x128) and logo (250x250) - hub-and-spoke glyph in the litellm indigo family (#312E81 / #96A0FA), matching the hub's one-process-per-server story.
+
 ## 1.2.0
 
 - **`memory` server: LiteLLM's /v1/memory store as stateless MCP tools** — native `mcp`-kind module (REST client, no stdio child, no dependency on the litellm add-on's :4001 server): `memory_get/set/list/delete` plus search-first recall — `memory_search` (ranked keyword/tag matches with ~160-char snippets, not full values) and `memory_tags` (tag vocabulary digest). Scoring mirrors the Python `litellm_mcp` package in the litellm add-on (exact key-segment > exact tag > substring tag > value substring; substring key matches deliberately absent).
