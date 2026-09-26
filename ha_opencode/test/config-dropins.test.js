@@ -133,6 +133,6 @@ describe(`${CHANNEL} config drop-ins`, () => {
 
   it("requests the standardized add-on config folder the drop-ins live in", () => {
     const manifest = fs.readFileSync(path.join(ADDON_DIR, "config.yaml"), "utf8");
-    assert.match(manifest, /^  - type: addon_config\n    read_only: false\n/m);
+    assert.match(manifest, /^  - type: app_config\n    read_only: false\n/m);
   });
 });
