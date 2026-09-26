@@ -2,6 +2,7 @@
 
 ## 1.2.4
 
+- **Changed** — automated dependency update (Renovate).
 - **New:** `docstore` server — forwards `/mcp/docstore` to the couchdb add-on's registry-validated MCP endpoint (`doc_*` tools, TTL sweeper) on `4e94d283-couchdb:5985`; options `docstore_enabled` / `docstore_url` / `docstore_token`
 - **Refactor:** the stateless JSON-RPC pass-through factory is extracted into `servers/lib/stateless-forwarder.js`, shared by the homeassistant and docstore forwarders (behaviour and error strings unchanged)
 
