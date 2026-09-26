@@ -9,6 +9,7 @@ const { createRequire } = require("node:module");
 const { describe, it } = require("node:test");
 
 const ADDON_ROOT = path.join(__dirname, "..");
+const SERVER_SRC = path.join(ADDON_ROOT, "rootfs", "opt", "mcp-hub", "src");
 const SERVER_PACKAGE = path.join(ADDON_ROOT, "rootfs", "opt", "mcp-hub", "package.json");
 
 // js-yaml is a devDependency of the server package; resolve it from there
@@ -82,5 +83,29 @@ describe("config contract", () => {
         `server '${dir}' references option '${manifest.default.enabledOption}' missing from config.yaml`
       );
     }
+  });
+});
+
+describe("loadConfig refuses unresolved !secret references", () => {
+  const os = require("node:os");
+
+  it("throws naming the option when a value is a literal !secret reference", async () => {
+    const { loadConfig } = await import(path.join(SERVER_SRC, "gateway.js"));
+    const tmp = path.join(os.tmpdir(), 'hub-opts-' + process.pid + '.json');
+    fs.writeFileSync(tmp, JSON.stringify({ token: "!secret hub_token_missing" }));
+    assert.throws(
+      () => loadConfig({ optionsPath: tmp }),
+      /unresolved !secret reference in option\(s\): token/,
+    );
+    fs.rmSync(tmp, { force: true });
+  });
+
+  it("accepts a file without secret references", async () => {
+    const { loadConfig } = await import(path.join(SERVER_SRC, "gateway.js"));
+    const tmp = path.join(os.tmpdir(), 'hub-opts-ok-' + process.pid + '.json');
+    fs.writeFileSync(tmp, JSON.stringify({ token: "real-value" }));
+    const cfg = loadConfig({ optionsPath: tmp });
+    assert.equal(cfg.token, "real-value");
+    fs.rmSync(tmp, { force: true });
   });
 });

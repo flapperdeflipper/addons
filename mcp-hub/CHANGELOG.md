@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2
+
+- **Fixed:** refuse to start (or degrade loudly) when an option is still a literal `!secret …` reference — a secrets.yaml key was missing at container start; a reference string must never be used as a credential
+- `loadConfig()` throws naming the offending option(s); covered by contract tests
+
 ## 1.2.1
 
 - **Branding**: add-on store icon (128x128) and logo (250x250) - hub-and-spoke glyph in the litellm indigo family (#312E81 / #96A0FA), matching the hub's one-process-per-server story.

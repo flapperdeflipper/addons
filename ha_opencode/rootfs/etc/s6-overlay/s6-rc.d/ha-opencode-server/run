@@ -45,6 +45,12 @@ SERVER_PORT=4096
 # service talks to its own loopback server and must not inherit the gate.
 # ==============================================================================
 SERVER_PASSWORD=$(bashio::config 'server_password' 2>/dev/null || echo "")
+case "${SERVER_PASSWORD}" in
+    '!secret '*)
+        bashio::log.error "server_password is an unresolved !secret reference (key missing in secrets.yaml) - fix the key, then restart."
+        exec sleep infinity
+        ;;
+esac
 
 if ! bashio::var.has_value "${SERVER_PASSWORD}"; then
     bashio::log.error "The LAN server needs a basic-auth password."

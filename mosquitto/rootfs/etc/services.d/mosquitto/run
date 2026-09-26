@@ -273,6 +273,11 @@ then
     HASS_PASSWORD="$( pwgen 64 1 )"
     ADDONS_PASSWORD="$( pwgen 64 1 )"
     ADMIN_PASSWORD="$( jq --raw-output '.admin_password' "${CONFIG_PATH}" )"
+    case "${ADMIN_PASSWORD}" in
+        '!secret '*)
+            bashio::exit.nok "admin_password is an unresolved !secret reference (key missing in secrets.yaml) - refusing to configure the broker with it"
+            ;;
+    esac
 
     bashio::log.info "Initialize system users configuration."
     write_system_users "$HASS_PASSWORD" "$ADDONS_PASSWORD" "$ADMIN_PASSWORD"

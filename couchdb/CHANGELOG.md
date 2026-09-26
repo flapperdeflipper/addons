@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.1 (2026-09-26)
+
+- **Fixed:** `!secret <key>` references in `databases` and `rights[].database` were resolved and stored as plain values at save time — the `match()` schema constraint forced Supervisor to validate (and persist) the expanded value. Schema relaxed to plain `str` so references persist in stored options and expand when the container starts (same behaviour as the MariaDB add-on); run.sh keeps validating database names with a clear error
+- **Robustness:** run.sh refuses to start if any `!secret …` value is still unresolved in /data/options.json (missing key in secrets.yaml) instead of provisioning garbage
+
 ## 3.7.0 (2026-09-26)
 
 Separates the two kinds of admin that coexist in the options, and makes the non-destructive contract explicit.

@@ -1,3 +1,6 @@
+## 3.1.2
+
+- **Fixed:** refuse to serve when `mcp_http_token` or `server_password` is still a literal `!secret …` reference (secrets.yaml key missing at container start); the `access_token` oneshot continues without it so the boot survives
 ## 3.1.1
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).

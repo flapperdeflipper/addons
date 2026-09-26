@@ -52,6 +52,14 @@ done
 declare -A DB_SET=()
 for db in "${DATABASES[@]}"; do DB_SET["$db"]=1; done
 
+# Supervisor expands '!secret <key>' references when it writes this file at
+# container start. A value that is STILL a '!secret …' string here means the
+# key was missing from secrets.yaml — running on would provision garbage.
+if grep -q '"!secret ' "$OPTIONS_JSON"; then
+    die "unresolved !secret reference in options: $(grep -o '"!secret [^"]*"' "$OPTIONS_JSON" | sort -u | tr '
+' ' ')"
+fi
+
 LOGINS_COUNT="$(jq '.logins // [] | length' "$OPTIONS_JSON")"
 RIGHTS_COUNT="$(jq '.rights // [] | length' "$OPTIONS_JSON")"
 CORS_ORIGINS="$(jq -r '.cors.origins // [] | join(",")' "$OPTIONS_JSON")"

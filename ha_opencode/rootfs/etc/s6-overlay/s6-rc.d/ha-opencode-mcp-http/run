@@ -37,6 +37,12 @@ export OPENCODE_DISABLE_AUTOUPDATE=true
 MCP_HTTP_PORT=8927
 
 MCP_HTTP_TOKEN=$(bashio::config 'mcp_http_token' 2>/dev/null || echo "")
+case "${MCP_HTTP_TOKEN}" in
+    '!secret '*)
+        bashio::log.error "mcp_http_token is an unresolved !secret reference (key missing in secrets.yaml) - fix the key, then restart."
+        exec sleep infinity
+        ;;
+esac
 if ! bashio::var.has_value "${MCP_HTTP_TOKEN}"; then
     bashio::log.error "The 8927 MCP server needs a bearer token."
     bashio::log.error "Set 'mcp_http_token' in the add-on Configuration tab (a !secret <key> value works too), then restart."

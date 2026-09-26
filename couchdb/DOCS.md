@@ -77,8 +77,11 @@ docstore:
   token: ""              # blank -> generated at /config/couchdb/docstore/mcp_token
 ```
 
-- `password` and `token` fields accept `!secret` references; the Supervisor
-  resolves them from `secrets.yaml` before the add-on starts.
+- `!secret <key>` references persist in the stored options and are expanded
+  by the Supervisor when the container starts (watch the supervisor log:
+  `Request secret couchdb_…`). If a key is missing, the add-on refuses to
+  start with the unresolved reference named in the log — it never provisions
+  from a literal `!secret` string.
 - Generated credentials land under `/config` (on the host:
   `/addon_configs/4e94d283_couchdb/couchdb/`): `users/<name>.password`,
   `docstore/mcp_token`. They are never printed to the add-on log.
