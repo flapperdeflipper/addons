@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.100.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.100.0
 
 - **`memory_search(query, tag, limit)` — keyword + tag search with ranked snippets** — one list call scores every entry locally (exact key-segment match > exact tag > substring tag > substring in value; substring key matching deliberately excluded — "not" inside "note" is noise, not recall), returning top-N matches with a ~160-char snippet around the first term hit instead of full values, plus `candidates`/`scanned` counters so truncation is visible. Recall no longer depends on knowing exact keys.
