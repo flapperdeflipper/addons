@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.1 (2026-09-26)
+
+- **Fixed:** server-admin assertion could invalidate its own credentials mid-run — asserting the bootstrap admin with a changed password broke authentication for the remaining iterations (requests went out unauthenticated) and for the rest of provisioning (`401` at `require_valid_user`). The convergence loop now runs LAST, skips no-op self-assertions, and adopts a changed bootstrap password immediately
+- **Docs:** multiple `server_admin: true` logins are supported and re-asserted every start; `[admins]` lives in the container-ephemeral local.ini, which is fine because the loop converges on every start
+
 ## 3.8.0 (2026-09-26)
 
 The options are leading: every start converges the full declared state.
