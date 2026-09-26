@@ -1,3 +1,7 @@
+## 3.1.6
+
+- **Changed** — automated dependency update (Renovate): bundled `ha-mcp-server` `@modelcontextprotocol/sdk` 1.30.1 + `zod` 4, `ha-lsp-server` `vscode-languageserver` 10 (merged without a release; catch-up bump).
+
 ## 3.1.5
 
 - **Changed** — automated dependency update (Renovate).
