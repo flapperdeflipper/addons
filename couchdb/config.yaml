@@ -5,7 +5,7 @@ description: >-
   CouchDB with declarative databases, users and rights. Serves Obsidian
   LiveSync vaults and an agent docstore MCP endpoint. Plain HTTP — put your
   own reverse proxy in front for TLS.
-version: "3.6.1"
+version: "3.7.0"
 image: flapperdeflipper/addon-couchdb
 url: "https://github.com/flapperdeflipper/addons/tree/master/couchdb"
 arch:
@@ -29,7 +29,7 @@ options:
   logins:
     - username: admin
       password: ""
-      admin: true
+      server_admin: true
     - username: vault
       password: ""
     - username: agent
@@ -37,19 +37,19 @@ options:
   rights:
     - database: obsidian
       username: vault
-      level: member
+      level: admin
     - database: agent_handoffs
       username: agent
-      level: member
+      level: admin
     - database: agent_tasks
       username: agent
-      level: member
+      level: admin
     - database: agent_reports
       username: agent
-      level: member
+      level: admin
     - database: agent_memory
       username: agent
-      level: member
+      level: admin
   cors:
     origins:
       - app://obsidian.md
@@ -66,7 +66,7 @@ schema:
   logins:
     - username: str
       password: password?
-      admin: bool?
+      server_admin: bool?
   rights:
     - database: match(^[a-z][a-z0-9_$()+/-]*$)
       username: str

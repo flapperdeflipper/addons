@@ -63,7 +63,7 @@ mkdir -p "$ADDON_DIR" "$USERS_DIR"
 # ---------------------------------------------------------------------------
 # Step 2: Resolve credentials
 #
-# The first login with admin:true is the server administrator; exactly one
+# The first login with server_admin:true is the server administrator; exactly one
 # is required. Any login with a blank password gets a strong generated one
 # persisted under /config — never printed to the log, since Supervisor logs
 # end up in diagnostics and support bundles.
@@ -88,8 +88,8 @@ resolve_password() {
     printf '%s' "$generated"
 }
 
-ADMIN_USERNAME="$(jq -r 'first((.logins // [])[] | select(.admin == true) | .username) // empty' "$OPTIONS_JSON")"
-[[ -n "$ADMIN_USERNAME" ]] || die "no login has admin: true — exactly one is required"
+ADMIN_USERNAME="$(jq -r 'first((.logins // [])[] | select(.server_admin == true) | .username) // empty' "$OPTIONS_JSON")"
+[[ -n "$ADMIN_USERNAME" ]] || die "no login has server_admin: true — exactly one is required"
 
 # Migration from obsidian-sync: adopt the previously generated admin password
 # so migrated vaults keep their credentials (and LiveSync clients keep working).
@@ -103,11 +103,11 @@ ADMIN_PASSWORD=""
 for i in $(seq 0 $((LOGINS_COUNT - 1))); do
     username="$(login_field "$i" username)"
     password="$(login_field "$i" password)"
-    is_admin="$(login_field "$i" admin)"
+    is_admin="$(login_field "$i" server_admin)"
     [[ -n "$username" ]] || die "logins[$i] is missing a username"
     if [[ "$is_admin" == "true" ]]; then
         [[ "$username" == "$ADMIN_USERNAME" ]] \
-            || die "only one login may set admin: true (found '${ADMIN_USERNAME}' and '${username}')"
+            || die "only one login may set server_admin: true (found '${ADMIN_USERNAME}' and '${username}')"
         ADMIN_PASSWORD="$(resolve_password "$username" "$password")"
     fi
 done
@@ -179,6 +179,14 @@ log "CouchDB is up, applying configuration"
 # ---------------------------------------------------------------------------
 # Step 6: Provision — every call below is idempotent, so this runs safely on
 # each start and repairs configuration changed by hand in Fauxton.
+#
+# NON-DESTRUCTIVE BY DESIGN: provisioning only ever CREATES or ADDS.
+# Removing a database, login or right from the options never deletes or
+# revokes the corresponding object inside CouchDB — clean-up is a manual,
+# deliberate act (Fauxton or curl). The only automated deleter in this
+# add-on is the docstore sweeper, and it removes solely expired documents
+# in registry databases. Nothing ever drops indexes, design documents,
+# databases or users.
 # ---------------------------------------------------------------------------
 
 # Promotes the single node out of the uninitialised state. A node that is
@@ -288,7 +296,7 @@ ensure_user() {
 
 for i in $(seq 0 $((LOGINS_COUNT - 1))); do
     username="$(login_field "$i" username)"
-    [[ "$(login_field "$i" admin)" == "true" ]] && continue
+    [[ "$(login_field "$i" server_admin)" == "true" ]] && continue
     password="$(resolve_password "$username" "$(login_field "$i" password)")"
     ensure_user "$username" "$password"
 done

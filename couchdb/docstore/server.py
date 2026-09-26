@@ -84,15 +84,19 @@ class CouchClient:
     def ensure_indexes(self, db):
         # Mango refuses selectors on fields without an index; these three cover
         # type lookups, queue claims and the expiry sweep. Idempotent.
-        for name, fields in (
-            ("type", ["type"]),
-            ("queue-status", ["type", "queue", "status"]),
-            ("expires", ["expires"]),
+        # Explicit ddoc+name: deterministic on every start, clearly ours, and
+        # unable to collide with or redefine user- or LiveSync-created indexes
+        # (which get hash-named ddocs). Creating never deletes anything.
+        for ddoc, fields in (
+            ("docstore-type", ["type"]),
+            ("docstore-queue-status", ["type", "queue", "status"]),
+            ("docstore-expires", ["expires"]),
         ):
             try:
-                self._request("POST", f"/{db}/_index", {"name": name, "index": {"fields": fields}, "type": "json"})
+                self._request("POST", f"/{db}/_index",
+                              {"ddoc": ddoc, "name": ddoc, "index": {"fields": fields}, "type": "json"})
             except RuntimeError as exc:
-                log(f"index {name} on {db}: {exc}")
+                log(f"index {ddoc} on {db}: {exc}")
 
 
 

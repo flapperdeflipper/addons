@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.7.0 (2026-09-26)
+
+Separates the two kinds of admin that coexist in the options, and makes the non-destructive contract explicit.
+
+- **Breaking (options):** login flag `admin:` renamed to `server_admin:` — the CouchDB **server** administrator. Stored options with the old key must be re-saved before the add-on will start. `level: admin` in `rights:` keeps meaning **database** admin (design docs + Mango indexes); defaults now grant it to the vault user on the vault database (Obsidian LiveSync creates its indexes there) and to the docstore user on the agent databases
+- **Robustness:** docstore indexes now use explicit named design documents (`docstore-*`) — deterministic across restarts, clearly ours, never colliding with or redefining user- or LiveSync-created indexes
+- **Documented contract:** provisioning is non-destructive by design — it only creates and adds; removing an entry from the options never deletes or revokes the live object; the only automated deleter is the TTL sweeper (expired documents in registry databases only)
+
 ## 3.6.1 (2026-09-26)
 
 - **Fixed:** docstore MCP exited at startup when the docstore user's password was generated (blank in options) — run.sh now passes the resolved password via `DOCSTORE_PASSWORD`/`DOCSTORE_USERNAME` env instead of the server re-reading options.json
