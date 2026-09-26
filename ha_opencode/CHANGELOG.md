@@ -1,6 +1,7 @@
 ## 3.1.5
 
-- **Changed** — automated dependency update (Renovate).
+- **Changed** — bundled dependency updates: ws v8.22.0, @modelcontextprotocol/sdk ^1.30.1.
+- **Changed** — catch-up for updates merged without version bumps, which re-pushed the 3.1.4 image tag: puppeteer-core v25, vitest v5, vscode-languageserver v10, zod v4. The `Version bumps` check is now required, so this cannot recur silently.
 
 ## 3.1.4
 
