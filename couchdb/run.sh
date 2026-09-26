@@ -71,8 +71,10 @@ mkdir -p "$ADDON_DIR" "$USERS_DIR"
 # ---------------------------------------------------------------------------
 # Step 2: Resolve credentials
 #
-# The first login with server_admin:true is the server administrator; exactly one
-# is required. Any login with a blank password gets a strong generated one
+# Logins with server_admin:true are CouchDB server administrators; at least
+# one is required and more are allowed. The first is the bootstrap admin
+# (passed to the image entrypoint); every start converges ALL of them (see
+# Step 6) so password or username changes in the options apply on restart. Any login with a blank password gets a strong generated one
 # persisted under /config — never printed to the log, since Supervisor logs
 # end up in diagnostics and support bundles.
 # ---------------------------------------------------------------------------
@@ -113,9 +115,7 @@ for i in $(seq 0 $((LOGINS_COUNT - 1))); do
     password="$(login_field "$i" password)"
     is_admin="$(login_field "$i" server_admin)"
     [[ -n "$username" ]] || die "logins[$i] is missing a username"
-    if [[ "$is_admin" == "true" ]]; then
-        [[ "$username" == "$ADMIN_USERNAME" ]] \
-            || die "only one login may set server_admin: true (found '${ADMIN_USERNAME}' and '${username}')"
+    if [[ "$is_admin" == "true" ]] && [[ "$username" == "$ADMIN_USERNAME" ]]; then
         ADMIN_PASSWORD="$(resolve_password "$username" "$password")"
     fi
 done
@@ -236,6 +236,26 @@ set_config() {
     esac
 }
 
+# Converge server administrators: every login with server_admin:true is
+# (re)asserted in the [admins] config on every start, so password or username
+# changes in the options apply on restart. Removing a login from the options
+# does NOT revoke an existing administrator (non-destructive contract) -
+# revocation is a manual, deliberate act.
+for i in $(seq 0 $((LOGINS_COUNT - 1))); do
+    [[ "$(login_field "$i" server_admin)" == "true" ]] || continue
+    username="$(login_field "$i" username)"
+    password="$(resolve_password "$username" "$(login_field "$i" password)")"
+    code="$(curl -sS -o /dev/null -w '%{http_code}' \
+        -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
+        -X PUT "${COUCH_URL}/_node/_local/_config/admins/$(printf '%s' "$username" | jq -sRr @uri)" \
+        -H "Content-Type: application/json" \
+        -d "$(printf '%s' "$password" | jq -Rs .)" 2>&1 || true)"
+    case "$code" in
+        2*) log "  server admin '${username}' asserted" ;;
+        *) die "Failed to assert server admin '${username}' (HTTP ${code})" ;;
+    esac
+done
+
 set_config "require authenticated HTTP users" "chttpd/require_valid_user" '"true"'
 set_config "require authenticated HTTP users for authentication" "chttpd_auth/require_valid_user" '"true"'
 set_config "the HTTP authentication challenge" "httpd/WWW-Authenticate" '"Basic realm=\"couchdb\""'
@@ -319,13 +339,21 @@ apply_right() {
     security="$(curl -sS -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
         "${COUCH_URL}/$(printf '%s' "$db" | jq -sRr @uri)/_security" 2>/dev/null || echo '{}')"
     [[ "$(jq -r 'type' <<<"$security")" == "object" ]] || security='{}'
+    # Options are leading on the LEVEL too: a user declared admin is removed
+    # from members (and vice versa) so member<->admin changes converge on the
+    # next start instead of accumulating. Role arrays (e.g. LiveSync's _admin)
+    # are preserved untouched.
     merged="$(jq -c --arg u "$username" \
         --argjson admin "$([[ "$level" == "admin" ]] && echo true || echo false)" '
+        def names_of($b): (($b // {}).names // []);
+        def with_names($b; $n): {roles: (($b // {}).roles // []), names: $n};
         if $admin
-        then .admins = {roles: ((.admins // {}).roles // []),
-                        names: (((.admins // {}).names // []) + [$u] | unique)}
-        else .members = {roles: ((.members // {}).roles // []),
-                         names: (((.members // {}).names // []) + [$u] | unique)}
+        then
+            .members //= {} | .members.names = ((names_of(.members)) - [$u])
+            | .admins = with_names(.admins; ((names_of(.admins)) + [$u] | unique))
+        else
+            .admins //= {} | .admins.names = ((names_of(.admins)) - [$u])
+            | .members = with_names(.members; ((names_of(.members)) + [$u] | unique))
         end' <<<"$security")"
     code="$(curl -sS -o /dev/null -w '%{http_code}' \
         -u "${ADMIN_USERNAME}:${ADMIN_PASSWORD}" \
