@@ -1,3 +1,7 @@
+## 3.1.5
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.4
 
 - **Changed** — map type `addon_config` -> `app_config` (same volume, new Supervisor naming); clears the Supervisor legacy-map validation warning.
