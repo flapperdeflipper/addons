@@ -1,0 +1,80 @@
+---
+name: "CouchDB"
+slug: couchdb
+description: >-
+  CouchDB with declarative databases, users and rights. Serves Obsidian
+  LiveSync vaults and an agent docstore MCP endpoint. Plain HTTP — put your
+  own reverse proxy in front for TLS.
+version: "3.6.0"
+image: flapperdeflipper/addon-couchdb
+url: "https://github.com/flapperdeflipper/addons/tree/master/couchdb"
+arch:
+  - amd64
+startup: services
+init: false
+ports:
+  5984/tcp: 5984
+ports_description:
+  5984/tcp: "CouchDB HTTP incl. Fauxton UI at /_utils — add a reverse proxy for TLS"
+map:
+  - addon_config:rw
+options:
+  log_level: info
+  databases:
+    - obsidian
+    - agent_handoffs
+    - agent_tasks
+    - agent_reports
+    - agent_memory
+  logins:
+    - username: admin
+      password: ""
+      admin: true
+    - username: vault
+      password: ""
+    - username: agent
+      password: ""
+  rights:
+    - database: obsidian
+      username: vault
+      level: member
+    - database: agent_handoffs
+      username: agent
+      level: member
+    - database: agent_tasks
+      username: agent
+      level: member
+    - database: agent_reports
+      username: agent
+      level: member
+    - database: agent_memory
+      username: agent
+      level: member
+  cors:
+    origins:
+      - app://obsidian.md
+      - capacitor://localhost
+      - http://localhost
+  docstore:
+    enabled: true
+    username: agent
+    token: ""
+schema:
+  log_level: list(debug|info|warn|error)
+  databases:
+    - match(^[a-z][a-z0-9_$()+/-]*$)
+  logins:
+    - username: str
+      password: password?
+      admin: bool?
+  rights:
+    - database: match(^[a-z][a-z0-9_$()+/-]*$)
+      username: str
+      level: list(member|admin)
+  cors:
+    origins:
+      - str?
+  docstore:
+    enabled: bool
+    username: str
+    token: password?
