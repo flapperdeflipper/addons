@@ -38,6 +38,9 @@ options:
   memory_enabled: true
   memory_proxy_url: "http://10.60.0.3:4000"
   memory_api_key: ""
+  docstore_enabled: true
+  docstore_url: "http://4e94d283-couchdb:5985"
+  docstore_token: ""
 schema:
   token: password
   playwright_enabled: bool
@@ -54,3 +57,6 @@ schema:
   memory_enabled: bool
   memory_proxy_url: str
   memory_api_key: password
+  docstore_enabled: bool
+  docstore_url: str
+  docstore_token: password
