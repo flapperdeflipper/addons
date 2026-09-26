@@ -5,7 +5,7 @@ description: >-
   CouchDB with declarative databases, users and rights. Serves Obsidian
   LiveSync vaults and an agent docstore MCP endpoint. Plain HTTP — put your
   own reverse proxy in front for TLS.
-version: "3.8.1"
+version: "3.8.2"
 image: flapperdeflipper/addon-couchdb
 url: "https://github.com/flapperdeflipper/addons/tree/master/couchdb"
 arch:
