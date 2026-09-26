@@ -30,6 +30,20 @@ this repo's `obsidian-sync` → generalized into `couchdb` in 3.6.0.
 
 Hand-edits to these in Fauxton are repaired on the next start.
 
+**Non-destructive by design:** provisioning only creates and adds. Removing a
+database, login or right from the options never deletes or revokes anything
+inside CouchDB — clean-up is a manual, deliberate act. The only automated
+deleter is the docstore sweeper (expired documents in registry databases,
+nothing else). `server_admin: true` (logins) is the CouchDB **server**
+administrator; `level: admin` (rights) is a **database** administrator —
+design documents and Mango indexes need the latter, which is why the LiveSync
+vault user and the docstore user both use it on their own databases.
+
+**Upgrading from 3.6.x:** the login flag `admin:` was renamed to
+`server_admin:`. Stored options with the old key fail the new schema —
+after updating, re-save the options with `server_admin: true` on the
+administrator login, then start.
+
 ## Options
 
 ```yaml
@@ -41,16 +55,16 @@ databases:
   - agent_reports
   - agent_memory
 logins:
-  - username: admin      # exactly one admin: true
+  - username: admin      # exactly one server_admin: true
     password: ""         # blank -> generated, persisted, never logged
-    admin: true
-  - username: vault      # LiveSync client account (phase 2)
+    server_admin: true
+  - username: vault      # LiveSync client account
     password: ""
   - username: agent      # docstore MCP + human Fauxton review account
     password: ""
 rights:
-  - {database: obsidian,       username: vault, level: member}
-  - {database: agent_handoffs, username: agent, level: member}
+  - {database: obsidian,       username: vault, level: admin}   # LiveSync creates indexes
+  - {database: agent_handoffs, username: agent, level: admin}   # docstore creates indexes
   # ...one row per database/user pair
 cors:
   origins:

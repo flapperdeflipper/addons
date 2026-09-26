@@ -7,10 +7,10 @@ configuration:
     description: Databases created (idempotently) on every start. The first must be lowercase; a-z 0-9 _ $ ( ) + / -
   logins:
     name: Logins
-    description: CouchDB users. Exactly one entry with admin true is the server administrator; the rest are regular users. Blank passwords are generated and saved under /config/couchdb/users/, never printed to the log.
+    description: CouchDB users. Exactly one entry with server_admin true is the server administrator; the rest are regular users. Blank passwords are generated and saved under /config/couchdb/users/, never printed to the log.
   rights:
     name: Rights
-    description: Per-database grants. Member can read and write documents; admin can additionally manage design documents. Databases with no members stay readable by any authenticated user.
+    description: Per-database grants. Member can read and write documents; admin can additionally manage design documents and Mango indexes (Obsidian LiveSync and the docstore both need admin on their own database). Databases with no members stay readable by any authenticated user.
   cors:
     name: CORS
     description: Cross-origin origins allowed by CouchDB. Defaults to the Obsidian LiveSync app origins; empty list disables CORS.
