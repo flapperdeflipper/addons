@@ -12,6 +12,23 @@ permissions:
   contents: read
 
 jobs:
+  # Release-convention guard: an add-on whose image-affecting files change
+  # must bump `version:` in its config.yaml (Renovate PRs do this via the
+  # post-upgrade task; anything else fails here instead of re-releasing an
+  # existing image tag).
+  version-bump:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    name: Version bumps
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check changed add-ons for version bumps
+        run: scripts/check-version-bump.sh "origin/${{ github.base_ref }}"
+
   init:
     runs-on: ubuntu-latest
     name: Initialize tests
