@@ -130,6 +130,7 @@ jobs:
             --${{ matrix.arch }} \
             --target /data/${{ matrix.addon }} \
             --docker-hub flapperdeflipper \
+            --no-latest \
             --cosign \
             --no-cosign-verify \
             --addon
