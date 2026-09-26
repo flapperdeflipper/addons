@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.0 (2026-09-26)
+
+The options are leading: every start converges the full declared state.
+
+- **New:** multiple `server_admin: true` logins are supported (CouchDB natively allows several server administrators). The first remains the bootstrap admin for the image entrypoint; every start re-asserts ALL of them via `_config/admins`, so server-admin password or username changes apply on restart. Removing a login from the options still does not revoke an existing administrator (non-destructive contract)
+- **Changed:** rights now converge on the declared level — a user moved between `member` and `admin` in the options is moved between the security object's buckets on the next start instead of accumulating in both. Role arrays (e.g. LiveSync's `_admin`) are preserved
+- Already the case, now documented: user passwords are re-asserted on every start (`_users` upsert), databases/CORS/hardening re-applied, so any options change lands on the next restart
+
 ## 3.7.1 (2026-09-26)
 
 - **Fixed:** `!secret <key>` references in `databases` and `rights[].database` were resolved and stored as plain values at save time — the `match()` schema constraint forced Supervisor to validate (and persist) the expanded value. Schema relaxed to plain `str` so references persist in stored options and expand when the container starts (same behaviour as the MariaDB add-on); run.sh keeps validating database names with a clear error
