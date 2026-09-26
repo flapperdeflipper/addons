@@ -4,7 +4,7 @@ slug: mcp_hub
 description: Shared MCP servers over HTTP for OpenCode, LiteLLM and other agents - one process per server instead of one per session.
 url: https://github.com/flapperdeflipper/addons/tree/master/mcp-hub
 image: flapperdeflipper/addon-mcp-hub
-version: "1.2.3"
+version: "1.2.4"
 
 arch:
   - amd64
@@ -38,6 +38,9 @@ options:
   memory_enabled: true
   memory_proxy_url: "http://10.60.0.3:4000"
   memory_api_key: ""
+  docstore_enabled: true
+  docstore_url: "http://4e94d283-couchdb:5985"
+  docstore_token: ""
 schema:
   token: password
   playwright_enabled: bool
@@ -54,3 +57,6 @@ schema:
   memory_enabled: bool
   memory_proxy_url: str
   memory_api_key: password
+  docstore_enabled: bool
+  docstore_url: str
+  docstore_token: password

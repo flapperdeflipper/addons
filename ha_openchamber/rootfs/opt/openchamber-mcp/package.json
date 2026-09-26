@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Agent MCP server for OpenChamber's Project Notes (streamable HTTP, bearer auth)",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0"
+    "@modelcontextprotocol/sdk": "1.30.1"
   }
 }
