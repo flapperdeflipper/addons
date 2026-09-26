@@ -34,5 +34,6 @@ import haNative from "./servers/ha-native/index.js";
 import playwright from "./servers/playwright/index.js";
 import homeassistant from "./servers/homeassistant/index.js";
 import memory from "./servers/memory/index.js";
+import docstore from "./servers/docstore/index.js";
 
-export const MODULES = [victoriametrics, haNative, playwright, homeassistant, memory];
+export const MODULES = [victoriametrics, haNative, playwright, homeassistant, memory, docstore];
