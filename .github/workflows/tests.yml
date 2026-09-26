@@ -94,6 +94,17 @@ jobs:
           suites=0
 
           if ls test/*.test.js >/dev/null 2>&1; then
+            # Suites under test/ may import bundled code in rootfs/opt/
+            # whose dependencies ship only in the built image (mcp-hub's
+            # src imports @modelcontextprotocol/sdk and @playwright/mcp).
+            # Install the bundled packages first so imports resolve.
+            for pkg_lock in rootfs/opt/*/package-lock.json; do
+              [[ -e "$pkg_lock" ]] || continue
+              echo "::group::npm ci $(dirname "$pkg_lock")"
+              (cd "$(dirname "$pkg_lock")" && npm ci --include=dev --no-audit --no-fund)
+              echo "::endgroup::"
+            done
+
             echo "::group::node --test test/*.test.js"
             node --test test/*.test.js
             echo "::endgroup::"
