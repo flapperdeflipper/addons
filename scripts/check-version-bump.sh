@@ -17,7 +17,7 @@ git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1 || {
     exit 0
 }
 
-version_of() { sed -n -E 's/^version:[[:space:]]*"?([^"#[:space:]]+)"?.*$/\1/p' "$1" | head -1; }
+version_of() { sed -n -E 's/^version:[[:space:]]*"?([^"#[:space:]]+)"?.*$/\1/p' "${1:-/dev/stdin}" | head -1; }
 
 mapfile -t dirs < <(
     git diff --name-only "${BASE_REF}"...HEAD -- \

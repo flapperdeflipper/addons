@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.5
+
+- **Changed** — automated dependency update (Renovate): bundled `@modelcontextprotocol/sdk` 1.30.1 (merged without a release; catch-up bump).
+
 ## 1.2.4
 
 - **New:** `docstore` server — forwards `/mcp/docstore` to the couchdb add-on's registry-validated MCP endpoint (`doc_*` tools, TTL sweeper) on `4e94d283-couchdb:5985`; options `docstore_enabled` / `docstore_url` / `docstore_token`

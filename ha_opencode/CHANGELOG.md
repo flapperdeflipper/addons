@@ -1,3 +1,20 @@
+## 3.1.7
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.2.0`: adds the Dagu CLI (`dagu` 2.17.2, matching the Dagu server on hd) and the vendored upstream `dagu` skill in `/opt/skills`. Point the CLI at the server with `dagu context add`.
+
+## 3.1.6
+
+- **Changed** — automated dependency update (Renovate): bundled `ha-mcp-server` `@modelcontextprotocol/sdk` 1.30.1 + `zod` 4, `ha-lsp-server` `vscode-languageserver` 10 (merged without a release; catch-up bump).
+
+## 3.1.5
+
+- **Changed** — bundled dependency updates: ws v8.22.0, @modelcontextprotocol/sdk ^1.30.1.
+- **Changed** — catch-up for updates merged without version bumps, which re-pushed the 3.1.4 image tag: puppeteer-core v25, vitest v5, vscode-languageserver v10, zod v4. The `Version bumps` check is now required, so this cannot recur silently.
+
+## 3.1.4
+
+- **Changed** — map type `addon_config` -> `app_config` (same volume, new Supervisor naming); clears the Supervisor legacy-map validation warning.
+
 ## 3.1.3
 
 - **Changed** — automated dependency update (Renovate).
