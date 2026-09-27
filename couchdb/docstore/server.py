@@ -253,7 +253,7 @@ class DocstoreServer:
             now=now, agent=args.get("agent", "unknown"), session=args.get("session", "unknown"),
         )
         stored = self.couch.put(db, doc_id, prepared)
-        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("_rev"), "expires": prepared.get("expires")})
+        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("rev"), "expires": prepared.get("expires")})
 
     def _tool_doc_update(self, args):
         db, doc_id, rev = args["db"], args["id"], args["rev"]
@@ -265,7 +265,7 @@ class DocstoreServer:
         )
         prepared["_rev"] = rev
         stored = self.couch.put(db, doc_id, prepared)
-        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("_rev")})
+        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("rev")})
 
     def _tool_doc_delete(self, args):
         self.couch.delete(args["db"], args["id"], args["rev"])
@@ -299,7 +299,7 @@ class DocstoreServer:
                 stored = self.couch.put("agent_tasks", candidate["_id"], claimed)
             except ConflictError:
                 continue
-            return _dumps({"claimed": candidate["_id"], "rev": stored.get("_rev"), "doc": stored})
+            return _dumps({"claimed": candidate["_id"], "rev": stored.get("rev"), "doc": stored})
         raise core.DocstoreError(f"queue {queue!r} is empty")
 
     def _tool_task_complete(self, args):
@@ -309,7 +309,7 @@ class DocstoreServer:
         if args.get("agent"):
             prepared["agent"] = args["agent"]
         stored = self.couch.put(db, doc_id, prepared)
-        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("_rev"), "expires": prepared.get("expires")})
+        return _dumps({"ok": True, "id": doc_id, "rev": stored.get("rev"), "expires": prepared.get("expires")})
 
 
 def _dumps(obj):
