@@ -51,7 +51,7 @@ class TestIngressProxy(unittest.TestCase):
 
     def test_forwards_with_injected_basic_auth(self):
         req = urllib.request.Request(self.url + "/_utils", headers={
-            "X-Hass-Source": "ingress", "X-Remote-User-Id": "ha-user-1", "X-Remote-User-Name": "flip"})
+            "X-Hass-Source": "core_ingress", "X-Remote-User-Id": "ha-user-1", "X-Remote-User-Name": "flip"})
         with urllib.request.urlopen(req, timeout=10) as r:
             self.assertEqual(json.loads(r.read())["ok"], True)
         self.assertEqual(Upstream.seen["path"], "/_utils")

@@ -38,11 +38,10 @@ def make_handler(upstream, credentials):
             # Supervisor 2026.x; the older X-Hassio-Key contract is gone).
             # Requiring both keeps the injected-admin path reachable only via
             # an authenticated HA ingress session.
-            if (
-                self.headers.get("X-Hass-Source") != "ingress"
-                or not self.headers.get("X-Remote-User-Id")
-            ):
-                # Diagnostic: header NAMES only (never values).
+            # Presence-based: only HA ingress injects X-Hass-Source together
+            # with the authenticated X-Remote-User-* headers. The exact source
+            # value differs across Supervisor versions, so it is not matched.
+            if not (self.headers.get("X-Hass-Source") and self.headers.get("X-Remote-User-Id")):
                 names = sorted(k for k in self.headers.keys() if k.lower().startswith("x-"))
                 log(f"403 {self.command} {self.path}: not an authenticated ingress request; saw: {names}")
                 self.send_error(403, "ingress only")
