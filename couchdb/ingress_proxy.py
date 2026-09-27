@@ -48,7 +48,14 @@ def make_handler(upstream, credentials):
                 return
             length = int(self.headers.get("Content-Length") or 0)
             body = self.rfile.read(length) if length else None
-            req = urllib.request.Request(upstream + self.path, method=self.command, data=body)
+            # Fauxton derives its asset root one level above /_utils, so
+            # through the ingress prefix its asset requests arrive without the
+            # /_utils prefix and 404 on CouchDB. Rewrite only that namespace;
+            # API paths (_all_dbs, _session, ...) are correct as-is.
+            path = self.path
+            if path.startswith("/dashboard.assets"):
+                path = "/_utils" + path
+            req = urllib.request.Request(upstream + path, method=self.command, data=body)
             req.add_header("Authorization", auth_header)
             for header in ("Content-Type", "Accept", "If-None-Match", "If-Match"):
                 if self.headers.get(header):

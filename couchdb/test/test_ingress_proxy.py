@@ -58,6 +58,14 @@ class TestIngressProxy(unittest.TestCase):
         expected = "Basic " + base64.b64encode(CREDS.encode()).decode()
         self.assertEqual(Upstream.seen["auth"], expected)
 
+    def test_dashboard_assets_rewritten_with_utils_prefix(self):
+        req = urllib.request.Request(
+            self.url + "/dashboard.assets/js/bundle.js",
+            headers={"X-Hass-Source": "core_ingress", "X-Remote-User-Id": "u1"})
+        with urllib.request.urlopen(req, timeout=10):
+            pass
+        self.assertEqual(Upstream.seen["path"], "/_utils/dashboard.assets/js/bundle.js")
+
     def test_rejects_requests_without_hassio_key(self):
         req = urllib.request.Request(self.url + "/x")  # no ingress headers at all
         try:
