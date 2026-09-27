@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.6 (2026-09-27)
+
+- **Packaging:** CouchDB artwork replaces the Obsidian-branded icon/logo (source: Apache CouchDB/Fauxton bundled assets, Apache-2.0; icon resized to 128x128)
+
 ## 3.9.5 (2026-09-26)
 
 - **Fixed:** blank Fauxton panel — its asset requests arrive without the `/_utils` prefix through the ingress path and 404 on CouchDB; the proxy now rewrites `/dashboard.assets/*` to `/_utils/dashboard.assets/*` (API paths untouched)
