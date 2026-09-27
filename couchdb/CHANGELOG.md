@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.0 (2026-09-26)
+
+- **New:** Fauxton in the Home Assistant sidebar — HA ingress panel (admin-only, `panel_admin`) opening `/_utils`, authenticated by your HA login on top of CouchDB's own credentials. The direct `:5984/_utils` URL stays as fallback; Obsidian LiveSync traffic is unaffected
+
 ## 3.8.2 (2026-09-26)
 
 - **Fixed:** the docstore MCP endpoint now answers `initialize` and `ping` (statelessly, per request) and swallows the `notifications/initialized` notification — proper MCP clients such as the LiteLLM gateway complete a handshake first and previously marked the server unhealthy with zero tools registered
