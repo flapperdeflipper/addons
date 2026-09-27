@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.5 (2026-09-26)
+
+- **Fixed:** blank Fauxton panel — its asset requests arrive without the `/_utils` prefix through the ingress path and 404 on CouchDB; the proxy now rewrites `/dashboard.assets/*` to `/_utils/dashboard.assets/*` (API paths untouched)
+
 ## 3.9.4 (2026-09-26)
 
 - **Fixed:** ingress guard is presence-based — `X-Hass-Source` (any value; it varies across Supervisor versions) together with `X-Remote-User-Id` — instead of matching the literal value "ingress", which real traffic did not carry
