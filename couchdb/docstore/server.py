@@ -196,6 +196,21 @@ class DocstoreServer:
     def handle(self, message):
         method = message.get("method")
         msg_id = message.get("id")
+        if method == "initialize":
+            # Stateless-friendly handshake: answer per request so proper MCP
+            # clients (LiteLLM gateway) complete the initialize round-trip.
+            return {
+                "jsonrpc": "2.0", "id": msg_id,
+                "result": {
+                    "protocolVersion": (message.get("params") or {}).get("protocolVersion", "2025-03-26"),
+                    "capabilities": {"tools": {}},
+                    "serverInfo": {"name": "docstore", "version": "1.0"},
+                },
+            }
+        if method == "ping":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+        if method == "notifications/initialized" and msg_id is None:
+            return None  # notification: no response body
         if method == "tools/list":
             return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": TOOLS}}
         if method == "tools/call":

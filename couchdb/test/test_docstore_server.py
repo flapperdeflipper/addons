@@ -240,5 +240,21 @@ class TestResolveCredentials(unittest.TestCase):
             resolve_credentials(opts, {})
 
 
+class TestMcpHandshake(unittest.TestCase):
+    def test_initialize_answered(self):
+        result = call(make_server(FakeCouch()), "initialize", {
+            "protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}})
+        info = result["result"]["serverInfo"]
+        self.assertEqual(info["name"], "docstore")
+        self.assertIn("tools", result["result"]["capabilities"])
+
+    def test_ping_answered(self):
+        result = call(make_server(FakeCouch()), "ping")
+        self.assertEqual(result["result"], {})
+
+    def test_initialized_notification_returns_none(self):
+        self.assertIsNone(call(make_server(FakeCouch()), "notifications/initialized", msg_id=None))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
