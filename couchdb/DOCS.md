@@ -101,9 +101,10 @@ docstore:
 
 ## Fauxton (management UI)
 
-In the Home Assistant sidebar as **CouchDB** (HA admins only), or directly at
-`http://<host>:5984/_utils`. Fauxton asks for CouchDB credentials on its own
-login screen after HA ingress lets you in.
+In the Home Assistant sidebar as **CouchDB** (HA admins only — HA login gates
+the panel, and a local proxy answers CouchDB's auth challenge with the
+administrator credentials), or directly at `http://<host>:5984/_utils` with
+CouchDB credentials of your own choosing.
 
 CouchDB's built-in web UI is at `http://<host>:5984/_utils`. Log in as
 `agent` to review and manage the agent databases — a non-admin only sees the

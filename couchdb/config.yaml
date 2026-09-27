@@ -5,7 +5,7 @@ description: >-
   CouchDB with declarative databases, users and rights. Serves Obsidian
   LiveSync vaults and an agent docstore MCP endpoint. Plain HTTP — put your
   own reverse proxy in front for TLS.
-version: "3.9.0"
+version: "3.9.1"
 image: flapperdeflipper/addon-couchdb
 url: "https://github.com/flapperdeflipper/addons/tree/master/couchdb"
 arch:
@@ -17,7 +17,7 @@ ports:
 ports_description:
   5984/tcp: "CouchDB HTTP — Obsidian LiveSync and direct Fauxton; add a reverse proxy for TLS"
 ingress: true
-ingress_port: 5984
+ingress_port: 5986
 ingress_entry: /_utils
 panel_icon: mdi:database
 panel_title: CouchDB
