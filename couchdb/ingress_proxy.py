@@ -33,11 +33,18 @@ def make_handler(upstream, credentials):
         protocol_version = "HTTP/1.1"
 
         def _proxy(self):
-            if not self.headers.get("X-Hassio-Key"):
-                # Diagnostic: header NAMES only (never values) so a mismatched
-                # ingress contract is visible in the add-on log.
+            # HA ingress identifies itself with X-Hass-Source: ingress and,
+            # once the HA user is authenticated, X-Remote-User-Id (observed on
+            # Supervisor 2026.x; the older X-Hassio-Key contract is gone).
+            # Requiring both keeps the injected-admin path reachable only via
+            # an authenticated HA ingress session.
+            if (
+                self.headers.get("X-Hass-Source") != "ingress"
+                or not self.headers.get("X-Remote-User-Id")
+            ):
+                # Diagnostic: header NAMES only (never values).
                 names = sorted(k for k in self.headers.keys() if k.lower().startswith("x-"))
-                log(f"403 {self.command} {self.path}: no X-Hassio-Key; saw headers: {names}")
+                log(f"403 {self.command} {self.path}: not an authenticated ingress request; saw: {names}")
                 self.send_error(403, "ingress only")
                 return
             length = int(self.headers.get("Content-Length") or 0)

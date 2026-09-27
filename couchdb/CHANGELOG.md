@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.3 (2026-09-26)
+
+- **Fixed:** ingress auth guard now checks the header contract HA actually sends — `X-Hass-Source: ingress` plus an authenticated `X-Remote-User-Id` — instead of the obsolete `X-Hassio-Key` (evidence: 3.9.2 header-name diagnostics). Unauthenticated or non-ingress traffic still 403s; the injected-admin path stays reachable only through an authenticated HA ingress session
+
 ## 3.9.2 (2026-09-26)
 
 - **Diagnostics:** the ingress proxy logs the received header names when rejecting a request without `X-Hassio-Key` (names only, never values) — the observed ingress traffic did not carry the expected header and this identifies what to check for instead
