@@ -7,6 +7,7 @@
 ## 3.8.2 (2026-09-26)
 
 - **Fixed:** the docstore MCP endpoint now answers `initialize` and `ping` (statelessly, per request) and swallows the `notifications/initialized` notification — proper MCP clients such as the LiteLLM gateway complete a handshake first and previously marked the server unhealthy with zero tools registered
+- **Changed:** map type `addon_config` -> `app_config` (same volume, new Supervisor naming); clears the Supervisor legacy-map validation warning
 
 ## 3.8.1 (2026-09-26)
 

@@ -1,3 +1,15 @@
+## 1.3.9
+
+- **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.2.0`: adds the Dagu CLI (`dagu` 2.17.2, matching the Dagu server on hd) and the vendored upstream `dagu` skill in `/opt/skills`. Point the CLI at the server with `dagu context add`.
+
+## 1.3.8
+
+- **Changed** — automated dependency update (Renovate).
+
+## 1.3.7
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.3.6
 
 - **Changed** — base image pin `ghcr.io/flapperdeflipper/agent-base` -> `1.1.1` (automated base-image update).

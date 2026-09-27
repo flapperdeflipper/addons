@@ -23,7 +23,7 @@ panel_icon: mdi:database
 panel_title: CouchDB
 panel_admin: true
 map:
-  - addon_config:rw
+  - app_config:rw
 options:
   log_level: info
   databases:
