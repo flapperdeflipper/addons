@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.1 (2026-09-26)
+
+- **Fixed:** the ingress panel was dead on load — CouchDB's `require_valid_user` challenges Fauxton's static assets with a Basic-auth prompt, which browsers refuse inside the HA ingress iframe. A tiny stdlib auth-injecting proxy now fronts the ingress port (5986): it requires the `X-Hassio-Key` header only HA ingress sends and answers CouchDB's challenge with the administrator credentials, so HA login + `panel_admin` gate the panel and Fauxton loads. The direct `:5984` port is unchanged
+
 ## 3.9.0 (2026-09-26)
 
 - **New:** Fauxton in the Home Assistant sidebar — HA ingress panel (admin-only, `panel_admin`) opening `/_utils`, authenticated by your HA login on top of CouchDB's own credentials. The direct `:5984/_utils` URL stays as fallback; Obsidian LiveSync traffic is unaffected
