@@ -34,6 +34,10 @@ def make_handler(upstream, credentials):
 
         def _proxy(self):
             if not self.headers.get("X-Hassio-Key"):
+                # Diagnostic: header NAMES only (never values) so a mismatched
+                # ingress contract is visible in the add-on log.
+                names = sorted(k for k in self.headers.keys() if k.lower().startswith("x-"))
+                log(f"403 {self.command} {self.path}: no X-Hassio-Key; saw headers: {names}")
                 self.send_error(403, "ingress only")
                 return
             length = int(self.headers.get("Content-Length") or 0)

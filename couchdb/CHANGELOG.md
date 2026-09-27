@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.2 (2026-09-26)
+
+- **Diagnostics:** the ingress proxy logs the received header names when rejecting a request without `X-Hassio-Key` (names only, never values) — the observed ingress traffic did not carry the expected header and this identifies what to check for instead
+
 ## 3.9.1 (2026-09-26)
 
 - **Fixed:** the ingress panel was dead on load — CouchDB's `require_valid_user` challenges Fauxton's static assets with a Basic-auth prompt, which browsers refuse inside the HA ingress iframe. A tiny stdlib auth-injecting proxy now fronts the ingress port (5986): it requires the `X-Hassio-Key` header only HA ingress sends and answers CouchDB's challenge with the administrator credentials, so HA login + `panel_admin` gate the panel and Fauxton loads. The direct `:5984` port is unchanged
