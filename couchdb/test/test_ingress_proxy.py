@@ -50,7 +50,8 @@ class TestIngressProxy(unittest.TestCase):
         cls.proxy.shutdown()
 
     def test_forwards_with_injected_basic_auth(self):
-        req = urllib.request.Request(self.url + "/_utils", headers={"X-Hassio-Key": "ingress-token"})
+        req = urllib.request.Request(self.url + "/_utils", headers={
+            "X-Hass-Source": "ingress", "X-Remote-User-Id": "ha-user-1", "X-Remote-User-Name": "flip"})
         with urllib.request.urlopen(req, timeout=10) as r:
             self.assertEqual(json.loads(r.read())["ok"], True)
         self.assertEqual(Upstream.seen["path"], "/_utils")
@@ -58,7 +59,7 @@ class TestIngressProxy(unittest.TestCase):
         self.assertEqual(Upstream.seen["auth"], expected)
 
     def test_rejects_requests_without_hassio_key(self):
-        req = urllib.request.Request(self.url + "/x", headers={"X-Hassio-Key": ""})
+        req = urllib.request.Request(self.url + "/x")  # no ingress headers at all
         try:
             urllib.request.urlopen(req, timeout=10)
             self.fail("expected 403")
