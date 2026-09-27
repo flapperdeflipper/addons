@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.4 (2026-09-26)
+
+- **Fixed:** ingress guard is presence-based — `X-Hass-Source` (any value; it varies across Supervisor versions) together with `X-Remote-User-Id` — instead of matching the literal value "ingress", which real traffic did not carry
+
 ## 3.9.3 (2026-09-26)
 
 - **Fixed:** ingress auth guard now checks the header contract HA actually sends — `X-Hass-Source: ingress` plus an authenticated `X-Remote-User-Id` — instead of the obsolete `X-Hassio-Key` (evidence: 3.9.2 header-name diagnostics). Unauthenticated or non-ingress traffic still 403s; the injected-admin path stays reachable only through an authenticated HA ingress session
