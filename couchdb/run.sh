@@ -161,8 +161,10 @@ COUCH_PID=$!
 # Without this, a CouchDB that dies during provisioning leaves the script
 # retrying against a socket that will never come up.
 DOCSTORE_PID=""
+INGRESS_PID=""
 cleanup() {
     { [[ -n "$DOCSTORE_PID" ]] && kill -TERM "$DOCSTORE_PID" 2> /dev/null; } || true
+    { [[ -n "$INGRESS_PID" ]] && kill -TERM "$INGRESS_PID" 2> /dev/null; } || true
     kill -TERM "$COUCH_PID" 2> /dev/null || true
 }
 trap cleanup EXIT INT TERM
@@ -435,6 +437,20 @@ if [[ "$DOCSTORE_ENABLED" == "true" ]]; then
 else
     log "Docstore disabled (docstore.enabled=false)"
 fi
+
+# ---------------------------------------------------------------------------
+# Step 7b: Ingress auth proxy (Fauxton panel)
+#
+# HA ingress (gated by the HA login + panel_admin) fronts this port. The
+# proxy requires the X-Hassio-Key header only HA ingress sends and injects
+# the CouchDB admin credentials, because require_valid_user challenges even
+# Fauxton's static assets with a Basic prompt that browsers refuse inside
+# the ingress iframe. Direct :5984 is untouched.
+# ---------------------------------------------------------------------------
+log "Starting ingress auth proxy on :5986"
+INGRESS_USERNAME="$ADMIN_USERNAME" INGRESS_PASSWORD="$ADMIN_PASSWORD" \
+    python3 /ingress_proxy.py &
+INGRESS_PID=$!
 
 # ---------------------------------------------------------------------------
 # Step 8: Hand the container's lifetime back to CouchDB

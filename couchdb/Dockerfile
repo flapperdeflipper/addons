@@ -21,6 +21,7 @@ RUN chmod +x /run.sh
 # Docstore MCP server + default registry (stdlib-only python; registry is
 # copied to /config on first start and managed there).
 COPY docstore /docstore
+COPY ingress_proxy.py /ingress_proxy.py
 
 # io.hass.* labels are injected by home-assistant/builder.
 ENTRYPOINT ["/run.sh"]
