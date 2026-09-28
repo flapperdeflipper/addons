@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.2.5
 
 - **Changed** — automated dependency update (Renovate): bundled `@modelcontextprotocol/sdk` 1.30.1 (merged without a release; catch-up bump).
