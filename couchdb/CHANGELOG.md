@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.7 (2026-09-27)
+
+- **Fixed:** docstore tool replies reported `"rev": null` — the rev key of CouchDB PUT replies is `rev`, not `_rev` (affected `doc_put`, `doc_update`, `task_claim`, `task_complete`)
+
 ## 3.9.6 (2026-09-27)
 
 - **Packaging:** CouchDB artwork replaces the Obsidian-branded icon/logo (source: Apache CouchDB/Fauxton bundled assets, Apache-2.0; icon resized to 128x128)
