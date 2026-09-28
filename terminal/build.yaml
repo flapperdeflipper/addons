@@ -3,10 +3,10 @@
 # shared base image this terminal layers on top of; releases of
 # flapperdeflipper/agent-base open the bump as a pull request automatically.
 build_from:
-  aarch64: ghcr.io/flapperdeflipper/agent-base:1.2.2
-  amd64: ghcr.io/flapperdeflipper/agent-base:1.2.2
+  aarch64: ghcr.io/flapperdeflipper/agent-base:1.2.3
+  amd64: ghcr.io/flapperdeflipper/agent-base:1.2.3
 args:
-  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.2.2"
+  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.2.3"
 labels:
   org.opencontainers.image.title: "Terminal"
   org.opencontainers.image.description: "Personal bash and vim terminal add-on built on the agent-base image"
