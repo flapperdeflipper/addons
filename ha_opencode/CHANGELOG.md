@@ -1,3 +1,7 @@
+## 3.1.9
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.8
 
 - **Changed** — automated dependency update (Renovate).

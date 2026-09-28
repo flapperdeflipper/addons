@@ -8,10 +8,10 @@
 # live in flapperdeflipper/agent-base; releases of that repository open the
 # AGENT_BASE bump as a pull request here automatically.
 build_from:
-  aarch64: ghcr.io/flapperdeflipper/agent-base:1.2.1
-  amd64: ghcr.io/flapperdeflipper/agent-base:1.2.1
+  aarch64: ghcr.io/flapperdeflipper/agent-base:1.2.2
+  amd64: ghcr.io/flapperdeflipper/agent-base:1.2.2
 args:
-  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.2.1"
+  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.2.2"
 labels:
   org.opencontainers.image.title: "OpenCode"
   org.opencontainers.image.description: "AI coding agent for Home Assistant"
