@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
-    "@playwright/mcp": "0.0.82"
+    "@playwright/mcp": "0.0.83"
   },
   "devDependencies": {
     "js-yaml": "^5.0.0"
