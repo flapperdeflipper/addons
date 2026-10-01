@@ -6,7 +6,7 @@
 # (Dockerfile, build.yaml, requirements*.txt). For every add-on whose files
 # changed on this branch, applies the repo release convention:
 #   * bump `version:` in <addon>/config.yaml — semver patch (X.Y.Z),
-#     CalVer YYYY.MM.DD (playwright-browser) or date+counter YYYY.MM.DD.N
+#     CalVer YYYY.MM.DD or date+counter YYYY.MM.DD.N
 #     (mosquitto),
 #   * prepend a "## <new version>" section to <addon>/CHANGELOG.md.
 #

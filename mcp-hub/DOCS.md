@@ -17,12 +17,13 @@ Single port (`8930/tcp`), single bearer token (the `token` option; a
 | `/mcp/victoriametrics` | Prometheus-compatible queries against VictoriaMetrics (fork of the prometheus-mcp-server 1.0.1 tool set: `prom_query`, `prom_range`, `prom_discover`, `prom_metadata`, `prom_targets`) | stateless MCP |
 | `/mcp/ha-native` | Home Assistant native MCP (`/api/mcp/<API ID>`, default API `assist`), forwarded through the Supervisor | JSON-RPC forwarder |
 | `/mcp/homeassistant` | The full ha-mcp-server from the ha_opencode add-on (entity/state, safe config writing, supervisor tools, MQTT, todo, hab/zigporter/ESPHome companions), served by that add-on's always-on 8927 endpoint | JSON-RPC forwarder |
-| `/mcp/playwright/mcp` (streamable HTTP; `/mcp/playwright/sse` legacy) | One shared @playwright/mcp 0.0.80 instance, CDP-connected to the playwright-browser add-on (per-connection browser contexts stay isolated) | supervised upstream |
+| `/mcp/chrome-devtools` | [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) hosted in-process, driving a headless Chromium inside this container over a pipe (page-scoped tools take a `pageId`; `new_page` takes an `isolatedContext` name for separate cookies/storage) | stateless MCP |
 
 `GET /healthz` (no auth) reports per-server state; `GET /` (auth) lists the
-routes. The playwright child binds to loopback only - it is reachable
-exclusively through the authenticated gateway because @playwright/mcp's HTTP
-transport has no authentication of its own.
+routes. The browser never listens on a port: chrome-devtools-mcp launches
+the image's Chromium lazily on the first tool call and talks CDP over a pipe,
+so the authenticated gateway is the only way to drive it. Usage statistics
+and CrUX lookups are disabled.
 
 ## Wiring consumers
 
@@ -76,7 +77,7 @@ and answers 503 on its path; it never takes the hub down.
 - `src/servers/victoriametrics/` - fork of [prometheus-mcp-server](https://github.com/eagle1e6/prometheus-mcp-server) 1.0.1 (MIT): identical tool names, schemas and response shapes, axios replaced with plain fetch.
 - `src/servers/ha-native/native-mcp.js` - fork of ha_opencode's `ha-mcp-server/lib/ha-native-mcp.js` (flapperdeflipper, MIT).
 - `src/auth.js`, `src/stateless.js` - forked from ha_opencode's `ha-mcp-server/lib/http-transport.js` (flapperdeflipper, MIT).
-- `@playwright/mcp` is used as a pinned dependency (0.0.80), not forked.
+- `chrome-devtools-mcp` is used as a pinned dependency, not forked; the hub imports its `createMcpServer` entry point and argument parser.
 
 ## Testing
 
@@ -93,4 +94,7 @@ cd ../../.. && node --test test/
   request but traffic is plain HTTP.
 - The hub token never leaves the host: it is read from the add-on options
   (resolved from `secrets.yaml` via `!secret`) and compared in constant time.
-- The gateway strips `Authorization` before proxying to the playwright child.
+- The gateway strips `Authorization` before proxying to upstream children.
+- No CDP port exists: the browser is reachable only through
+  `/mcp/chrome-devtools`. It replaces the playwright-browser add-on, whose
+  CDP port (9222) accepted anyone on the network.
