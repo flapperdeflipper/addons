@@ -113,7 +113,7 @@ jobs:
           if ls test/*.test.js >/dev/null 2>&1; then
             # Suites under test/ may import bundled code in rootfs/opt/
             # whose dependencies ship only in the built image (mcp-hub's
-            # src imports @modelcontextprotocol/sdk and @playwright/mcp).
+            # src imports @modelcontextprotocol/sdk and chrome-devtools-mcp).
             # Install the bundled packages first so imports resolve.
             for pkg_lock in rootfs/opt/*/package-lock.json; do
               [[ -e "$pkg_lock" ]] || continue

@@ -5,8 +5,8 @@
 #
 # Lean by design: no agent-base toolchain, no s6 - a plain pinned Node image
 # running the gateway in server/src/gateway.js. The FROM line is hardcoded
-# (like playwright-browser) because no build_from matrix is needed for a
-# single-arch Node image; no build.yaml required.
+# because no build_from matrix is needed for a single-arch Node image; no
+# build.yaml required.
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
@@ -21,18 +21,24 @@ ARG BUILD_ARCH
 
 RUN case "${BUILD_ARCH}" in amd64) ;; *) echo "Unsupported BUILD_ARCH: ${BUILD_ARCH:-unset}" >&2; exit 1;; esac
 
-# curl is only used by the container healthcheck.
+# curl is only used by the container healthcheck. chromium is the browser the
+# chrome-devtools server launches in-container over a pipe - no CDP port is
+# ever opened. Debian's package tracks Chromium security updates.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        chromium \
+        fonts-liberation \
+        fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package manifest first for better layer caching; changes to server
 # code must not invalidate the npm install layer.
 COPY rootfs/opt/mcp-hub/package*.json /opt/mcp-hub/
 
-# @playwright/mcp is pinned exactly (0.0.80) - it is the version the
-# playwright-browser add-on setup is tested against; a floating tag could
-# change tool schemas under running sessions.
+# chrome-devtools-mcp is pinned exactly - the hub imports its internals
+# (argument parser) and a floating tag could change tool schemas under
+# running sessions.
 RUN cd /opt/mcp-hub \
     && npm install --omit=dev --no-audit --no-fund \
     && npm cache clean --force \
@@ -46,7 +52,7 @@ RUN chmod +x /run.sh
 EXPOSE 8930/tcp
 
 # Health check - unauthenticated liveness endpoint; per-server health is
-# included in the payload so a crashed playwright child is visible.
+# included in the payload.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -fsS --max-time 5 http://127.0.0.1:8930/healthz || exit 1
 

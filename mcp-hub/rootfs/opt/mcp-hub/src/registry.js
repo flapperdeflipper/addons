@@ -20,8 +20,8 @@
 //                  validated and forwarded per request.
 //   - "upstream":  spawn(ctx) -> { command, args, port }. The gateway runs
 //                  the process on a loopback port and streams-proxyies
-//                  /mcp/<id> to it (used for playwright-mcp, which needs no
-//                  shared state between its own per-connection contexts).
+//                  /mcp/<id> to it (for servers that only ship an HTTP
+//                  transport of their own).
 //
 // Adding a server:
 //   1. create src/servers/<id>/index.js exporting a manifest,
@@ -31,9 +31,9 @@
 
 import victoriametrics from "./servers/victoriametrics/index.js";
 import haNative from "./servers/ha-native/index.js";
-import playwright from "./servers/playwright/index.js";
+import chromeDevtools from "./servers/chrome-devtools/index.js";
 import homeassistant from "./servers/homeassistant/index.js";
 import memory from "./servers/memory/index.js";
 import docstore from "./servers/docstore/index.js";
 
-export const MODULES = [victoriametrics, haNative, playwright, homeassistant, memory, docstore];
+export const MODULES = [victoriametrics, haNative, chromeDevtools, homeassistant, memory, docstore];
