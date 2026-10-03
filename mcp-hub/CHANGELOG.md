@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.0.0
 
 - **Breaking:** the `playwright` server is replaced by **`chrome-devtools`** at `/mcp/chrome-devtools` — [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) 1.10.1 hosted in-process with a headless Chromium inside this container. The browser is launched lazily on the first tool call and driven over a pipe, so no CDP port exists anywhere; previously the playwright-browser add-on served CDP on 9222 to the whole network without authentication. Options `playwright_enabled` / `playwright_cdp_endpoint` are replaced by `chrome_devtools_enabled`. Consumers must move from `/mcp/playwright/mcp` to `/mcp/chrome-devtools` (different tool names); the playwright-browser add-on is no longer needed.
