@@ -8,7 +8,7 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "chrome-devtools-mcp": "1.10.1"
   },
   "devDependencies": {
