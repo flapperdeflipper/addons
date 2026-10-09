@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
-    "puppeteer-core": "^25.0.0",
+    "puppeteer-core": "^25.13.0",
     "ws": "^8.22.0",
     "yaml": "^2.9.0",
     "zod": "^4.0.0"
