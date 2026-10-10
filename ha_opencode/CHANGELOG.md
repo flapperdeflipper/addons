@@ -1,3 +1,11 @@
+## 3.1.16
+
+- **Changed** — automated dependency update (Dependabot): `source-map-js` 1.2.1 -> 1.2.2 in the bundled language server (`rootfs/opt/ha-lsp-server`).
+
+## 3.1.15
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.14
 
 - **Changed** — automated dependency update (Renovate).
