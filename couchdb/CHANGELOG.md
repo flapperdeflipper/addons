@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.8
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.9.7 (2026-09-27)
 
 - **Fixed:** docstore tool replies reported `"rev": null` — the rev key of CouchDB PUT replies is `rev`, not `_rev` (affected `doc_put`, `doc_update`, `task_claim`, `task_complete`)

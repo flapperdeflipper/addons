@@ -1,5 +1,5 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
-ARG BUILD_FROM=couchdb:3.5.2
+ARG BUILD_FROM=couchdb:3.5.3
 FROM ${BUILD_FROM}
 
 # The official couchdb image is Debian-based and carries no s6-overlay, so
