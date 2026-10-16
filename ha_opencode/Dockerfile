@@ -10,7 +10,7 @@
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
-ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.2.4
+ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.3.0
 
 ## Main add-on image
 FROM ${AGENT_BASE}
@@ -46,7 +46,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 # The certified runtime comes from agent-base. Assert the image really
 # inherited the certified build: this catches a base image built from a fork
 # or a broken pin without failing every later layer with a confusing error.
-RUN test "$(opencode --version)" = "$(cat /usr/local/share/opencode-certified-version)"
+RUN test "$(opencode --version)" = "opencode v$(cat /usr/local/share/opencode-certified-version)"
 
 # Copy package.json files first for better layer caching
 # Changes to server code won't invalidate npm install cache
@@ -60,7 +60,7 @@ RUN (cd /opt/ha-mcp-server && npm install --omit=dev --no-audit --no-fund) & \
     && npm cache clean --force \
     && find /opt/ha-mcp-server/node_modules /opt/ha-lsp-server/node_modules \
         -type f \( -name '*.d.ts' -o -name '*.map' \) -delete \
-    && test "$(opencode --version)" = "$(cat /usr/local/share/opencode-certified-version)"
+    && test "$(opencode --version)" = "opencode v$(cat /usr/local/share/opencode-certified-version)"
 
 # Copy root filesystem (server code, scripts, etc.)
 COPY rootfs /

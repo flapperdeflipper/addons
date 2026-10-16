@@ -395,7 +395,7 @@ setup_opencode_runtime() {
     local cpu_mode bundled_package bundled_bin
     local certified_version effective_bin effective_version
 
-    bundled_package="/usr/local/lib/node_modules/opencode-ai"
+    bundled_package="/usr/local/lib/node_modules/@opencode/cli"
     bundled_bin="/usr/local/bin/opencode"
 
     cpu_mode=$(cat /data/.cpu_mode 2>/dev/null || echo "regular")
@@ -414,7 +414,7 @@ setup_opencode_runtime() {
     effective_bin=$(command -v opencode 2>/dev/null || echo "not-found")
     effective_version=$(opencode --version 2>/dev/null || echo "unknown")
     printf '%s\n' "${effective_bin}" > /data/.opencode_bin
-    printf '%s\n' "${effective_version}" > /data/.opencode_version
+    printf '%s\n' "$(opencode_normalize_version "${effective_version}")" > /data/.opencode_version
     bashio::log.info "Effective OpenCode binary: ${effective_bin}"
     bashio::log.info "Effective OpenCode version: ${effective_version}"
 
@@ -426,7 +426,7 @@ setup_opencode_runtime() {
             bashio::log.warning "OpenCode resolved to ${effective_bin}, not the certified runtime in this image"
             ;;
     esac
-    if [ "${effective_version}" != "unknown" ] && [ "${effective_version}" != "${certified_version}" ]; then
+    if [ "${effective_version}" != "unknown" ] && [ "$(opencode_normalize_version "${effective_version}")" != "${certified_version}" ]; then
         bashio::log.warning "Running OpenCode ${effective_version} but this add-on certified ${certified_version}"
     fi
 }
