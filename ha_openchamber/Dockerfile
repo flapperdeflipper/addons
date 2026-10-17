@@ -10,7 +10,7 @@
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
-ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.2.4
+ARG AGENT_BASE=ghcr.io/flapperdeflipper/agent-base:1.3.0
 
 ## OpenChamber add-on image
 FROM ${AGENT_BASE}
@@ -22,7 +22,7 @@ ARG BUILD_ARCH
 # is Ingress-patched at build time (see /opt/openchamber/patch-ingress.js), so
 # it changes only through a tested add-on release. build.yaml carries the same
 # value and is what CI reads.
-ARG OPENCHAMBER_VERSION=1.24.2
+ARG OPENCHAMBER_VERSION=2.3.3
 
 # Environment for better Node.js performance
 ENV NODE_ENV=production \
@@ -45,7 +45,7 @@ RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
         echo "OPENCHAMBER_VERSION is ${OPENCHAMBER_VERSION} but the installed package is ${INSTALLED}" >&2; \
         exit 1; \
     fi \
-    && test "$(opencode --version)" = "$(cat /usr/local/share/opencode-certified-version)" \
+    && test "$(opencode --version)" = "opencode v$(cat /usr/local/share/opencode-certified-version)" \
     && find /usr/local/lib/node_modules/@openchamber -type f \( -name '*.d.ts' -o -name '*.map' -o -name '*.pdb' \) -delete \
     && printf '%s\n' "${OPENCHAMBER_VERSION}" > /usr/local/share/openchamber-pinned-version \
     && test "$(openchamber --version 2>/dev/null | grep -o "${OPENCHAMBER_VERSION}")" = "${OPENCHAMBER_VERSION}"
