@@ -1,3 +1,7 @@
+## 3.1.18
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.17
 
 - **Changed** — automated dependency update (Dependabot): `source-map-js` 1.2.1 -> 1.2.2 in the bundled MCP server (`rootfs/opt/ha-mcp-server`).
