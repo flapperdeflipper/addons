@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.100.11
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.100.10
 
 - **Changed** — automated dependency update (Renovate).
