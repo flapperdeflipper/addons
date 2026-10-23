@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.6
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.0.5
 
 - **Changed** — automated dependency update (Renovate).
