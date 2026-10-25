@@ -1,3 +1,7 @@
+## 1.4.3
+
+- **Changed** — dependency security update (supersedes dependabot #285): ip-address 10.7.2 -> 10.7.5 in the bundled openchamber-mcp server (the transitive missed by 1.4.2). Lockfile-only; addon tests 46/46 pass.
+
 ## 1.4.2
 
 - **Changed** — dependency security updates (supersedes dependabot #279, #281, #282): fast-uri 3.1.9 (CVE-2026-110306 et al.), body-parser 2.4.0 (CVE-2026-111181), zod 4.6.7 — transitives of the bundled openchamber-mcp server. Lockfile-only; addon tests 46/46 pass.
