@@ -1,3 +1,7 @@
+## 3.1.20
+
+- **Changed** — automated dependency update (Renovate): puppeteer-core 25.16.0.
+
 ## 3.1.19
 
 - **Changed** — automated dependency update (Renovate).
