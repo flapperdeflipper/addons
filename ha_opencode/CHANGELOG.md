@@ -1,3 +1,15 @@
+## 3.1.21
+
+- **Changed** — automated dependency update (Renovate): @modelcontextprotocol/sdk 1.32.2 (bundled MCP server).
+
+## 3.1.20
+
+- **Changed** — automated dependency update (Renovate): puppeteer-core 25.16.0.
+
+## 3.1.19
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.18
 
 - **Changed** — automated dependency update (Renovate).
