@@ -5,7 +5,7 @@ description: LiteLLM proxy - an OpenAI-compatible LLM gateway (DeepSeek, Z.ai, .
 url: https://github.com/flapperdeflipper/addons/tree/master/litellm
 
 image: flapperdeflipper/addon-litellm
-version: "1.100.12"
+version: "1.100.13"
 
 init: false
 startup: application
