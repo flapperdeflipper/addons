@@ -15,7 +15,7 @@
 // sessions that need their own cookies/storage.
 
 import { createMcpServer } from "chrome-devtools-mcp";
-import { parseArguments } from "chrome-devtools-mcp/build/src/config/mcp-options.js";
+import { ConfigParser } from "chrome-devtools-mcp/build/src/config/ConfigParser.js";
 import { VERSION } from "chrome-devtools-mcp/build/src/version.js";
 
 export const CHROMIUM_PATH = "/usr/bin/chromium";
@@ -37,8 +37,18 @@ export function buildArgs() {
 }
 
 export function parseServerArgs(args = buildArgs()) {
-  // parseArguments() expects a full process.argv (node + script first).
-  return parseArguments(VERSION, [process.execPath, "chrome-devtools-mcp", ...args], {});
+  // ConfigParser (chrome-devtools-mcp >= 1.11) expects a full process.argv
+  // (node + script first). exitProcess=false surfaces parse errors as
+  // exceptions, and a no-op config locator keeps options coming only from
+  // these args, never from a config file discovered on disk.
+  const parser = new ConfigParser(
+    VERSION,
+    [process.execPath, "chrome-devtools-mcp", ...args],
+    {},
+    false,
+    { locate: () => undefined },
+  );
+  return parser.parse();
 }
 
 export default {
