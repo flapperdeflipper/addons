@@ -1,6 +1,10 @@
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   listESPHomeBoards,
+  collectESPHomeSecretValues,
   manageESPHomeApiKey,
   manageESPHomeFile,
   manageESPHomeFirmware,
@@ -210,6 +214,59 @@ describe("ESPHome metadata, files, secrets, and keys", () => {
     expect(JSON.stringify(result)).not.toContain("plain-value");
     expect(JSON.stringify(result)).not.toContain("first-line");
     expect(JSON.stringify(result)).not.toContain("second-line");
+  });
+
+  it("follows the include-only secrets.yaml shim to the parent secrets file", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "esphome-include-"));
+    try {
+      const configDir = path.join(root, "esphome");
+      await mkdir(configDir);
+      await writeFile(
+        path.join(root, "secrets.yaml"),
+        "mqtt_password: supersecret-value\napi_key: 0123456789abcdef\n",
+      );
+      const values = await collectESPHomeSecretValues("<<: !include ../secrets.yaml\n", { configDir });
+      expect(values.has("supersecret-value")).toBe(true);
+      expect(values.has("0123456789abcdef")).toBe(true);
+      // The include target is a path, not a secret.
+      expect(values.has("../secrets.yaml")).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses includes that escape the Home Assistant config directory", async () => {
+    await expect(
+      collectESPHomeSecretValues("a: !include ../../etc/passwd\n", { configDir: "/homeassistant/esphome" }),
+    ).rejects.toThrow(/escapes the Home Assistant configuration directory/);
+  });
+
+  it("stops at cyclic includes", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "esphome-cycle-"));
+    try {
+      const configDir = path.join(root, "esphome");
+      await mkdir(configDir);
+      await writeFile(path.join(root, "secrets.yaml"), "self: !include ../secrets.yaml\n");
+      const values = await collectESPHomeSecretValues("<<: !include ../secrets.yaml\n", { configDir });
+      expect(values.size).toBe(0);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("withholds output when an included secrets file cannot be read", async () => {
+    const client = recordingClient((command) => {
+      if (command === "devices/get_config") return "<<: !include ../secrets.yaml\n";
+      throw new Error(`Unexpected command ${command}`);
+    });
+    await expect(
+      sanitizeESPHomeResultWithSecrets(client, { output: "x" }, {
+        configDir: "/homeassistant/esphome",
+        readText: async () => {
+          throw new Error("ENOENT");
+        },
+      }),
+    ).rejects.toThrow(/could not be parsed for redaction/);
   });
 
   it("updates YAML-backed friendly names only after hash approval", async () => {
