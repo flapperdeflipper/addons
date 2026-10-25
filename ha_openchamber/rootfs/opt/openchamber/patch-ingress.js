@@ -41,6 +41,11 @@ const globalRoot = execFileSync("npm", ["root", "-g"], {
   encoding: "utf8",
 }).trim();
 const packageRoot = path.join(globalRoot, "@openchamber", "web");
+const installedVersion = JSON.parse(
+  fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"),
+).version;
+const majorVersion = parseInt(installedVersion.split(".")[0], 10);
+const nativeIngress = majorVersion >= 2;
 const distDir = path.join(packageRoot, "dist");
 const assetsDir = path.join(distDir, "assets");
 const indexPath = path.join(distDir, "index.html");
@@ -223,14 +228,22 @@ if (cssRootAssetReferences.length > 0) {
   fail(`root asset references remain in CSS: ${cssRootAssetReferences.join(", ")}`);
 }
 
-if (!patchedRuntimeUrl) {
-  fail("runtime URL builder pattern not found");
-}
-if (!patchedApiBuilder) {
-  fail("API URL builder pattern not found");
-}
-if (!patchedApiClassifier) {
-  fail("API path classifier pattern not found");
+// OpenChamber 2.x consumes the runtime script's window.__OPENCHAMBER_API_BASE_URL__
+// and ships an ingress-aware API path classifier natively, so the bundle-level
+// API patches are only required for 1.x bundles. They stay conditional above
+// and are applied opportunistically when an older bundle still carries them.
+if (!nativeIngress) {
+  if (!patchedRuntimeUrl) {
+    fail("runtime URL builder pattern not found");
+  }
+  if (!patchedApiBuilder) {
+    fail("API URL builder pattern not found");
+  }
+  if (!patchedApiClassifier) {
+    fail("API path classifier pattern not found");
+  }
+} else {
+  console.log(`OpenChamber ${installedVersion}: native ingress API base detected; bundle API patches ${patchedRuntimeUrl || patchedApiBuilder || patchedApiClassifier ? "applied where found" : "not required"}`);
 }
 if (!patchedServiceWorker) {
   fail("service worker registration pattern not found");
