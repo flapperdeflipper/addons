@@ -1,3 +1,7 @@
+## 3.1.23
+
+- **Changed** — dependency updates (supersedes renovate #263 and dependabot #274, #275): vscode-languageserver 10 -> 11 (bundled language server), body-parser 2.4.0 and ip-address 10.7.5 (transitives of the bundled MCP server).
+
 ## 3.1.22
 
 - **Changed** — dependency security roll-up (supersedes dependabot PRs #254, #255 and renovate PR #238): vite 8.3.0 -> 8.3.5 in the bundled language and MCP servers (devDependency chain), zod 4.6.5 -> 4.6.7 in the bundled MCP server. Lockfile-only bumps; all 117 addon tests and 443 bundled-server vitest tests pass.
