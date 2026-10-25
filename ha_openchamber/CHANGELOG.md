@@ -1,3 +1,9 @@
+## 1.4.0
+
+- **Changed** — OpenChamber web UI bumped 1.24.2 → **2.3.3**: the OpenCode 2 line (movable panels, issue/PR board, cross-conversation search, GitLab support, enterprise mode). OpenChamber 2.x requires an OpenCode ≥ 2.0.15 runtime, supplied by repinning AGENT_BASE to agent-base 1.3.0 (certified OpenCode 2.0.29) — the two bumps ship together.
+- **Changed** — the certified-runtime build assertion now expects OpenCode 2's `opencode v<semver>` output format (`opencode --version` prints a `v`-prefixed string since 2.0).
+- **Operational** — with this add-on, https://opencode.pl4.dev answers the V2 server-connection health probe that OpenCode 2 clients use; OpenCode 1 clients can no longer attach (the server speaks V2 only). The add-on remains stopped-by-default for memory savings; start it when the web UI is needed.
+
 ## 1.3.16
 
 - **Changed** — automated dependency update (Renovate).
