@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.26
+
+- **Changed** — automated dependency update (Renovate): pymupdf 2 (paired with pymupdf4llm 2).
+
 ## 2026.9.25
 
 - **Changed** — automated dependency update (Renovate): python-dateutil 3.
