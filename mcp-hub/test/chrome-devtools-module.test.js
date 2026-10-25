@@ -38,7 +38,9 @@ describe("chrome-devtools module", async () => {
     const args = mod.parseServerArgs();
     assert.equal(args.browserUrl, undefined);
     assert.equal(args.wsEndpoint, undefined);
-    assert.equal(args.autoConnect, undefined);
+    // chrome-devtools-mcp 1.12 defaults autoConnect to false (1.10 left it
+    // unset); false or unset both mean "never attaches to a remote browser".
+    assert.ok(!args.autoConnect);
   });
 
   it("serves tools/list without launching a browser", async () => {

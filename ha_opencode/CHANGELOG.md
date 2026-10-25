@@ -1,3 +1,7 @@
+## 3.1.22
+
+- **Changed** — dependency security roll-up (supersedes dependabot PRs #254, #255 and renovate PR #238): vite 8.3.0 -> 8.3.5 in the bundled language and MCP servers (devDependency chain), zod 4.6.5 -> 4.6.7 in the bundled MCP server. Lockfile-only bumps; all 117 addon tests and 443 bundled-server vitest tests pass.
+
 ## 3.1.21
 
 - **Changed** — automated dependency update (Renovate): @modelcontextprotocol/sdk 1.32.2 (bundled MCP server).
