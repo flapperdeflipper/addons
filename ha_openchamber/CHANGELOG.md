@@ -1,3 +1,7 @@
+## 1.4.1
+
+- **Changed** — dependency security update (supersedes dependabot #258): hono 4.13.9 -> 4.13.14 in the bundled openchamber-mcp server (GHSA-5r4p-p66f-jhc7, serve-static path confusion). Lockfile-only bump; addon tests 46/46 pass.
+
 ## 1.4.0
 
 - **Changed** — OpenChamber web UI bumped 1.24.2 → **2.3.3**: the OpenCode 2 line (movable panels, issue/PR board, cross-conversation search, GitLab support, enterprise mode). OpenChamber 2.x requires an OpenCode ≥ 2.0.15 runtime, supplied by repinning AGENT_BASE to agent-base 1.3.0 (certified OpenCode 2.0.29) — the two bumps ship together.
