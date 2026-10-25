@@ -9,11 +9,67 @@ import {
   sha256Text,
   validateConfigurationFilename,
 } from "./esphome-device-builder.js";
+import { readFile as readFileText } from "node:fs/promises";
+import path from "node:path";
 import { parse as parseYaml } from "yaml";
 
 const MAX_HISTORY_TEXT_CHARS = 100000;
 const MAX_JOB_OUTPUT_LINES = 200;
 const MAX_JOB_OUTPUT_CHARS = 50000;
+
+// ESPHome's YAML dialect adds a set of custom tags. Registering them keeps
+// parseYaml() from emitting TAG_RESOLVE_FAILED warnings and keeps the scalar
+// payload visible (so `!include ../secrets.yaml` can be followed below).
+const ESPHOME_CUSTOM_TAGS = [
+  "!include",
+  "!include_dir_list",
+  "!include_dir_named",
+  "!include_dir_merge_list",
+  "!include_dir_merge_named",
+  "!secret",
+  "!lambda",
+  "!env_var",
+  "!extend",
+  "!remove",
+].map((tag) => ({ tag, resolve: (value) => value }));
+
+const ESPHOME_INCLUDE_PATTERN = /!include(?:_dir_[a-z_]+)?[ \t]+("[^"\n]+"|'[^'\n]+'|[^\s#]+)/g;
+const MAX_INCLUDE_DEPTH = 3;
+// The ESPHome add-on's config directory: /homeassistant/esphome. Includes may
+// reach out of it (the conventional `../secrets.yaml` points at the parent HA
+// secrets.yaml), so the confinement boundary is its parent — /homeassistant.
+const DEFAULT_ESPHOME_CONFIG_DIR = "/homeassistant/esphome";
+
+function parseESPHomeYaml(content) {
+  return parseYaml(content, { customTags: ESPHOME_CUSTOM_TAGS });
+}
+
+function includeTargets(content) {
+  const targets = [];
+  for (const match of content.matchAll(ESPHOME_INCLUDE_PATTERN)) {
+    let target = match[1];
+    if (
+      (target.startsWith('"') && target.endsWith('"')) ||
+      (target.startsWith("'") && target.endsWith("'"))
+    ) {
+      target = target.slice(1, -1);
+    }
+    targets.push(target);
+  }
+  return targets;
+}
+
+function resolveIncludePath(configDir, target) {
+  if (!target || target.startsWith("/") || target.startsWith("~")) {
+    throw new Error("ESPHome include must be a relative path");
+  }
+  const boundary = path.resolve(configDir, "..");
+  const resolved = path.resolve(configDir, target);
+  if (resolved !== boundary && !resolved.startsWith(`${boundary}${path.sep}`)) {
+    throw new Error("ESPHome include escapes the Home Assistant configuration directory");
+  }
+  return resolved;
+}
 
 function collectScalarValues(value, target) {
   if (Array.isArray(value)) {
@@ -30,7 +86,49 @@ function collectScalarValues(value, target) {
   }
 }
 
-export async function sanitizeESPHomeResultWithSecrets(client, result) {
+
+/**
+ * Collects plausible secret values from ESPHome's secrets.yaml, following
+ * ESPHome `!include` tags (this home's secrets.yaml is the include-only shim
+ * `<<: !include ../secrets.yaml`). Reads are confined to the HA config
+ * directory, depth- and cycle-guarded, and never log file contents.
+ */
+export async function collectESPHomeSecretValues(content, options = {}) {
+  const configDir = path.resolve(options.configDir ?? DEFAULT_ESPHOME_CONFIG_DIR);
+  const readText = options.readText ?? ((file) => readFileText(file, "utf8"));
+  const values = new Set();
+  const visited = new Set();
+
+  async function ingest(text, depth) {
+    const parsed = parseESPHomeYaml(text);
+    collectScalarValues(parsed, values);
+    const targets = includeTargets(text);
+    // Include targets themselves are paths, not secrets; do not let them
+    // over-redact ordinary output that happens to mention the path.
+    for (const target of targets) values.delete(target);
+    for (const target of targets) {
+      if (depth >= MAX_INCLUDE_DEPTH) {
+        throw new Error("ESPHome secrets include nesting is too deep");
+      }
+      const resolved = resolveIncludePath(configDir, target);
+      if (visited.has(resolved)) continue;
+      visited.add(resolved);
+      let included;
+      try {
+        included = await readText(resolved);
+      } catch (error) {
+        const detail = redactESPHomeSensitiveText(String(error?.message ?? error));
+        throw new Error(`ESPHome secrets include could not be read: ${detail}`);
+      }
+      await ingest(included, depth + 1);
+    }
+  }
+
+  await ingest(content, 0);
+  return values;
+}
+
+export async function sanitizeESPHomeResultWithSecrets(client, result, options = {}) {
   let content = "";
   try {
     content = await client.command("devices/get_config", { configuration: "secrets.yaml" });
@@ -39,15 +137,13 @@ export async function sanitizeESPHomeResultWithSecrets(client, result) {
       throw new Error(`ESPHome output was withheld because secrets could not be loaded for redaction: ${redactESPHomeSensitiveText(error.message)}`);
     }
   }
-  const values = new Set();
+  let values = new Set();
   if (content) {
-    let parsed;
     try {
-      parsed = parseYaml(content);
+      values = await collectESPHomeSecretValues(content, options);
     } catch {
       throw new Error("ESPHome output was withheld because secrets.yaml could not be parsed for redaction");
     }
-    collectScalarValues(parsed, values);
   }
   return sanitizeESPHomeResult(result, values);
 }

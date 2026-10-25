@@ -1,3 +1,7 @@
+## 3.2.1
+
+- **Fixed** — ESPHome tool output redaction now follows ESPHome `!include` tags. This home's `esphome/secrets.yaml` is the include-only shim `<<: !include ../secrets.yaml`, so the previous parser (a) warned `TAG_RESOLVE_FAILED` on every esphome_* tool call and (b) collected zero secret values, leaving the leak guard blind to the real secrets. The loader registers ESPHome's custom tags, follows includes (confined to the HA config directory, depth- and cycle-guarded, 1 MiB cap), excludes include paths from the redaction set, and still fails closed (withholds output) when an include cannot be read.
+
 ## 3.2.0
 
 - **Changed** — certified OpenCode runtime bumped 1.18.32 → **2.0.29** (OpenCode 2), delivered by repinning AGENT_BASE to agent-base 1.3.0. The runtime package moves from `opencode-ai` to `@opencode/cli`; the certification assertions now expect OpenCode 2's `opencode v<semver>` output from `opencode --version`.
