@@ -33,7 +33,7 @@ opencode_certified_version() {
             return 0
         fi
     fi
-    opencode_package_version "/usr/local/lib/node_modules/opencode-ai"
+    opencode_package_version "/usr/local/lib/node_modules/@opencode/cli"
 }
 
 # Print the version recorded in a package's package.json, or a sentinel
@@ -45,6 +45,12 @@ opencode_package_version() {
     else
         echo "not-installed"
     fi
+}
+
+# Normalize an OpenCode version string for comparisons. OpenCode 1 printed a
+# bare <semver>; OpenCode 2 prints "opencode v<semver>".
+opencode_normalize_version() {
+    printf '%s\n' "$1" | sed -e 's/^opencode[[:space:]]*//' -e 's/^v//'
 }
 
 # Link the architecture-appropriate native binary into the package launcher
@@ -62,13 +68,13 @@ opencode_select_package_binary() {
     case "${machine}" in
         x86_64)
             if [ "${mode}" = "baseline" ]; then
-                source_binary="${package_dir}/node_modules/opencode-linux-x64-baseline/bin/opencode"
+                source_binary="${package_dir}/../cli-linux-x64-baseline/bin/opencode"
             else
-                source_binary="${package_dir}/node_modules/opencode-linux-x64/bin/opencode"
+                source_binary="${package_dir}/../cli-linux-x64/bin/opencode"
             fi
             ;;
         aarch64|arm64)
-            source_binary="${package_dir}/node_modules/opencode-linux-arm64/bin/opencode"
+            source_binary="${package_dir}/../cli-linux-arm64/bin/opencode"
             mode="regular"
             ;;
         *)

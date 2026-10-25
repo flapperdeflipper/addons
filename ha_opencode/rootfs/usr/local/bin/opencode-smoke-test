@@ -74,7 +74,7 @@ else
     pass "opencode resolves to ${RESOLVED_BIN}"
 fi
 
-RUNNING=$(opencode --version 2>/dev/null | tr -d '[:space:]')
+RUNNING=$(opencode_normalize_version "$(opencode --version 2>/dev/null)")
 if [ -z "${RUNNING}" ]; then
     fail "opencode --version runs"
 elif [ "${RUNNING}" != "${CERTIFIED}" ]; then
