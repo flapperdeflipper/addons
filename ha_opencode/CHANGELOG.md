@@ -1,3 +1,17 @@
+## 3.2.0
+
+- **Changed** — certified OpenCode runtime bumped 1.18.32 → **2.0.29** (OpenCode 2), delivered by repinning AGENT_BASE to agent-base 1.3.0. The runtime package moves from `opencode-ai` to `@opencode/cli`; the certification assertions now expect OpenCode 2's `opencode v<semver>` output from `opencode --version`.
+- **Changed** — the bundled-runtime machinery (runtime.sh, init-opencode, smoke test, terminal banner) resolves the platform binary from OpenCode 2's layout (`@opencode/cli-linux-*` siblings in the `@opencode` scope dir) and normalizes version strings before comparing; CPU baseline selection keeps working.
+- **Operational** — OpenCode 2 no longer reads `CLAUDE.md` (project instructions belong in `AGENTS.md`), hot-reloads `opencode.json`/skills/agents/MCP wiring without a restart, and the LAN server (`opencode serve`, 4096/tcp) speaks the V2 API — OpenCode 1 clients can no longer attach. Pairs with ha_openchamber 1.4.0 (OpenChamber 2.3.x).
+
+## 3.1.23
+
+- **Changed** — dependency updates (supersedes renovate #263 and dependabot #274, #275): vscode-languageserver 10 -> 11 (bundled language server), body-parser 2.4.0 and ip-address 10.7.5 (transitives of the bundled MCP server).
+
+## 3.1.22
+
+- **Changed** — dependency security roll-up (supersedes dependabot PRs #254, #255 and renovate PR #238): vite 8.3.0 -> 8.3.5 in the bundled language and MCP servers (devDependency chain), zod 4.6.5 -> 4.6.7 in the bundled MCP server. Lockfile-only bumps; all 117 addon tests and 443 bundled-server vitest tests pass.
+
 ## 3.1.21
 
 - **Changed** — automated dependency update (Renovate): @modelcontextprotocol/sdk 1.32.2 (bundled MCP server).

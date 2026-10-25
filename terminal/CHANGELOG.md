@@ -1,3 +1,7 @@
+## 1.1.8
+
+- **Changed** — rebuilt on agent-base 1.3.0 (certified OpenCode 2.0.29, `@opencode/cli`). No terminal-specific changes.
+
 ## 1.1.7
 
 - **Changed** — automated dependency update (Renovate).

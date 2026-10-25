@@ -83,7 +83,7 @@ describe(`${CHANNEL} runtime pin`, () => {
   });
 
   it("fails the build when the inherited runtime is not the certified one", () => {
-    assert.match(dockerfile, /test "\$\(opencode --version\)" = "\$\(cat \/usr\/local\/share\/opencode-certified-version\)"/);
+    assert.match(dockerfile, /test "\$\(opencode --version\)" = "opencode v\$\(cat \/usr\/local\/share\/opencode-certified-version\)"/);
   });
 
   it("carries no OpenChamber pin or bundle since the 2.13.0 split", () => {
@@ -131,12 +131,12 @@ describe(`${CHANNEL} bundled runtime precedence`, () => {
   it("never installs a rolling OpenCode at runtime", () => {
     for (const [file, contents] of sources) {
       assert.ok(
-        !/opencode-ai@latest/.test(contents),
-        `${file} still installs opencode-ai@latest`,
+        !/(opencode-ai|@opencode\/cli)@latest/.test(contents),
+        `${file} still installs a rolling OpenCode (@latest)`,
       );
       assert.ok(
-        !/npm install -g opencode-ai/.test(contents),
-        `${file} still installs opencode-ai from npm at runtime`,
+        !/npm install -g (opencode-ai|@opencode\/cli)/.test(contents),
+        `${file} still installs OpenCode from npm at runtime`,
       );
     }
   });
