@@ -1,3 +1,8 @@
+## 2.0.8
+
+- **Changed** — dependency security roll-up (supersedes dependabot PRs #257, #266, #267, #268, #269): hono 4.13.14 (GHSA-5r4p-p66f-jhc7 serve-static path confusion), fast-uri 3.1.9 (CVE-2026-110306 and three further URI-parsing CVEs), zod 4.6.7, ip-address 10.7.5, body-parser 2.4.0 (CVE-2026-111181).
+- **Changed** — chrome-devtools-mcp 1.10.1 -> 1.12.0 (supersedes #244): the forwarder now parses flags through 1.11+'s ConfigParser instead of the removed parseArguments export; autoConnect defaults to false under 1.12, and a no-op config locator keeps options coming only from the hub's argv.
+
 # Changelog
 
 ## 2.0.7
