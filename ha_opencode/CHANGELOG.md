@@ -1,3 +1,7 @@
+## 3.1.22
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.1.21
 
 - **Changed** — automated dependency update (Renovate): @modelcontextprotocol/sdk 1.32.2 (bundled MCP server).
