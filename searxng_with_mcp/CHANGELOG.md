@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.25
+
+- **Changed** — automated dependency update (Renovate): python-dateutil 3.
+
 ## 2026.9.24
 
 - **Changed** — automated dependency update (Renovate).
