@@ -1,3 +1,7 @@
+## 1.4.2
+
+- **Changed** — dependency security updates (supersedes dependabot #279, #281, #282): fast-uri 3.1.9 (CVE-2026-110306 et al.), body-parser 2.4.0 (CVE-2026-111181), zod 4.6.7 — transitives of the bundled openchamber-mcp server. Lockfile-only; addon tests 46/46 pass.
+
 ## 1.4.1
 
 - **Changed** — dependency security update (supersedes dependabot #258): hono 4.13.9 -> 4.13.14 in the bundled openchamber-mcp server (GHSA-5r4p-p66f-jhc7, serve-static path confusion). Lockfile-only bump; addon tests 46/46 pass.
