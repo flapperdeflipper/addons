@@ -1,3 +1,7 @@
+## 3.2.3
+
+- **Fixed** — the bundled LiteLLM discovery plugin is pinned to `opencode-plugin-litellm@1.8.0` instead of `1.3.0`. OpenCode 2's plugin loader rejects V1 plugins (`PluginModule.LoadError: Plugin must export a default definition with an id and an effect or setup function`), and 1.3.0 only depended on `@opencode-ai/plugin ^1.14.0`. 1.8.0 ships a V2 entrypoint (`export { default } from './plugin/v2'`, `Plugin.define`, `@opencode/plugin ^2.0.14`), so runtime model discovery loads again on the OpenCode 2 runtime while the provider itself keeps working either way.
+
 ## 3.2.2
 
 - **Fixed** — the bundled MCP server no longer answers concurrent tool calls with `HTTP 500` (`MCPError: ha-mcp-server request failed with HTTP 500`). `createStatelessMcpHandler` serialized requests through a promise chain but released each request's transport from the response `close` event, so the next request could call `connect()` on the shared `McpServer` before that close had landed. The SDK then threw `Already connected to a transport` and the listener replied 500 with no log line. The transport is now closed in a `finally` before the chain advances; the response-close listener stays as a backstop for aborted requests (`close()` is idempotent). Reproduced live through LiteLLM → MCP Hub: two simultaneous `tools/call`s were enough to trigger it, while sequential calls succeeded. Covered by a new regression test in `test/http-transport.test.js`.

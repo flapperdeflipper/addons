@@ -609,7 +609,7 @@ jq --arg mcp_hub_url "${MCP_HUB_URL}" --arg mcp_litellm_url "${MCP_LITELLM_URL}"
         # The gateway is also the model provider: the litellm plugin
         # discovers its model list at runtime (/v1/models + /v1/model/info,
         # disk-cached), so the model map is never hand-maintained here.
-        .plugin = ((.plugin // []) + ["opencode-plugin-litellm@1.3.0"]) |
+        .plugin = ((.plugin // []) + ["opencode-plugin-litellm@1.8.0"]) |
         .model = "litellm/glm-5.3" |
         .small_model = "litellm/glm-5.3-flash-small" |
         .provider.litellm = {
