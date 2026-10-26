@@ -1,3 +1,7 @@
+## 3.2.2
+
+- **Fixed** — the bundled MCP server no longer answers concurrent tool calls with `HTTP 500` (`MCPError: ha-mcp-server request failed with HTTP 500`). `createStatelessMcpHandler` serialized requests through a promise chain but released each request's transport from the response `close` event, so the next request could call `connect()` on the shared `McpServer` before that close had landed. The SDK then threw `Already connected to a transport` and the listener replied 500 with no log line. The transport is now closed in a `finally` before the chain advances; the response-close listener stays as a backstop for aborted requests (`close()` is idempotent). Reproduced live through LiteLLM → MCP Hub: two simultaneous `tools/call`s were enough to trigger it, while sequential calls succeeded. Covered by a new regression test in `test/http-transport.test.js`.
+
 ## 3.2.1
 
 - **Fixed** — ESPHome tool output redaction now follows ESPHome `!include` tags. This home's `esphome/secrets.yaml` is the include-only shim `<<: !include ../secrets.yaml`, so the previous parser (a) warned `TAG_RESOLVE_FAILED` on every esphome_* tool call and (b) collected zero secret values, leaving the leak guard blind to the real secrets. The loader registers ESPHome's custom tags, follows includes (confined to the HA config directory, depth- and cycle-guarded, 1 MiB cap), excludes include paths from the redaction set, and still fails closed (withholds output) when an include cannot be read.
