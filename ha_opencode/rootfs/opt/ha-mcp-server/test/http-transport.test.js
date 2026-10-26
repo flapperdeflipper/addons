@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { createServer } from "node:http";
-import { createMcpHttpListener, tokenMatches } from "../lib/http-transport.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpHttpListener, createStatelessMcpHandler, tokenMatches } from "../lib/http-transport.js";
 
 // Drive the listener through a real socket so tests exercise header
 // parsing the way litellm and other HTTP clients will.
@@ -115,5 +116,43 @@ describe("createMcpHttpListener", () => {
   it("throws when constructed without a token or transport", () => {
     expect(() => createMcpHttpListener({})).toThrow(/token/);
     expect(() => createMcpHttpListener({ token: "x" })).toThrow(/handle/);
+  });
+});
+
+describe("createStatelessMcpHandler", () => {
+  // Gateways (LiteLLM, MCP Hub) fan out tool calls. Before the fix the next
+  // request connected a fresh transport before the previous one had closed,
+  // so the SDK threw "Already connected to a transport" and the listener
+  // answered HTTP 500.
+  it("serves overlapping requests without returning HTTP 500", async () => {
+    const mcp = new McpServer({ name: "transport-race-test", version: "1.0.0" });
+    mcp.tool("slow_ping", "Delays briefly so requests overlap.", {}, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return { content: [{ type: "text", text: "pong" }] };
+    });
+    const base = await serve(createMcpHttpListener({ token: TOKEN, handle: createStatelessMcpHandler(mcp) }));
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "slow_ping", arguments: {} },
+    });
+    const call = () =>
+      fetch(`${base}/mcp`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body,
+      });
+
+    const responses = await Promise.all(Array.from({ length: 6 }, call));
+    const statuses = responses.map((response) => response.status);
+    await Promise.all(responses.map((response) => response.text()));
+    await mcp.close();
+
+    expect(statuses).toEqual([200, 200, 200, 200, 200, 200]);
   });
 });

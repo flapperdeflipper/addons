@@ -49,9 +49,20 @@ export function createStatelessMcpHandler(mcpServer) {
           sessionIdGenerator: undefined,
           enableJsonResponse: true,
         });
+        // Backstop for a client that disconnects mid-request (close() is
+        // idempotent).
         res.on("close", () => transport.close().catch(() => {}));
-        await mcpServer.connect(transport);
-        await transport.handleRequest(req, res);
+        try {
+          await mcpServer.connect(transport);
+          await transport.handleRequest(req, res);
+        } finally {
+          // The single McpServer accepts one transport at a time. Release it
+          // before the next queued request calls connect(), otherwise connect()
+          // throws "Already connected to a transport" and the request fails
+          // with HTTP 500. Do not rely on the response "close" event alone: it
+          // can fire after the next link in the chain has already started.
+          await transport.close().catch(() => {});
+        }
       })
       .catch((error) => {
         if (!res.headersSent) {
