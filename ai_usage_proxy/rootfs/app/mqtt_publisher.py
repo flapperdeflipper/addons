@@ -132,9 +132,14 @@ class MqttPublisher:
                 value_template="{{ " + expression + " }}",
             )
         else:
+            # HA renders value_template for every state payload even while
+            # availability reports offline, and int(None) raises without a
+            # default. Yield the string None so an unknown reset reads as
+            # unknown instead of logging a template error on every publish.
             cfg.update(
                 device_class="timestamp",
-                value_template="{{ (" + expression + " | int) | timestamp_utc }}",
+                value_template="{{ (" + expression + " | int) | timestamp_utc if "
+                + expression + " is not none else 'None' }}",
             )
         return f"homeassistant/sensor/ai_usage_proxy/{slug}/config", cfg
 
@@ -272,9 +277,12 @@ class MqttPublisher:
             elif metric.endswith("_at"):
                 cfg.update(
                     device_class="timestamp",
+                    # Same null guard as _discovery: string None, not int(None).
                     value_template='{{ (value_json.aliases["'
                     + metric
-                    + '"] | int) | timestamp_utc }}',
+                    + '"] | int) | timestamp_utc if value_json.aliases["'
+                    + metric
+                    + '"] is not none else "None" }}',
                 )
             else:
                 cfg.update(entity_category="diagnostic")

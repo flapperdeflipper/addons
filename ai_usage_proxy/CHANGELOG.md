@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+
+- **Fixed:** reset-time sensors raised a Home Assistant template error (`int got invalid input 'None'`) on every publish while a provider reports `resets_at: null` (z.ai does until a reset time is known); discovery value templates now render the string `None` so the sensor reads as unknown without logging, instead of relying on availability alone - HA renders `value_template` for every state payload even when the entity is offline.
+
 ## 2.0.0
 
 - Rename Claude Usage Proxy to AI Usage Proxy, with one modular application for Claude, OpenAI/Codex, and z.ai connections.

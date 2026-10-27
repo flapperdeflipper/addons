@@ -139,6 +139,59 @@ class ConfigMqttTests(unittest.TestCase):
         self.assertIn("session_resets_at", availability)
         self.assertIn("is not none", availability)
 
+    def test_unknown_reset_renders_none_instead_of_template_error(self):
+        from config import load_options
+        from mqtt_publisher import MqttPublisher
+
+        client = FakeClient()
+        pub = MqttPublisher(
+            load_options(self.root), self.root, lambda *_: None, client=client
+        )
+        pub.connected = True
+        zai = {
+            "id": "zai",
+            "name": "z.ai",
+            "status": "ok",
+            "message": "Connected",
+            "connection": "connected",
+            "available": True,
+            "stale": False,
+            "snapshot": UsageSnapshot(
+                "zai",
+                1700000000,
+                (
+                    UsageWindow("mcp", "Monthly MCP", 0, None, role="other"),
+                    UsageWindow("tokens", "5-hour", 2, 18000, role="session"),
+                ),
+            ).public(),
+        }
+        pub.publish_provider(zai)
+        pub.publish_provider(view(reset=None))
+        cfg = json.loads(
+            client.messages[
+                "homeassistant/sensor/ai_usage_proxy/zai_tokens_resets_at/config"
+            ]
+        )
+        self.assertEqual(
+            cfg["value_template"],
+            '{{ (value_json.windows["tokens"].resets_at | int) | timestamp_utc '
+            'if value_json.windows["tokens"].resets_at is not none else \'None\' }}',
+        )
+        legacy = json.loads(
+            client.messages[
+                "homeassistant/sensor/claude_usage_proxy/session_resets_at/config"
+            ]
+        )
+        self.assertIn('is not none else "None"', legacy["value_template"])
+        used = json.loads(
+            client.messages[
+                "homeassistant/sensor/ai_usage_proxy/zai_tokens_used_percent/config"
+            ]
+        )
+        self.assertEqual(
+            used["value_template"], '{{ value_json.windows["tokens"].used_percent }}'
+        )
+
     def test_new_provider_commands_need_no_publisher_changes(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher
