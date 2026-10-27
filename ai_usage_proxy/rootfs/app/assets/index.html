@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="__CSRF__">
+  <title>AI Usage Proxy</title>
+  <link rel="stylesheet" href="__BASE__/assets/dashboard.css">
+  <script src="__BASE__/assets/dashboard.js" defer></script>
+</head>
+<body data-base="__BASE__">
+  <main>
+    <header class="masthead">
+      <div><p class="eyebrow">SUBSCRIPTION MONITOR</p><h1>AI Usage Proxy<span class="accent">.</span></h1>
+        <p class="subtitle">Your usage windows, in one place. Every percentage shows usage consumed.</p></div>
+      <div class="header-actions"><span id="mqtt-badge" class="badge">MQTT connecting</span><button id="settings-toggle" class="quiet" aria-expanded="false">Settings</button></div>
+    </header>
+    <section id="settings" class="settings" hidden>
+      <h2>Publishing settings</h2><dl id="settings-values"></dl>
+      <p>Change shared settings in this add-on’s <a href="/hassio/dashboard" id="addon-config" target="_top">Home Assistant configuration</a>. Manage account credentials in the provider cards.</p>
+    </section>
+    <p id="connection-error" class="page-error" role="status" hidden>Dashboard connection interrupted. Reconnecting…</p>
+    <section id="providers" class="cards" aria-label="Provider usage"></section>
+    <footer><span>Percentages used · Updated independently · Retained on MQTT</span><span id="page-updated">Connecting to proxy…</span></footer>
+  </main>
+</body>
+</html>

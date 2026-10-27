@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 import trafilatura
 from dateutil import parser as date_parser
 from cachetools import TTLCache
@@ -485,6 +485,21 @@ class MCPEventEmitter:
 
 
 # --- Configuration Management ---
+# Hard-coded default before 2026.9.30; first runs saved it to the config file.
+LEGACY_DEFAULT_TIMEZONE = "America/New_York"
+FALLBACK_TIMEZONE = "Europe/Amsterdam"
+
+
+def host_timezone() -> str:
+    """The container's TZ (set by the Supervisor from the HA timezone), else Amsterdam."""
+    tz = os.getenv("TZ", "").strip()
+    try:
+        ZoneInfo(tz)
+        return tz
+    except Exception:
+        return FALLBACK_TIMEZONE
+
+
 class Tools:
     class Valves(BaseModel):
         SEARXNG_ENGINE_API_BASE_URL: str = Field(
@@ -495,7 +510,7 @@ class Tools:
         SCRAPPED_PAGES_NO: int = Field(default=5, ge=1, le=30)
         PAGE_CONTENT_WORDS_LIMIT: int = Field(default=5000, ge=50, le=20000)
         CITATION_LINKS: bool = Field(default=True)
-        desired_timezone: str = Field(default="America/New_York")
+        desired_timezone: str = Field(default_factory=host_timezone)
         TRAFILATURA_TIMEOUT: int = Field(default=15, ge=5, le=60)
         MAX_IMAGE_RESULTS: int = Field(default=10, ge=1, le=50)
         MAX_VIDEO_RESULTS: int = Field(default=10, ge=1, le=50)
@@ -509,7 +524,8 @@ class Tools:
         RATE_LIMIT_TIMEOUT_SECONDS: int = Field(default=60, ge=10, le=3600)
         CACHE_MAX_AGE_MINUTES: int = Field(default=30, ge=1, le=1440)
 
-        @validator("SEARXNG_ENGINE_API_BASE_URL")
+        @field_validator("SEARXNG_ENGINE_API_BASE_URL")
+        @classmethod
         def validate_searxng_url(cls, v):
             if not v.startswith(("http://", "https://")):
                 raise ConfigurationError(
@@ -518,7 +534,8 @@ class Tools:
 
             return v
 
-        @validator("desired_timezone")
+        @field_validator("desired_timezone")
+        @classmethod
         def validate_timezone(cls, v):
             try:
                 ZoneInfo(v)
@@ -529,9 +546,14 @@ class Tools:
                     f"Invalid timezone: {v}. Error: {str(e)}. See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of valid timezones."
                 )
 
-        @root_validator(pre=True)
+        @model_validator(mode="before")
+        @classmethod
         def check_page_limits(cls, values):
-            if "SCRAPPED_PAGES_NO" in values and "RETURNED_SCRAPPED_PAGES_NO" in values:
+            if (
+                isinstance(values, dict)
+                and "SCRAPPED_PAGES_NO" in values
+                and "RETURNED_SCRAPPED_PAGES_NO" in values
+            ):
                 if values["SCRAPPED_PAGES_NO"] < values["RETURNED_SCRAPPED_PAGES_NO"]:
                     raise ConfigurationError(
                         f"SCRAPPED_PAGES_NO ({values['SCRAPPED_PAGES_NO']}) must be greater than or equal to "
@@ -580,13 +602,20 @@ class Tools:
             send_notification_func = _noop
 
         # 1. Load defaults from script
-        script_defaults = self.Valves().dict()
+        script_defaults = self.Valves().model_dump()
 
         # 2. Force config file
         config_path = os.getenv("ODS_CONFIG_PATH", "/config/ods_config.json")
 
         file_exists = pathlib.Path(config_path).exists()
         file_config = self.load_config_file(config_path)
+
+        # The old default was never a choice; let the host TZ apply instead.
+        timezone_migrated = (
+            file_config.get("desired_timezone") == LEGACY_DEFAULT_TIMEZONE
+        )
+        if timezone_migrated:
+            file_config.pop("desired_timezone")
 
         # 3. Load from env vars
         env_vars_present = False
@@ -629,11 +658,20 @@ class Tools:
         # - If the file doesn't exist yet (first-time initialization)
         # - If environment variables were provided for this run
 
-        if not file_exists or env_vars_present:
-            logger.info(
-                f"Saving configuration to {config_path} (reason: {'first run' if not file_exists else 'env vars provided'})"
+        if not file_exists or env_vars_present or timezone_migrated:
+            reason = (
+                "first run"
+                if not file_exists
+                else "env vars provided"
+                if env_vars_present
+                else "timezone follows host"
             )
-            self.save_config_file(config_path, merged)
+            logger.info(f"Saving configuration to {config_path} (reason: {reason})")
+            saved = dict(merged)
+            # Keep following the host TZ unless a timezone was chosen explicitly.
+            if not ({"desired_timezone"} & (file_config.keys() | env_config.keys())):
+                saved.pop("desired_timezone")
+            self.save_config_file(config_path, saved)
 
         logger.info(f"Initializing with timezone: {self.valves.desired_timezone}")
         global website_cache
