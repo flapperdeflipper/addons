@@ -13,7 +13,7 @@ class ManifestTests(unittest.TestCase):
         for entry in (
             "name: AI Usage Proxy",
             "slug: ai_usage_proxy",
-            "version: 2.0.0",
+            "version: 2.0.1",
             "image: flapperdeflipper/addon-ai-usage-proxy",
             "ingress_port: 8237",
         ):
