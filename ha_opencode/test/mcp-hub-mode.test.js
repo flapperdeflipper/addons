@@ -111,7 +111,7 @@ describe("litellm MCP mode (3.1.0)", () => {
 
   it("wires the litellm provider, discovery plugin and default model pair", () => {
     const cfg = generate({ litellmUrl: "http://10.60.0.3:4000", keyEnv: "LITELLM_HASS_KEY" });
-    assert.deepEqual(cfg.plugin, ["opencode-plugin-litellm@1.3.0"]);
+    assert.deepEqual(cfg.plugin, ["opencode-plugin-litellm@1.8.0"]);
     assert.equal(cfg.model, "litellm/glm-5.3");
     assert.equal(cfg.small_model, "litellm/glm-5.3-flash-small");
     const p = cfg.provider.litellm;

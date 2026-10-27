@@ -1,3 +1,7 @@
+## 3.2.4
+
+- **Fixed** — the bundled LiteLLM discovery plugin is pinned to `opencode-plugin-litellm@1.8.0` instead of `1.3.0`. OpenCode 2's plugin loader rejects V1 plugins (`PluginModule.LoadError: Plugin must export a default definition with an id and an effect or setup function`), and 1.3.0 only depended on `@opencode-ai/plugin ^1.14.0`. 1.8.0 ships a V2 entrypoint (`export { default } from './plugin/v2'`, `Plugin.define`, `@opencode/plugin ^2.0.14`), so runtime model discovery loads again on the OpenCode 2 runtime while the provider itself keeps working either way.
+
 ## 3.2.3
 
 - **Changed** — bundled MCP server security update (Dependabot alerts #13, #32–#35): hono 4.13.8 -> 4.13.14 (GHSA-5r4p-p66f-jhc7 serve-static path confusion) and fast-uri 3.1.8 -> 3.1.9 (GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp URI parsing). Both are transitive (`@modelcontextprotocol/sdk`, `ajv`); lockfile-only, no API changes.
