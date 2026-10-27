@@ -1,3 +1,7 @@
+## 3.2.3
+
+- **Changed** — bundled MCP server security update (Dependabot alerts #13, #32–#35): hono 4.13.8 -> 4.13.14 (GHSA-5r4p-p66f-jhc7 serve-static path confusion) and fast-uri 3.1.8 -> 3.1.9 (GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp URI parsing). Both are transitive (`@modelcontextprotocol/sdk`, `ajv`); lockfile-only, no API changes.
+
 ## 3.2.2
 
 - **Fixed** — the bundled MCP server no longer answers concurrent tool calls with `HTTP 500` (`MCPError: ha-mcp-server request failed with HTTP 500`). `createStatelessMcpHandler` serialized requests through a promise chain but released each request's transport from the response `close` event, so the next request could call `connect()` on the shared `McpServer` before that close had landed. The SDK then threw `Already connected to a transport` and the listener replied 500 with no log line. The transport is now closed in a `finally` before the chain advances; the response-close listener stays as a backstop for aborted requests (`close()` is idempotent). Reproduced live through LiteLLM → MCP Hub: two simultaneous `tools/call`s were enough to trigger it, while sequential calls succeeded. Covered by a new regression test in `test/http-transport.test.js`.

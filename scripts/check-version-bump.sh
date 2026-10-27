@@ -29,7 +29,9 @@ mapfile -t dirs < <(
 fail=0
 for dir in "${dirs[@]}"; do
     [ -f "${dir}/config.yaml" ] || continue
-    base_version="$(git show "${BASE_REF}:${dir}/config.yaml" 2>/dev/null | version_of)"
+    # A new add-on has no base config; under pipefail the failing git show
+    # would abort the script instead of reporting "none -> <version>".
+    base_version="$(git show "${BASE_REF}:${dir}/config.yaml" 2>/dev/null | version_of || true)"
     head_version="$(version_of "${dir}/config.yaml")"
     if [ -z "${head_version}" ]; then
         echo "::error file=${dir}/config.yaml::no version found"
