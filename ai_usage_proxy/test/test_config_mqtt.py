@@ -227,6 +227,25 @@ class ConfigMqttTests(unittest.TestCase):
         self.assertEqual(availability["payload_off"], "offline")
         self.assertEqual(availability["device_class"], "connectivity")
 
+    def test_connect_publishes_process_status(self):
+        from config import load_options
+        from mqtt_publisher import MqttPublisher
+
+        client = FakeClient()
+        pub = MqttPublisher(
+            load_options(self.root), self.root, lambda *_: None, client=client
+        )
+        pub._on_connect(client, None, None, 0, None)
+        # "starting" clears any retained crash will, then "ok" once the
+        # bootstrap (discovery + views) finished.
+        self.assertEqual(client.messages["ai/usage/status"], "ok")
+        config = json.loads(
+            client.messages["homeassistant/sensor/ai_usage_proxy/status/config"]
+        )
+        self.assertEqual(config["unique_id"], "ai_usage_proxy_status")
+        self.assertEqual(config["name"], "Status")
+        self.assertEqual(config["state_topic"], "ai/usage/status")
+
     def test_new_provider_commands_need_no_publisher_changes(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher

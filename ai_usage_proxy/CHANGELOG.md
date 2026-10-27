@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.2
+
+- **Fixed:** the process status sensor showed `starting` for the whole uptime - it now publishes `ok` once connect-time bootstrap (discovery + view republication) finishes; `proxy offline` via the last will is unchanged
+- **Fixed:** doubled entity name `AI Usage Proxy AI Usage Proxy Status` - the discovery name is now plain `Status`, which the device-name prefix completes to `AI Usage Proxy Status`
+
 ## 2.1.1
 
 - **Add:** per-provider diagnostic sensors - `<provider> Status` (`ai/usage/<provider>/status`), `<provider> Last Update` (timestamp, null-safe template), and a `<provider> Online` connectivity binary sensor (`ai/usage/<provider>/availability`) - so every published topic has a Home Assistant entity

@@ -22,7 +22,7 @@ The default root is `ai/usage`; provider IDs are `claude`, `openai`, and `zai`. 
 
 | Topic | Payload |
 | --- | --- |
-| `ai/usage/status` | Process status: `starting` while booting, `proxy offline` via the retained last will when the process dies |
+| `ai/usage/status` | Process status: `starting` while booting, `ok` once bootstrap completes, `proxy offline` via the retained last will when the process dies |
 
 For example, per provider:
 
