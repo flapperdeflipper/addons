@@ -2,6 +2,7 @@
 
 import logging
 import signal
+import sys
 import threading
 
 from config import data_directory, load_options
@@ -15,8 +16,16 @@ LOG = logging.getLogger("ai_usage_proxy")
 
 
 def main() -> None:
+    # Docker's journald driver files stderr as priority err and stdout as info,
+    # so INFO/DEBUG go to stdout and only WARNING and up to stderr.
+    stdout = logging.StreamHandler(sys.stdout)
+    stdout.addFilter(lambda record: record.levelno < logging.WARNING)
+    stderr = logging.StreamHandler(sys.stderr)
+    stderr.setLevel(logging.WARNING)
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        handlers=[stdout, stderr],
     )
     root = private_directory(data_directory())
     options = load_options(root)

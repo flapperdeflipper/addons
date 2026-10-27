@@ -9,6 +9,7 @@
 - Add z.ai Coding Plan key validation and confirmed legacy quota mappings; report unverified current credit formats explicitly as unsupported.
 - Isolate provider polling, credential actions, errors, backoff, and stale readings. Add provider-specific MQTT topics, retained cleanup, and availability.
 - Add regression, HTTP, subprocess, and optional browser tests.
+- Log INFO and below to stdout and only warnings and errors to stderr, so Docker's journald driver no longer files routine messages at error priority.
 - The slug changes to `ai_usage_proxy`; follow the README migration steps for an existing installation.
 
 ## 1.0.6
