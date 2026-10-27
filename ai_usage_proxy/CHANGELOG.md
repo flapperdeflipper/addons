@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0
+
+- Rename Claude Usage Proxy to AI Usage Proxy, with one modular application for Claude, OpenAI/Codex, and z.ai connections.
+- Add a responsive Ingress dashboard with provider cards, usage bars, reset times, and separate connection panels. Every percentage means **used**.
+- Preserve Claude OAuth renewal, legacy MQTT topics, and Home Assistant discovery identities; migrate existing private token files.
+- Add managed OpenAI device login and subscription quota polling through a checksum-pinned Codex account service.
+- Add z.ai Coding Plan key validation and confirmed legacy quota mappings; report unverified current credit formats explicitly as unsupported.
+- Isolate provider polling, credential actions, errors, backoff, and stale readings. Add provider-specific MQTT topics, retained cleanup, and availability.
+- Add regression, HTTP, subprocess, and optional browser tests.
+- The slug changes to `ai_usage_proxy`; follow the README migration steps for an existing installation.
+
 ## 1.0.6
 
 - **Fixed:** refuse to start (or degrade loudly) when an option is still a literal `!secret …` reference — a secrets.yaml key was missing at container start; a reference string must never be used as a credential
