@@ -33,6 +33,11 @@ export function buildArgs() {
     // No usage statistics to Google, no trace URLs to the CrUX API.
     "--no-usage-statistics",
     "--no-performance-crux",
+    // Remote clients' MCP roots name paths on their own hosts, never inside
+    // this container, so file tools stay confined to /tmp. Setting it
+    // explicitly also stops the per-session "did not negotiate the MCP roots
+    // capability" warning, which only fires for the implicit default.
+    "--filesystem-root=/tmp",
   ];
 }
 

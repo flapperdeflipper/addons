@@ -34,6 +34,15 @@ describe("chrome-devtools module", async () => {
     assert.equal(args.pageIdRouting, true);
   });
 
+  it("confines file tools to the container's /tmp", () => {
+    // Explicit, not the implicit default: only the default triggers the
+    // per-session "MCP roots" warning (and os.tmpdir() is /tmp on Linux CI).
+    assert.ok(mod.buildArgs().includes("--filesystem-root=/tmp"));
+    const args = mod.parseServerArgs();
+    assert.deepEqual(args.filesystemRoot, ["/tmp"]);
+    assert.ok(!args.allowUnrestrictedPaths);
+  });
+
   it("never connects to a remote browser", () => {
     const args = mod.parseServerArgs();
     assert.equal(args.browserUrl, undefined);
