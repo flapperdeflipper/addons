@@ -47,7 +47,7 @@ A display can subscribe to `ai/usage/openai/session_percent` and `week_percent`,
 
 ### Claude displays
 
-Claude publishes the same provider topics as every other provider: `ai/usage/claude/session_percent`, `week_percent`, `*_resets_at`, `last_update`, `status`, and `command/refresh`. Claude session/weekly Home Assistant sensors use the `ai_usage_proxy_*` identity like all providers.
+Claude publishes the same provider topics as every other provider: `ai/usage/claude/session_percent`, `week_percent`, `*_resets_at`, `last_update`, `status`, and `command/refresh`. Claude session/weekly Home Assistant sensors use the `ai_usage_proxy_*` identity like all providers. Each provider also gets diagnostic entities: `<provider> Status`, `<provider> Last Update` (timestamp), and a `<provider> Online` connectivity sensor, all on the process last will.
 
 One MQTT connection has one last will: **`ai/usage/status = proxy offline`**, retained. Home Assistant entities combine that process will with per-provider availability. A custom display should also observe this will for immediate crash detection; the retained per-provider availability alone cannot detect a process crash.
 

@@ -195,6 +195,8 @@ class MqttPublisher:
                 for metric in (f"{role}_percent", f"{role}_resets_at"):
                     state["aliases"][metric] = topics[f"{root}/{metric}"]
             topics[f"{root}/state"] = json.dumps(state, allow_nan=False)
+            if self.options["discovery"]:
+                self._provider_diagnostics(key, view, root, configs)
             previous = self.inventory.get(key, [])
             current = sorted([*topics, *configs])
             pending = [
@@ -210,6 +212,53 @@ class MqttPublisher:
             if previous != inventory:
                 self.inventory[key] = inventory
                 self._store_inventory()
+
+    def _provider_diagnostics(
+        self, key: str, view: dict[str, Any], root: str, configs: dict[str, dict[str, Any]]
+    ) -> None:
+        """Status, last-update and online/offline sensors per provider."""
+        device = {
+            "identifiers": ["ai_usage_proxy"],
+            "name": "AI Usage Proxy",
+            "manufacturer": "flapperdeflipper",
+        }
+        configs[f"homeassistant/sensor/ai_usage_proxy/{key}_status/config"] = {
+            "name": f'{view["name"]} Status',
+            "unique_id": f"ai_usage_proxy_{key}_status",
+            "state_topic": f"{root}/status",
+            "device": device,
+            "availability_mode": "all",
+            "availability": [self._process_availability()],
+            "entity_category": "diagnostic",
+            "icon": "mdi:connection",
+        }
+        configs[f"homeassistant/sensor/ai_usage_proxy/{key}_last_update/config"] = {
+            "name": f'{view["name"]} Last Update',
+            "unique_id": f"ai_usage_proxy_{key}_last_update",
+            "state_topic": f"{root}/last_update",
+            # Empty payload (no snapshot yet) must not reach int - same
+            # null-safety rule as the window reset templates.
+            "value_template": "{{ (value | int) | timestamp_utc if value else 'None' }}",
+            "device": device,
+            "availability_mode": "all",
+            "availability": [self._process_availability()],
+            "entity_category": "diagnostic",
+            "device_class": "timestamp",
+        }
+        configs[
+            f"homeassistant/binary_sensor/ai_usage_proxy/{key}_availability/config"
+        ] = {
+            "name": f'{view["name"]} Online',
+            "unique_id": f"ai_usage_proxy_{key}_availability",
+            "state_topic": f"{root}/availability",
+            "payload_on": "online",
+            "payload_off": "offline",
+            "device_class": "connectivity",
+            "device": device,
+            "availability_mode": "all",
+            "availability": [self._process_availability()],
+            "entity_category": "diagnostic",
+        }
 
     def on_message(self, client: Any, userdata: Any, message: Any) -> None:
         if message.retain:
