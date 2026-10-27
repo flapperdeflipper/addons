@@ -1,4 +1,4 @@
-"""Provider-neutral retained metrics, legacy Claude aliases, and HA discovery."""
+"""Provider-neutral retained metrics and HA discovery."""
 
 import hashlib
 import json
@@ -62,7 +62,6 @@ class MqttPublisher:
             "connected": self.connected,
             "source": self.source,
             "topic_root": self.options["ai_topic_prefix"],
-            "legacy_topic_prefix": self.options["topic_prefix"],
             "discovery": self.options["discovery"],
             "poll_interval": self.options["poll_interval"],
             "addon_slug": self.addon_slug,
@@ -91,9 +90,9 @@ class MqttPublisher:
         os.replace(tmp, self.manifest_file)
 
     def _process_availability(self) -> dict[str, str]:
-        # One connection has one LWT: retain the original Claude display status will.
+        # One connection has one LWT: the process will lives on the shared root.
         return {
-            "topic": f"{self.options['topic_prefix']}/status",
+            "topic": f"{self.options['ai_topic_prefix']}/status",
             "value_template": "{{ 'offline' if value == 'proxy offline' else 'online' }}",
         }
 
@@ -174,19 +173,16 @@ class MqttPublisher:
                 for metric in ("used_percent", "resets_at", "duration_seconds"):
                     topics[f"{base}/{metric}"] = window[metric]
                 if self.options["discovery"]:
-                    # Original Claude session/week entities retain their identities.
-                    legacy = key == "claude" and window["role"] in ("session", "week")
-                    if not legacy:
-                        for metric in ("used_percent", "resets_at"):
-                            topic, cfg = self._discovery(
-                                key,
-                                view["name"],
-                                root,
-                                window_id,
-                                window["label"],
-                                metric,
-                            )
-                            configs[topic] = cfg
+                    for metric in ("used_percent", "resets_at"):
+                        topic, cfg = self._discovery(
+                            key,
+                            view["name"],
+                            root,
+                            window_id,
+                            window["label"],
+                            metric,
+                        )
+                        configs[topic] = cfg
             for role in ("session", "week"):
                 candidates = [w for w in windows.values() if w["role"] == role]
                 window = candidates[0] if len(candidates) == 1 else None
@@ -199,8 +195,6 @@ class MqttPublisher:
                 for metric in (f"{role}_percent", f"{role}_resets_at"):
                     state["aliases"][metric] = topics[f"{root}/{metric}"]
             topics[f"{root}/state"] = json.dumps(state, allow_nan=False)
-            if key == "claude":
-                self._legacy(view, root, topics, configs)
             previous = self.inventory.get(key, [])
             current = sorted([*topics, *configs])
             pending = [
@@ -217,77 +211,6 @@ class MqttPublisher:
                 self.inventory[key] = inventory
                 self._store_inventory()
 
-    def _legacy(
-        self,
-        view: dict[str, Any],
-        root: str,
-        topics: dict[str, Any],
-        configs: dict[str, dict[str, Any]],
-    ) -> None:
-        prefix = self.options["topic_prefix"]
-        for metric in (
-            "session_percent",
-            "week_percent",
-            "session_resets_at",
-            "week_resets_at",
-            "last_update",
-        ):
-            topics[f"{prefix}/{metric}"] = topics[f"{root}/{metric}"]
-        topics[f"{prefix}/status"] = "ok" if view["status"] == "ok" else view["message"]
-        if not self.options["discovery"]:
-            return
-        for metric, label in (
-            ("session_percent", "Session Usage"),
-            ("week_percent", "Weekly Usage"),
-            ("session_resets_at", "Session Resets"),
-            ("week_resets_at", "Week Resets"),
-            ("status", "Proxy Status"),
-        ):
-            cfg: dict[str, Any] = {
-                "name": f"Claude {label}",
-                "unique_id": f"claude_usage_proxy_{metric}",
-                "state_topic": f"{prefix}/{metric}",
-                "device": {
-                    "identifiers": ["claude_usage_proxy"],
-                    "name": "AI Usage Proxy",
-                    "manufacturer": "flapperdeflipper",
-                },
-                "availability_mode": "all",
-                "availability": [self._process_availability()],
-            }
-            if metric != "status":
-                cfg["state_topic"] = f"{root}/state"
-                cfg["value_template"] = '{{ value_json.aliases["' + metric + '"] }}'
-                # Include field presence so an absent weekly reset is never rendered as 1970.
-                cfg["availability"].append(
-                    {
-                        "topic": f"{root}/state",
-                        "value_template": "{{ 'online' if value_json.available and "
-                        f'value_json.aliases.get("{metric}") is not none '
-                        "else 'offline' }}",
-                    }
-                )
-                cfg["expire_after"] = self.options["poll_interval"] * 3
-            if metric.endswith("percent"):
-                cfg.update(
-                    unit_of_measurement="%",
-                    state_class="measurement",
-                    icon="mdi:progress-clock",
-                )
-            elif metric.endswith("_at"):
-                cfg.update(
-                    device_class="timestamp",
-                    # Same null guard as _discovery: string None, not int(None).
-                    value_template='{{ (value_json.aliases["'
-                    + metric
-                    + '"] | int) | timestamp_utc if value_json.aliases["'
-                    + metric
-                    + '"] is not none else "None" }}',
-                )
-            else:
-                cfg.update(entity_category="diagnostic")
-            configs[f"homeassistant/sensor/claude_usage_proxy/{metric}/config"] = cfg
-
     def on_message(self, client: Any, userdata: Any, message: Any) -> None:
         if message.retain:
             return
@@ -297,8 +220,6 @@ class MqttPublisher:
             message.topic,
         )
         key = match[1] if match else None
-        if message.topic == f"{self.options['topic_prefix']}/command/refresh":
-            key = "claude"
         if key:
             try:
                 self.action(key, "refresh")
@@ -313,11 +234,30 @@ class MqttPublisher:
         with self.lock:
             self.connected = True
             self.cache.clear()
-            client.subscribe(f"{self.options['topic_prefix']}/command/refresh", qos=1)
             client.subscribe(
                 f"{self.options['ai_topic_prefix']}/+/command/refresh", qos=1
             )
-            self._send(f"{self.options['topic_prefix']}/status", "starting")
+            self._send(f"{self.options['ai_topic_prefix']}/status", "starting")
+            if self.options["discovery"]:
+                self._send(
+                    "homeassistant/sensor/ai_usage_proxy/status/config",
+                    json.dumps(
+                        {
+                            "name": "AI Usage Proxy Status",
+                            "unique_id": "ai_usage_proxy_status",
+                            "state_topic": f"{self.options['ai_topic_prefix']}/status",
+                            "device": {
+                                "identifiers": ["ai_usage_proxy"],
+                                "name": "AI Usage Proxy",
+                                "manufacturer": "flapperdeflipper",
+                            },
+                            "availability_mode": "all",
+                            "availability": [self._process_availability()],
+                            "entity_category": "diagnostic",
+                            "icon": "mdi:progress-clock",
+                        }
+                    ),
+                )
             for view in list(self.views.values()):
                 self.publish_provider(view)
 
@@ -380,7 +320,7 @@ class MqttPublisher:
                     if user:
                         client.username_pw_set(user, password)
                     client.will_set(
-                        f"{self.options['topic_prefix']}/status",
+                        f"{self.options['ai_topic_prefix']}/status",
                         "proxy offline",
                         qos=1,
                         retain=True,
@@ -401,7 +341,9 @@ class MqttPublisher:
                 self._send(
                     f"{self.options['ai_topic_prefix']}/{key}/availability", "offline"
                 )
-            self._send(f"{self.options['topic_prefix']}/status", "proxy offline")
+            self._send(
+                f"{self.options['ai_topic_prefix']}/status", "proxy offline"
+            )
         if self.client is not None:
             self.client.disconnect()
             self.client.loop_stop()

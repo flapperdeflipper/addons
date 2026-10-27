@@ -28,7 +28,6 @@ class WebTests(unittest.TestCase):
                     "connected": False,
                     "source": "Testing",
                     "topic_root": "ai/usage",
-                    "legacy_topic_prefix": "claude/usage",
                     "poll_interval": 60,
                     "discovery": True,
                 }

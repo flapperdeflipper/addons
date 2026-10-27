@@ -84,7 +84,6 @@ def main():
                     "connected": True,
                     "source": "Test broker",
                     "topic_root": "ai/usage",
-                    "legacy_topic_prefix": "claude/usage",
                     "discovery": True,
                     "poll_interval": 60,
                 }

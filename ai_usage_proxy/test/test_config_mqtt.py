@@ -50,14 +50,10 @@ class ConfigMqttTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_legacy_options_and_secret_rejection(self):
+    def test_options_defaults_and_secret_rejection(self):
         from config import load_options
 
-        (self.root / "options.json").write_text(
-            json.dumps({"topic_prefix": "custom/claude"})
-        )
         opts = load_options(self.root)
-        self.assertEqual(opts["topic_prefix"], "custom/claude")
         self.assertEqual(opts["ai_topic_prefix"], "ai/usage")
         (self.root / "options.json").write_text(
             json.dumps({"mqtt_password": "!secret missing"})
@@ -65,7 +61,7 @@ class ConfigMqttTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_options(self.root)
 
-    def test_used_metrics_legacy_identities_and_missing_value_cleanup(self):
+    def test_used_metrics_ai_identities_and_missing_value_cleanup(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher
 
@@ -75,20 +71,24 @@ class ConfigMqttTests(unittest.TestCase):
         )
         publisher.connected = True
         publisher.publish_provider(view())
-        self.assertEqual(client.messages["claude/usage/session_percent"], "22")
+        self.assertEqual(client.messages["ai/usage/claude/session_percent"], "22")
         self.assertEqual(
             client.messages["ai/usage/claude/windows/five_hour/used_percent"], "22"
         )
         payload = json.loads(
             client.messages[
-                "homeassistant/sensor/claude_usage_proxy/session_percent/config"
+                "homeassistant/sensor/ai_usage_proxy/"
+                "claude_five_hour_used_percent/config"
             ]
         )
-        self.assertEqual(payload["unique_id"], "claude_usage_proxy_session_percent")
+        self.assertEqual(
+            payload["unique_id"], "ai_usage_proxy_claude_five_hour_used_percent"
+        )
         self.assertEqual(payload["state_topic"], "ai/usage/claude/state")
-        self.assertIn("aliases", payload["value_template"])
+        self.assertIn("five_hour", payload["value_template"])
+        self.assertEqual(payload["availability"][0]["topic"], "ai/usage/status")
         publisher.publish_provider(view(used=None, reset=None))
-        self.assertEqual(client.messages["claude/usage/session_percent"], "")
+        self.assertEqual(client.messages["ai/usage/claude/session_percent"], "")
         self.assertEqual(
             client.messages["ai/usage/claude/windows/five_hour/used_percent"], ""
         )
@@ -118,9 +118,9 @@ class ConfigMqttTests(unittest.TestCase):
         self.assertEqual(
             client.messages["ai/usage/claude/windows/five_hour/used_percent"], ""
         )
-        self.assertEqual(client.messages["claude/usage/session_percent"], "")
+        self.assertEqual(client.messages["ai/usage/claude/session_percent"], "")
 
-    def test_unknown_legacy_reset_is_unavailable_in_discovery(self):
+    def test_unknown_reset_is_unavailable_in_discovery(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher
 
@@ -132,11 +132,12 @@ class ConfigMqttTests(unittest.TestCase):
         pub.publish_provider(view(reset=None))
         cfg = json.loads(
             client.messages[
-                "homeassistant/sensor/claude_usage_proxy/session_resets_at/config"
+                "homeassistant/sensor/ai_usage_proxy/"
+                "claude_five_hour_resets_at/config"
             ]
         )
         availability = json.dumps(cfg["availability"])
-        self.assertIn("session_resets_at", availability)
+        self.assertIn("resets_at", availability)
         self.assertIn("is not none", availability)
 
     def test_unknown_reset_renders_none_instead_of_template_error(self):
@@ -177,12 +178,13 @@ class ConfigMqttTests(unittest.TestCase):
             '{{ (value_json.windows["tokens"].resets_at | int) | timestamp_utc '
             'if value_json.windows["tokens"].resets_at is not none else \'None\' }}',
         )
-        legacy = json.loads(
+        claude = json.loads(
             client.messages[
-                "homeassistant/sensor/claude_usage_proxy/session_resets_at/config"
+                "homeassistant/sensor/ai_usage_proxy/"
+                "claude_five_hour_resets_at/config"
             ]
         )
-        self.assertIn('is not none else "None"', legacy["value_template"])
+        self.assertIn("is not none else 'None'", claude["value_template"])
         used = json.loads(
             client.messages[
                 "homeassistant/sensor/ai_usage_proxy/zai_tokens_used_percent/config"

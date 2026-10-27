@@ -58,8 +58,8 @@ def main():
             service.start()
             try:
                 wait_for(
-                    lambda: messages.get("claude/usage/session_percent") == "22",
-                    "Legacy used value missing",
+                    lambda: messages.get("ai/usage/claude/session_percent") == "22",
+                    "Session used value missing",
                 )
                 wait_for(
                     lambda: (
@@ -72,10 +72,15 @@ def main():
                 assert state["windows"]["short"]["used_percent"] == 22
                 config = json.loads(
                     messages[
-                        "homeassistant/sensor/claude_usage_proxy/session_percent/config"
+                        "homeassistant/sensor/ai_usage_proxy/"
+                        "claude_short_used_percent/config"
                     ]
                 )
-                assert config["unique_id"] == "claude_usage_proxy_session_percent"
+                assert (
+                    config["unique_id"]
+                    == "ai_usage_proxy_claude_short_used_percent"
+                )
+                assert config["availability"][0]["topic"] == "ai/usage/status"
                 reads = provider.reads
                 probe.publish(
                     "ai/usage/claude/command/refresh", "1", qos=1, retain=False
@@ -86,7 +91,7 @@ def main():
                 )
                 service.action("claude", "disconnect")
                 wait_for(
-                    lambda: messages.get("claude/usage/session_percent") == "",
+                    lambda: messages.get("ai/usage/claude/session_percent") == "",
                     "Disconnected metric was not cleared",
                 )
                 wait_for(
@@ -98,11 +103,11 @@ def main():
                 publisher.close()
                 worker.join(timeout=2)
             wait_for(
-                lambda: messages.get("claude/usage/status") == "proxy offline",
+                lambda: messages.get("ai/usage/status") == "proxy offline",
                 "Process offline state missing",
             )
             print(
-                "Real MQTT check passed: used percentages, legacy/discovery identities, refresh routing, retained cleanup, shutdown availability."
+                "Real MQTT check passed: used percentages, discovery identities, refresh routing, retained cleanup, shutdown availability."
             )
     finally:
         probe.disconnect()

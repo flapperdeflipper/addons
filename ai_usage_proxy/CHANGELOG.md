@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0
+
+- **Breaking:** the process last will and status moved from the legacy `claude/usage/status` to `ai/usage/status` (the shared `ai_topic_prefix` root)
+- **Breaking:** removed the `topic_prefix` option and the `claude/usage/*` compatibility topics; Claude publishes only `ai/usage/claude/*` like every other provider
+- **Breaking:** Claude session/weekly sensors now use the `ai_usage_proxy_*` identity (window-based, like OpenAI/z.ai) instead of the preserved `claude_usage_proxy_*` entities; stale legacy topics and discovery messages are cleared from the broker automatically from the publish inventory
+- **Add:** `AI Usage Proxy Status` diagnostic sensor on `ai/usage/status`, replacing `Claude Proxy Status`
+
 ## 2.0.1
 
 - **Fixed:** reset-time sensors raised a Home Assistant template error (`int got invalid input 'None'`) on every publish while a provider reports `resets_at: null` (z.ai does until a reset time is known); discovery value templates now render the string `None` so the sensor reads as unknown without logging, instead of relying on availability alone - HA renders `value_template` for every state payload even when the entity is offline.

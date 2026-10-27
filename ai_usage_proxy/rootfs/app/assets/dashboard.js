@@ -247,7 +247,7 @@ async function update() {
     badge.className = `badge ${mqtt.connected ? 'good' : 'warning'}`;
     const values = document.querySelector('#settings-values'); values.replaceChildren();
     for (const [name, value] of [['Broker', mqtt.source], ['Polling interval', `${mqtt.poll_interval}s`],
-      ['MQTT root', mqtt.topic_root], ['Legacy Claude topics', mqtt.legacy_topic_prefix],
+      ['MQTT root', mqtt.topic_root],
       ['Home Assistant discovery', mqtt.discovery ? 'Enabled' : 'Disabled']]) {
       values.append(element('dt', '', name), element('dd', '', value));
     }
