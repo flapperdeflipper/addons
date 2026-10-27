@@ -1,10 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## 2026.9.29
+## 2026.9.30
 
 - **Fixed** — MCP server: the `get_current_datetime` timezone follows Home Assistant's timezone (`TZ`, UTC if unset) instead of a hard-coded America/New_York. An existing `ods_config.json` that still holds the old America/New_York default is migrated; any other explicitly set `desired_timezone` is kept.
 - **Changed** — MCP server: Pydantic V1 `@validator`, `@root_validator` and `.dict()` replaced by their V2 equivalents (`field_validator`, `model_validator`, `model_dump`), ahead of their removal in Pydantic 3.
+
+## 2026.9.29
+
+- **Changed** — automated dependency update (Renovate).
 
 ## 2026.9.28
 

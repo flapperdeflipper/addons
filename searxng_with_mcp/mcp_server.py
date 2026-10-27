@@ -485,7 +485,7 @@ class MCPEventEmitter:
 
 
 # --- Configuration Management ---
-# Hard-coded default before 2026.9.29; first runs saved it to the config file.
+# Hard-coded default before 2026.9.30; first runs saved it to the config file.
 LEGACY_DEFAULT_TIMEZONE = "America/New_York"
 
 
