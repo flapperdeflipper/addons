@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+
+- **Add:** per-provider diagnostic sensors - `<provider> Status` (`ai/usage/<provider>/status`), `<provider> Last Update` (timestamp, null-safe template), and a `<provider> Online` connectivity binary sensor (`ai/usage/<provider>/availability`) - so every published topic has a Home Assistant entity
+
 ## 2.1.0
 
 - **Breaking:** the process last will and status moved from the legacy `claude/usage/status` to `ai/usage/status` (the shared `ai_topic_prefix` root)

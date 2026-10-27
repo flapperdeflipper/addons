@@ -194,6 +194,39 @@ class ConfigMqttTests(unittest.TestCase):
             used["value_template"], '{{ value_json.windows["tokens"].used_percent }}'
         )
 
+    def test_provider_diagnostics_sensors(self):
+        from config import load_options
+        from mqtt_publisher import MqttPublisher
+
+        client = FakeClient()
+        pub = MqttPublisher(
+            load_options(self.root), self.root, lambda *_: None, client=client
+        )
+        pub.connected = True
+        pub.publish_provider(view())
+        status = json.loads(
+            client.messages["homeassistant/sensor/ai_usage_proxy/claude_status/config"]
+        )
+        self.assertEqual(status["unique_id"], "ai_usage_proxy_claude_status")
+        self.assertEqual(status["state_topic"], "ai/usage/claude/status")
+        self.assertEqual(status["availability"][0]["topic"], "ai/usage/status")
+        last_update = json.loads(
+            client.messages[
+                "homeassistant/sensor/ai_usage_proxy/claude_last_update/config"
+            ]
+        )
+        self.assertEqual(last_update["device_class"], "timestamp")
+        self.assertIn("if value else 'None'", last_update["value_template"])
+        availability = json.loads(
+            client.messages[
+                "homeassistant/binary_sensor/ai_usage_proxy/"
+                "claude_availability/config"
+            ]
+        )
+        self.assertEqual(availability["payload_on"], "online")
+        self.assertEqual(availability["payload_off"], "offline")
+        self.assertEqual(availability["device_class"], "connectivity")
+
     def test_new_provider_commands_need_no_publisher_changes(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher
