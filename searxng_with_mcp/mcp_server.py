@@ -487,16 +487,17 @@ class MCPEventEmitter:
 # --- Configuration Management ---
 # Hard-coded default before 2026.9.30; first runs saved it to the config file.
 LEGACY_DEFAULT_TIMEZONE = "America/New_York"
+FALLBACK_TIMEZONE = "Europe/Amsterdam"
 
 
 def host_timezone() -> str:
-    """The container's TZ (set by the Supervisor from the HA timezone), else UTC."""
+    """The container's TZ (set by the Supervisor from the HA timezone), else Amsterdam."""
     tz = os.getenv("TZ", "").strip()
     try:
         ZoneInfo(tz)
         return tz
     except Exception:
-        return "UTC"
+        return FALLBACK_TIMEZONE
 
 
 class Tools:
