@@ -292,7 +292,9 @@ class MqttPublisher:
                     "homeassistant/sensor/ai_usage_proxy/status/config",
                     json.dumps(
                         {
-                            "name": "AI Usage Proxy Status",
+                            # Device-name prefixing completes this to
+                            # "AI Usage Proxy Status" in Home Assistant.
+                            "name": "Status",
                             "unique_id": "ai_usage_proxy_status",
                             "state_topic": f"{self.options['ai_topic_prefix']}/status",
                             "device": {
@@ -309,6 +311,8 @@ class MqttPublisher:
                 )
             for view in list(self.views.values()):
                 self.publish_provider(view)
+            # "starting" cleared the crash will; bootstrap is done.
+            self._send(f"{self.options['ai_topic_prefix']}/status", "ok")
 
     def _on_disconnect(self, *args: Any) -> None:
         self.connected = False
