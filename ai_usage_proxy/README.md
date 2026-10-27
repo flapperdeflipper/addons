@@ -18,7 +18,13 @@ The page refreshes status without reloading open forms. Refresh usage requests a
 
 ## MQTT topics
 
-The default root is `ai/usage`; provider IDs are `claude`, `openai`, and `zai`. Messages are retained at QoS 1. For example:
+The default root is `ai/usage`; provider IDs are `claude`, `openai`, and `zai`. Messages are retained at QoS 1. The process status lives at the shared root:
+
+| Topic | Payload |
+| --- | --- |
+| `ai/usage/status` | Process status: `starting` while booting, `proxy offline` via the retained last will when the process dies |
+
+For example, per provider:
 
 | Topic | Payload |
 | --- | --- |
@@ -39,28 +45,18 @@ Window IDs are stable per upstream bucket. The example `codex_primary` is not a 
 
 A display can subscribe to `ai/usage/openai/session_percent` and `week_percent`, plus `last_update` and availability, to render short/weekly gauges. If those aliases are unavailable, select an explicit window from `state`. In the dashboard, expand **MQTT topics** to copy common topics.
 
-### Existing Claude displays
+### Claude displays
 
-The existing configured `topic_prefix`, default `claude/usage`, still publishes:
+Claude publishes the same provider topics as every other provider: `ai/usage/claude/session_percent`, `week_percent`, `*_resets_at`, `last_update`, `status`, and `command/refresh`. Claude session/weekly Home Assistant sensors use the `ai_usage_proxy_*` identity like all providers.
 
-```text
-session_percent          week_percent
-session_resets_at        week_resets_at
-last_update              status
-command/refresh
-```
-
-Existing Home Assistant discovery topics and unique IDs are preserved. Their discovery configuration now reads timestamped JSON state so unchanged percentages do not expire healthy sensors. New providers receive separate sensors.
-
-One MQTT connection has one last will. The process will remains **`<topic_prefix>/status = proxy offline`**, preserving existing Claude display behavior. New Home Assistant entities combine that process will with per-provider availability. A custom display should also observe this will for immediate crash detection; the retained per-provider availability alone cannot detect a process crash. The legacy status may describe a Claude connection error while other providers remain healthy.
+One MQTT connection has one last will: **`ai/usage/status = proxy offline`**, retained. Home Assistant entities combine that process will with per-provider availability. A custom display should also observe this will for immediate crash detection; the retained per-provider availability alone cannot detect a process crash.
 
 ## Options
 
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `poll_interval` | `60` | Provider polling interval, 10–3600 seconds |
-| `ai_topic_prefix` | `ai/usage` | Shared provider topic root |
-| `topic_prefix` | `claude/usage` | Existing Claude compatibility topics and process last will |
+| `ai_topic_prefix` | `ai/usage` | Shared provider and process-status topic root |
 | `discovery` | `true` | Publish Home Assistant MQTT discovery |
 | `mqtt_host`, `mqtt_port`, `mqtt_username`, `mqtt_password` | empty / `1883` | Manual broker fallback |
 
@@ -72,9 +68,9 @@ The private `/data/providers/<provider>/` directories contain established creden
 
 The repository contains the renamed add-on only. Its new slug is `ai_usage_proxy`; Home Assistant therefore treats its installed identity separately from `claude_usage_proxy` and does not perform a transparent installed-app rename.
 
-1. Record the old add-on options, including any custom Claude `topic_prefix` and broker fallback. Keep the old installation/backup until the new one is working.
+1. Record the old add-on options, including any broker fallback. Keep the old installation/backup until the new one is working.
 2. Stop the old Claude Usage Proxy.
-3. Reload the add-on repository, install **AI Usage Proxy**, and copy the relevant options. Keep the Claude `topic_prefix` unchanged.
+3. Reload the add-on repository, install **AI Usage Proxy**, and copy the relevant options. Displays that subscribed to a legacy `claude/usage` prefix should move to `ai/usage/claude` (2.1.0 no longer publishes compatibility topics).
 4. Start the new add-on and connect Claude through its dashboard. This is the supported migration path without access to private add-on files. Connect OpenAI and z.ai as needed.
 5. Check the existing display readings and Home Assistant entities, then remove the old installation.
 

@@ -1,4 +1,4 @@
-"""Home Assistant options, including the original Claude MQTT options."""
+"""Home Assistant add-on options."""
 
 import json
 import os
@@ -40,7 +40,6 @@ def load_options(root: Path) -> dict[str, Any]:
 
     return {
         "poll_interval": max(10, min(3600, int(raw.get("poll_interval", 60)))),
-        "topic_prefix": prefix("topic_prefix", "claude/usage"),
         "ai_topic_prefix": prefix("ai_topic_prefix", "ai/usage"),
         "discovery": raw.get("discovery", True) is True,
         "mqtt_host": string("mqtt_host"),
