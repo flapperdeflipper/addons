@@ -110,7 +110,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
 
       # Suite discovery, so add-ons without tests skip gracefully:
       # 1. add-on level node:test suites in test/ (no dependencies)
