@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.31
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2026.9.30
 
 - **Fixed** — MCP server: the `get_current_datetime` timezone follows Home Assistant's timezone (`TZ`, Europe/Amsterdam if unset or invalid) instead of a hard-coded America/New_York. An existing `ods_config.json` that still holds the old America/New_York default is migrated; any other explicitly set `desired_timezone` is kept.
