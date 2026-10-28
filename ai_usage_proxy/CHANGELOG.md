@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.3
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.1.2
 
 - **Fixed:** the process status sensor showed `starting` for the whole uptime - it now publishes `ok` once connect-time bootstrap (discovery + view republication) finishes; `proxy offline` via the last will is unchanged
