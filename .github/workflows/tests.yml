@@ -97,7 +97,7 @@ jobs:
       # Node 24 to match the agent-base toolchain the add-ons ship with.
       - name: Set up Python for AI Usage Proxy
         if: matrix.addon == 'ai_usage_proxy'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
