@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.11
+
+- **Changed** — automated dependency update (Renovate).
+
+## 2.0.10
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.0.9
 
 - **Fixed** — chrome-devtools: pass `--filesystem-root=/tmp` explicitly. File tools were already confined to the container's temp directory; the implicit default made chrome-devtools-mcp warn "client did not negotiate the MCP roots capability" for every session.

@@ -10,7 +10,7 @@
 # ==============================================================================
 
 # Global ARG (available in FROM instructions)
-ARG NODE_IMAGE=node:24.22.1-bookworm-slim
+ARG NODE_IMAGE=node:26.13.0-bookworm-slim
 
 ## Main add-on image
 FROM ${NODE_IMAGE}

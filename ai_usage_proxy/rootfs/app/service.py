@@ -36,7 +36,7 @@ class ProviderState:
     retry_at: float = 0
     next_poll: float = 0
     failures: int = 0
-    last_success: float = 0
+    confirmed: float = 0
 
 
 class UsageService:
@@ -68,9 +68,14 @@ class UsageService:
         with state.lock:
             stale = bool(
                 state.snapshot
-                and time.monotonic() - state.last_success >= self.poll_interval * 3
+                and time.monotonic() - state.confirmed >= self.poll_interval * 3
             )
             status = "stale" if stale and state.status == "ok" else state.status
+            confirmed_at = (
+                int(time.time() - (time.monotonic() - state.confirmed))
+                if state.snapshot
+                else None
+            )
             return {
                 "id": provider_id,
                 "name": provider.name,
@@ -80,6 +85,7 @@ class UsageService:
                 "message": state.message,
                 "auth_message": state.auth_message,
                 "snapshot": state.snapshot.public() if state.snapshot else None,
+                "confirmed_at": confirmed_at,
                 "available": bool(
                     state.snapshot and not stale and state.connection == "connected"
                 ),
@@ -234,7 +240,7 @@ class UsageService:
             snapshot = provider.fetch_usage()
             with state.lock:
                 state.snapshot = snapshot
-                state.last_success = time.monotonic()
+                state.confirmed = time.monotonic()
                 state.connection = "connected"
                 state.status = "ok"
                 state.message = "Connected"
@@ -252,12 +258,17 @@ class UsageService:
                 )
                 if error.status == "auth_required":
                     delay = max(error.retry_after, AUTH_RETRY)
+                elif error.status == "rate_limited":
+                    # Anthropic's usage endpoint answers 429 while nothing
+                    # changed; a throttled round with a held reading counts
+                    # as "still current", so displays only flag readings
+                    # that stopped being confirmed.
+                    if state.snapshot is not None:
+                        state.confirmed = time.monotonic()
+                    # Honour Retry-After only up to the confirmation window.
+                    delay = min(error.retry_after or 300, 600)
                 else:
-                    delay = error.retry_after or (
-                        300
-                        if error.status == "rate_limited"
-                        else min(300, 5 * 2 ** min(state.failures, 6))
-                    )
+                    delay = error.retry_after or min(300, 5 * 2 ** min(state.failures, 6))
                 state.retry_at = time.monotonic() + delay
         except Exception:  # noqa: BLE001 - isolate worker and publisher failures
             LOG.error("%s usage update failed", key)
