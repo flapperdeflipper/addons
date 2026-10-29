@@ -36,7 +36,7 @@ For example, per provider:
 | `ai/usage/openai/week_percent` | Percentage used for an identified weekly window |
 | `ai/usage/openai/session_resets_at` | Reset epoch for that short window, when supplied |
 | `ai/usage/openai/week_resets_at` | Reset epoch for that weekly window, when supplied |
-| `ai/usage/openai/last_update` | Epoch of the last successful reading |
+| `ai/usage/openai/last_update` | Epoch the reading was last confirmed current (successful fetch, or a completed round the endpoint throttled while a reading was held) |
 | `ai/usage/openai/status` | `starting`, `disconnected`, `ok`, `auth_required`, `rate_limited`, `error`, `unsupported`, or `stale` |
 | `ai/usage/openai/availability` | `online` while a connected provider's sample is fresh; otherwise `offline` |
 | `ai/usage/openai/command/refresh` | Publish any **non-retained** payload to request a reading |

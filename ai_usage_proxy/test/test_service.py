@@ -237,6 +237,57 @@ class ServiceTests(unittest.TestCase):
         self.service.tick("openai")
         self.assertEqual(self.service.view("openai")["flow_id"], "")
 
+    def test_rate_limited_round_with_reading_confirms_current(self):
+        provider = self.providers["claude"]
+        provider.has_token = True
+        self.service.tick("claude")
+        provider.failure = ProviderError("Wait", "rate_limited", retry_after=300)
+        self.service.action("claude", "refresh")
+        self.service.tick("claude")
+        state = self.service.view("claude")
+        self.assertEqual(state["status"], "rate_limited")
+        self.assertIsNotNone(state["snapshot"])
+        self.assertIsNotNone(state["confirmed_at"])
+        self.assertTrue(state["available"])
+
+    def test_staleness_keys_on_confirmation_not_fetch(self):
+        provider = self.providers["claude"]
+        provider.has_token = True
+        self.service.tick("claude")
+        provider.failure = ProviderError("Wait", "rate_limited", retry_after=300)
+        self.service.action("claude", "refresh")
+        self.service.tick("claude")
+        # A throttled round just confirmed the reading: not stale yet.
+        self.assertFalse(self.service.view("claude")["stale"])
+        # Three poll intervals without any confirmation flip it stale; a
+        # non-ok status (here rate_limited) stays visible, only ok -> stale.
+        self.service.states["claude"].confirmed -= 4 * self.service.poll_interval
+        state = self.service.view("claude")
+        self.assertEqual(state["status"], "rate_limited")
+        self.assertTrue(state["stale"])
+        self.assertFalse(state["available"])
+
+    def test_failed_round_does_not_confirm_reading(self):
+        provider = self.providers["claude"]
+        provider.has_token = True
+        self.service.tick("claude")
+        confirmed_before = self.service.states["claude"].confirmed
+        provider.failure = ProviderError("Cannot reach the provider; retrying")
+        self.service.action("claude", "refresh")
+        self.service.tick("claude")
+        self.assertEqual(self.service.states["claude"].confirmed, confirmed_before)
+
+    def test_rate_limited_backoff_capped_for_confirmed_readings(self):
+        provider = self.providers["claude"]
+        provider.has_token = True
+        self.service.tick("claude")
+        provider.failure = ProviderError("Wait", "rate_limited", retry_after=3600)
+        self.service.action("claude", "refresh")
+        self.service.tick("claude")
+        expected = time.monotonic() + 600
+        retry_at = self.service.states["claude"].retry_at
+        self.assertLess(abs(retry_at - expected), 5)
+
     def test_disconnect_clears_snapshot(self):
         self.providers["claude"].has_token = True
         self.service.tick("claude")
