@@ -223,7 +223,7 @@ function renderCard(state) {
     windows.forEach((window, index) => (index < 2 ? card.metrics : extra).append(renderMetric(window)));
     if (windows.length > 2) card.metrics.append(extra);
   }
-  card.updated.textContent = age(state.snapshot?.fetched_at) + (state.stale ? ' · Last known reading' : '');
+  card.updated.textContent = age(state.confirmed_at) + (state.stale ? ' · Last known reading' : '');
   card.refresh.disabled = !state.snapshot || state.connection === 'reconnect_required' || state.busy;
   card.manage.textContent = state.connection === 'disconnected' && !state.flow_id ? 'Connect' : 'Manage connection';
   const oldTopics = card.details.querySelectorAll('.topic'); oldTopics.forEach(node => node.remove());

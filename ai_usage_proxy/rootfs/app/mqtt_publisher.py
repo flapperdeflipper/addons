@@ -120,7 +120,7 @@ class MqttPublisher:
                     "else 'offline' }}",
                 },
             ],
-            "expire_after": self.options["poll_interval"] * 3,
+            "expire_after": max(self.options["poll_interval"] * 3, 900),
         }
         expression = f"value_json.windows[{field}].{metric}"
         if metric == "used_percent":
@@ -157,7 +157,7 @@ class MqttPublisher:
                 "message": view["message"],
                 "connection": view["connection"],
                 "available": view["available"],
-                "last_update": snapshot["fetched_at"] if snapshot else None,
+                "last_update": view.get("confirmed_at"),
                 "windows": windows,
                 "aliases": {},
             }
