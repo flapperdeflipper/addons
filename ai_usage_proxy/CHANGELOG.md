@@ -2,6 +2,8 @@
 
 ## 2.1.3
 
+- **Changed** — automated dependency update (Renovate).
+
 - **Fixed:** `<provider>/last_update` (and the Last Update sensor and the dashboard age) only advanced on a successful fetch, so unchanged usage throttled by the endpoint (Claude's usage endpoint answers 429 while nothing changed) eventually turned every display red - a completed round that is throttled while a reading is held now re-confirms the reading, and `last_update` means "confirmed current at" instead of "fetched at"
 - **Change:** rate-limit backoff is capped at 600s (a longer `Retry-After` is honoured only up to that cap) and discovery `expire_after` is at least 900s, so confirmed readings keep Home Assistant sensors alive between throttled rounds
 
