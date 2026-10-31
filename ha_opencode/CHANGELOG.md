@@ -1,3 +1,7 @@
+## 3.2.5
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 3.2.4
 
 - **Fixed** — the bundled LiteLLM discovery plugin is pinned to `opencode-plugin-litellm@1.8.0` instead of `1.3.0`. OpenCode 2's plugin loader rejects V1 plugins (`PluginModule.LoadError: Plugin must export a default definition with an id and an effect or setup function`), and 1.3.0 only depended on `@opencode-ai/plugin ^1.14.0`. 1.8.0 ships a V2 entrypoint (`export { default } from './plugin/v2'`, `Plugin.define`, `@opencode/plugin ^2.0.14`), so runtime model discovery loads again on the OpenCode 2 runtime while the provider itself keeps working either way.
