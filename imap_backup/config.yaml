@@ -1,0 +1,40 @@
+---
+name: "IMAP Backup"
+slug: imap_backup
+description: >-
+  A small IMAP server (Dovecot) to back up mail into: add it as an account in
+  Apple Mail and drag mailboxes from your other accounts onto it. Mail is kept
+  as Maildir under /share.
+version: "1.0.0"
+image: flapperdeflipper/addon-imap-backup
+url: "https://github.com/flapperdeflipper/addons/tree/main/imap_backup"
+arch:
+  - amd64
+startup: services
+boot: auto
+ports:
+  993/tcp: 993
+ports_description:
+  993/tcp: "IMAPS (IMAP over TLS)"
+watchdog: "tcp://[HOST]:[PORT:993]"
+map:
+  - share:rw
+  - ssl
+options:
+  accounts:
+    - username: backup
+      password: ""
+  storage_dir: imap_backup
+  hostnames:
+    - homeassistant.local
+  debug: false
+schema:
+  accounts:
+    - username: str
+      password: password
+  storage_dir: str
+  hostnames:
+    - str
+  certfile: str?
+  keyfile: str?
+  debug: bool
