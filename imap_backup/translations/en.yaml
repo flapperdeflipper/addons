@@ -1,0 +1,21 @@
+configuration:
+  accounts:
+    name: Accounts
+    description: IMAP logins, one mailbox tree each. Usernames may look like an email address (A-Z a-z 0-9 . _ @ + -). Passwords are required; changes apply after a restart.
+  storage_dir:
+    name: Storage folder
+    description: Folder under /share that holds the mail (one sub-folder per account, Maildir inside). A single folder name, no slashes.
+  hostnames:
+    name: Hostnames
+    description: Names and IP addresses for the generated self-signed certificate. Ignored when certfile and keyfile are set. Changing the list generates a new certificate.
+  certfile:
+    name: Certificate file
+    description: Certificate (full chain) in /ssl, e.g. fullchain.pem. Leave empty for a self-signed certificate.
+  keyfile:
+    name: Private key file
+    description: Private key in /ssl, e.g. privkey.pem. Set together with certfile.
+  debug:
+    name: Debug logging
+    description: Log authentication and mailbox details. Leave off unless you are troubleshooting.
+network:
+  993/tcp: IMAPS (IMAP over TLS)
