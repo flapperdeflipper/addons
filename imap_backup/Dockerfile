@@ -1,5 +1,5 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
-ARG BUILD_FROM=alpine:3.24.3
+ARG BUILD_FROM=alpine:3.24.4
 FROM ${BUILD_FROM}
 
 # Plain Alpine with Dovecot, no s6-overlay: run.sh prepares accounts, storage
