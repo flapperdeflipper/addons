@@ -5,7 +5,7 @@ description: >-
   A small IMAP server (Dovecot) to back up mail into: add it as an account in
   Apple Mail and drag mailboxes from your other accounts onto it. Mail is kept
   as Maildir under /share.
-version: "1.0.0"
+version: "1.0.1"
 image: flapperdeflipper/addon-imap-backup
 url: "https://github.com/flapperdeflipper/addons/tree/main/imap_backup"
 arch:

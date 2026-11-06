@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.0.0 (2026-11-02)
 
 Initial release.
