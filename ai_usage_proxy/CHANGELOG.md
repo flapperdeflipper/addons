@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.4
+
+- **Changed** — Python 3.14 base image (`amd64-base-python:3.14-alpine3.21`) (Renovate #308).
+
 ## 2.1.3
 
 - **Fixed:** `<provider>/last_update` (and the Last Update sensor and the dashboard age) only advanced on a successful fetch, so unchanged usage throttled by the endpoint (Claude's usage endpoint answers 429 while nothing changed) eventually turned every display red - a completed round that is throttled while a reading is held now re-confirms the reading, and `last_update` means "confirmed current at" instead of "fetched at"
