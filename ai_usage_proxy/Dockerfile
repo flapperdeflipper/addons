@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.21
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.14-alpine3.21
 FROM $BUILD_FROM
 
 # Official @openai/codex Linux x64 package, pinned to 0.164.0 and its content hash.
