@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.9.38
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2026.9.37
 
 - **Changed** — SearXNG 2026.11.6-ac11e14c5; python-dateutil 4.0, cachetools 8.0, pymupdf 2.1 and pymupdf4llm 2.1 (together: pymupdf 2.1 needs pymupdf4llm 2.1) (Renovate #311, #316, #317, #321, #322).
