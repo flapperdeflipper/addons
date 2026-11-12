@@ -15,8 +15,8 @@
 // sessions that need their own cookies/storage.
 
 import { createMcpServer } from "chrome-devtools-mcp";
-import { ConfigParser } from "chrome-devtools-mcp/build/src/config/ConfigParser.js";
-import { VERSION } from "chrome-devtools-mcp/build/src/version.js";
+import { ConfigParser } from "chrome-devtools-mcp/out/Default/gen/src/config/ConfigParser.js";
+import { VERSION } from "chrome-devtools-mcp/out/Default/gen/src/version.js";
 
 export const CHROMIUM_PATH = "/usr/bin/chromium";
 
