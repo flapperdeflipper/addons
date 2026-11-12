@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.13
+
+- **Changed** — chrome-devtools-mcp 1.13.0 (Renovate).
+- **Fixed** — chrome-devtools: import `ConfigParser` and `VERSION` from the package's new build path (`out/Default/gen/src/`); 1.13.0 no longer ships `build/src/`.
+
 ## 2.0.12
 
 - **Changed** — automated dependency update (Renovate).
