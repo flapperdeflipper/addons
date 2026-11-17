@@ -3,7 +3,7 @@ ARG BUILD_ARCH
 ARG BUILD_VERSION
 
 # Pinned SearXNG base image — bump this tag to control the version
-FROM searxng/searxng:2026.11.15-2d500cb6b
+FROM searxng/searxng:2026.11.17-d3a35cf45
 
 COPY rootfs/ /
 COPY mcp_server.py /
