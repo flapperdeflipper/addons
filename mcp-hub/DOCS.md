@@ -18,6 +18,7 @@ Single port (`8930/tcp`), single bearer token (the `token` option; a
 | `/mcp/ha-native` | Home Assistant native MCP (`/api/mcp/<API ID>`, default API `assist`), forwarded through the Supervisor | JSON-RPC forwarder |
 | `/mcp/homeassistant` | The full ha-mcp-server from the ha_opencode add-on (entity/state, safe config writing, supervisor tools, MQTT, todo, hab/zigporter/ESPHome companions), served by that add-on's always-on 8927 endpoint | JSON-RPC forwarder |
 | `/mcp/chrome-devtools` | [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) hosted in-process, driving a headless Chromium inside this container over a pipe (page-scoped tools take a `pageId`; `new_page` takes an `isolatedContext` name for separate cookies/storage) | stateless MCP |
+| `/mcp/mealie` | Recipes, meal plans and shopping lists from the Mealie add-on: search/get recipes, import by URL (scraper with AI fallback) or with Mealie's AI import, list/add meal plan entries, list shopping lists and add items. Uses a Mealie API token (`mealie_token`, a `!secret <key>` value works) | stateless MCP |
 
 `GET /healthz` (no auth) reports per-server state; `GET /` (auth) lists the
 routes. The browser never listens on a port: chrome-devtools-mcp launches
@@ -50,6 +51,15 @@ it execs the hab CLI and launches Chromium for screenshots, which only that
 add-on's image carries. Set `homeassistant_enabled: false` to drop the route
 if ha_opencode is not installed; the hub keeps serving everything else.
 
+## Mealie
+
+Set `mealie_url` to the Mealie add-on's API (default
+`http://4e94d283-mealie:9000`, the add-on hostname on the Supervisor network)
+and `mealie_token` to an API token from a Mealie user's profile, e.g.
+`!secret mealie_mcp_token`. Use a dedicated non-admin Mealie user: the tools
+act with that user's rights in its household. Unresolved `!secret` values
+stop the hub at start, like every other option.
+
 ## Adding a server
 
 1. Create `rootfs/opt/mcp-hub/src/servers/<id>/index.js` exporting a manifest:
@@ -77,6 +87,7 @@ and answers 503 on its path; it never takes the hub down.
 - `src/servers/victoriametrics/` - fork of [prometheus-mcp-server](https://github.com/eagle1e6/prometheus-mcp-server) 1.0.1 (MIT): identical tool names, schemas and response shapes, axios replaced with plain fetch.
 - `src/servers/ha-native/native-mcp.js` - fork of ha_opencode's `ha-mcp-server/lib/ha-native-mcp.js` (flapperdeflipper, MIT).
 - `src/auth.js`, `src/stateless.js` - forked from ha_opencode's `ha-mcp-server/lib/http-transport.js` (flapperdeflipper, MIT).
+- `src/servers/mealie/` - written for the hub against Mealie's REST API (v3.31.0); no upstream fork.
 - `chrome-devtools-mcp` is used as a pinned dependency, not forked; the hub imports its `createMcpServer` entry point and argument parser.
 
 ## Testing
