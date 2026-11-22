@@ -1,0 +1,90 @@
+---
+name: "Mealie"
+description: "Recipe manager and meal planner with a cooking-friendly mobile web app, OIDC login and AI recipe import"
+version: "1.0.0"
+slug: "mealie"
+image: "flapperdeflipper/addon-mealie"
+url: "https://github.com/flapperdeflipper/addons/tree/main/mealie"
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: application
+boot: auto
+panel_icon: mdi:silverware-fork-knife
+# Mealie has no sub-path support, so there is no Ingress: reach it through a
+# TLS reverse proxy on the mapped port (a PWA install needs HTTPS anyway).
+ingress: false
+ports:
+  9000/tcp: 9925
+ports_description:
+  9000/tcp: "Mealie web UI and API (plain HTTP) - put a TLS reverse proxy in front"
+hassio_api: false
+homeassistant_api: false
+host_network: false
+privileged: []
+# Mealie keeps everything (SQLite database, recipe images, its own backups)
+# under DATA_DIR=/data/mealie. A cold backup stops the add-on first, so the
+# SQLite file is never copied mid-write.
+backup: cold
+backup_exclude:
+  # Mealie's own backup archives; the HA backup already holds the live data.
+  - "mealie/backups/*"
+options:
+  # Public URL users reach Mealie on, e.g. https://recipes.example.org.
+  # Used for links and as the OIDC callback base. Empty = upstream default.
+  base_url: ""
+  # Reverse proxy addresses (IP or CIDR, comma-separated) trusted to send
+  # X-Forwarded-For/-Proto. Empty = trust none. Never use '*'.
+  trusted_proxies: ""
+  # Show the username/password form. Set false only once OIDC works.
+  allow_password_login: true
+  # Login session lifetime in hours (upstream default).
+  token_time_hours: 48
+  # Largest accepted upload in MiB (upstream default). Match the reverse
+  # proxy's client_max_body_size.
+  max_upload_size_mb: 1024
+  # Internal hosts/CIDRs (comma-separated) that server-side requests
+  # (scraping, webhooks) may reach despite the private-address block.
+  http_allow_list: ""
+  log_level: "info"
+  oidc:
+    enabled: false
+    # Discovery document, e.g.
+    # https://git.example.org/.well-known/openid-configuration
+    configuration_url: ""
+    client_id: ""
+    # A !secret <key> value resolves from secrets.yaml.
+    client_secret: ""
+    # Button label: "Login with <provider_name>".
+    provider_name: "OAuth"
+    # Create a Mealie user on first OIDC login.
+    signup_enabled: true
+    # Only members of this group (or admin_group) may log in. Empty = anyone
+    # the provider authenticates.
+    user_group: ""
+    # Members of this group become Mealie admins.
+    admin_group: ""
+    # Skip the login page and go straight to the provider.
+    auto_redirect: false
+    # Keep OIDC sessions across browser restarts.
+    remember_me: false
+schema:
+  base_url: "url?"
+  trusted_proxies: str?
+  allow_password_login: bool
+  token_time_hours: "int(1,9600)"
+  max_upload_size_mb: "int(1,)"
+  http_allow_list: str?
+  log_level: "list(debug|info|warning|error|critical)"
+  oidc:
+    enabled: bool
+    configuration_url: "url?"
+    client_id: str?
+    client_secret: password?
+    provider_name: str
+    signup_enabled: bool
+    user_group: str?
+    admin_group: str?
+    auto_redirect: bool
+    remember_me: bool
