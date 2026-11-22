@@ -1,3 +1,7 @@
+## 1.5.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.5.0
 
 - **Changed** — OpenChamber web UI 2.3.3 -> 2.7.0, the newest release that runs on the OpenCode 2.0.29 runtime in agent-base 1.3.0 (2.7.1 and later declare `engines.opencode >=2.2.4`). The ingress patch applies unchanged: 2.x handles the API base natively and the service-worker patch still matches.
