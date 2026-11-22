@@ -29,6 +29,18 @@ jobs:
       - name: Check changed add-ons for version bumps
         run: scripts/check-version-bump.sh "origin/${{ github.base_ref }}"
 
+  # Base-image drift guard: build.yaml's build_from is what the builder
+  # ships, so a Dockerfile BUILD_FROM default must not disagree with it.
+  base-pins:
+    runs-on: ubuntu-latest
+    name: Base image pins
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Compare Dockerfile BUILD_FROM defaults with build.yaml
+        run: scripts/check-base-pins.sh
+
   init:
     runs-on: ubuntu-latest
     name: Initialize tests
@@ -166,16 +178,18 @@ jobs:
   ## PRs (where `test` is skipped) still pass, and an `init` failure fails
   ## the gate instead of being silently skipped.
   checks:
-    needs: [init, test]
+    needs: [base-pins, init, test]
     if: always()
     runs-on: ubuntu-latest
     name: Addon tests passed
     steps:
       - name: Verify pipeline result
         run: |
+          echo "base-pins: ${{ needs.base-pins.result }}"
           echo "init: ${{ needs.init.result }}"
           echo "test: ${{ needs.test.result }}"
-          if [[ "${{ needs.init.result }}" != "success" ]] \
+          if [[ "${{ needs.base-pins.result }}" != "success" ]] \
+             || [[ "${{ needs.init.result }}" != "success" ]] \
              || [[ "${{ needs.test.result }}" == "failure" ]] \
              || [[ "${{ needs.test.result }}" == "cancelled" ]]; then
             echo "Tests did not pass - merge stays blocked."

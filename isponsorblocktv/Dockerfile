@@ -2,11 +2,15 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM as compiler
 ARG TEMPIO_VERSION BUILD_ARCH
+# Upstream release tag (build.yaml args, bumped by Renovate). Unpinned, the
+# build shipped whatever was on the default branch at build time.
+ARG ISPONSORBLOCKTV_VERSION
 RUN curl -sSLf -o /usr/bin/tempio "https://github.com/home-assistant/tempio/releases/download/${TEMPIO_VERSION}/tempio_${BUILD_ARCH}"
 RUN apk add --no-cache uv git
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
-RUN git clone https://github.com/dmunozv04/iSponsorBlockTV /repo
+RUN test -n "${ISPONSORBLOCKTV_VERSION}" \
+    && git clone --depth 1 --branch "${ISPONSORBLOCKTV_VERSION}" https://github.com/dmunozv04/iSponsorBlockTV /repo
 RUN cp -r /repo/src/* /app/ && cp /repo/requirements.txt /app/
 RUN uv pip install --system --index-strategy unsafe-best-match -r requirements.txt
 # TODO: we need the below as UV_COMPILE_BYTECODE=1 is not working as expected, remove once fixed

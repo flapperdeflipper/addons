@@ -13,11 +13,13 @@ class ManifestTests(unittest.TestCase):
         for entry in (
             "name: AI Usage Proxy",
             "slug: ai_usage_proxy",
-            "version: 2.1.4",
             "image: flapperdeflipper/addon-ai-usage-proxy",
             "ingress_port: 8237",
         ):
             self.assertIn(entry, config)
+        # Plain semver, not a fixed value: every release (including the
+        # Renovate post-upgrade bump) changes it.
+        self.assertRegex(config, r"(?m)^version: \d+\.\d+\.\d+$")
 
     def test_pinned_codex_and_mqtt_in_container(self):
         dockerfile = (ROOT / "Dockerfile").read_text()
