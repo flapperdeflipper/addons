@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.15
+
+- **Added** — `/mcp/mealie`: recipes, meal plans and shopping lists from the Mealie add-on. Tools: `mealie_search_recipes`, `mealie_get_recipe`, `mealie_import_recipe_url` (Mealie's scraper, AI fallback when a provider is set), `mealie_import_recipe_ai` (URL and/or pasted text/HTML, optional translation), `mealie_mealplan_list`, `mealie_mealplan_add`, `mealie_shopping_lists`, `mealie_shopping_add_items`. New options `mealie_enabled`, `mealie_url`, `mealie_token` (password; `!secret` works). Responses are compacted (ingredients and steps as strings, no nutrition/asset payloads).
+
 ## 2.0.14
 
 - **Changed** — security update: hono 4.13.14 -> 4.13.19, @hono/node-server 2.1.1 -> 2.1.11 (Dependabot alerts), transitive via `@modelcontextprotocol/sdk`. Lockfile-only.

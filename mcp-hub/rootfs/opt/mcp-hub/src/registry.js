@@ -35,5 +35,6 @@ import chromeDevtools from "./servers/chrome-devtools/index.js";
 import homeassistant from "./servers/homeassistant/index.js";
 import memory from "./servers/memory/index.js";
 import docstore from "./servers/docstore/index.js";
+import mealie from "./servers/mealie/index.js";
 
-export const MODULES = [victoriametrics, haNative, chromeDevtools, homeassistant, memory, docstore];
+export const MODULES = [victoriametrics, haNative, chromeDevtools, homeassistant, memory, docstore, mealie];
