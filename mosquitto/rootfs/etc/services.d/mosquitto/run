@@ -1,384 +1,241 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
-set +u
+# bashio enables errexit, errtrace, nounset and pipefail.
 
+readonly OPTIONS=/data/options.json
+readonly SYSTEM_USER=/data/system_user.json
+readonly CONFIG=/etc/mosquitto.conf
+readonly CONFIG_TEMPLATE=/etc/mosquitto.conf.template
+readonly CONFIG_OVERRIDE=/data/mosquitto.conf
+readonly SCHEMA=/usr/share/create_tables.sql
+
+# Seconds to wait for the MySQL service before giving up.
+readonly MYSQL_WAIT=60
 
 ################################################################################
-## Functions                                                                  ##
+## MySQL                                                                      ##
 ################################################################################
 
-function get_database() {
-    bashio::log.info "Getting mysql databases"
+# Credentials go through a defaults file, not -p, so they don't show in ps.
+MYSQL_DEFAULTS=
 
-    if ! mysql \
-        -u "${MYSQL_USER}" \
-        -p"${MYSQL_PASS}"  \
-        -h "${MYSQL_HOST}" \
-        -P "${MYSQL_PORT}" \
-        --skip-column-names    \
-        -e 'SHOW DATABASES LIKE "mosquitto"'
-    then
-        bashio::log.warning "mosquitto database does not exitst"
-    fi
+function mysql_defaults() {
+    MYSQL_DEFAULTS="$(mktemp)"
+    chmod 0600 "${MYSQL_DEFAULTS}"
+    {
+        echo "[client]"
+        echo "user=${MYSQL_USER}"
+        echo "password=\"${MYSQL_PASS}\""
+        echo "host=${MYSQL_HOST}"
+        echo "port=${MYSQL_PORT}"
+    } >"${MYSQL_DEFAULTS}"
 }
 
+function sql() {
+    mysql --defaults-extra-file="${MYSQL_DEFAULTS}" --skip-column-names "$@"
+}
+
+function wait_for_mysql() {
+    local deadline=$((SECONDS + MYSQL_WAIT))
+
+    until mysqladmin --defaults-extra-file="${MYSQL_DEFAULTS}" --silent ping >/dev/null 2>&1; do
+        if ((SECONDS >= deadline)); then
+            bashio::exit.nok "MySQL at ${MYSQL_HOST}:${MYSQL_PORT} not reachable after ${MYSQL_WAIT}s"
+        fi
+        bashio::log.info "Waiting for MySQL at ${MYSQL_HOST}:${MYSQL_PORT}"
+        sleep 2
+    done
+}
+
+function database_exists() {
+    local found
+
+    found="$(sql -e "SHOW DATABASES LIKE 'mosquitto'")"
+    [[ -n "${found}" ]]
+}
 
 function create_database() {
-    bashio::log.info "creating mysql database mosquitto"
+    local admin_hash="${1}"
+    local hass_hash="${2}"
+    local addons_hash="${3}"
 
-    if ! mysql \
-        -u "${MYSQL_USER}" \
-        -p"${MYSQL_PASS}"  \
-        -h "${MYSQL_HOST}" \
-        -P "${MYSQL_PORT}" \
-        --skip-column-names    \
-        -e 'CREATE DATABASE mosquitto'
-    then
-        bashio::log.error "Failed to create database"
-        return 1
-    fi
+    bashio::log.info "Creating database and schema for mosquitto"
+    sql -e 'CREATE DATABASE mosquitto'
 
+    # Hashes are PBKDF2 strings ([A-Za-z0-9$+/=]): safe as sed replacements.
+    sed -e "s|%%ADMIN_PASSWORD%%|${admin_hash}|g" \
+        -e "s|%%HASS_PASSWORD%%|${hass_hash}|g" \
+        -e "s|%%ADDONS_PASSWORD%%|${addons_hash}|g" \
+        "${SCHEMA}" \
+        | sql mosquitto
 }
 
-
-function load_database() {
-    local admin_password="$1"
-    local hass_password="$2"
-    local addons_password="$3"
-
-    bashio::log.info "Loading mosquitto autodiscovery passwords into database"
-
-    sed -i -e "s|%%ADMIN_PASSWORD%%|$admin_password|g"   /usr/share/create_tables.sql
-    sed -i -e "s|%%HASS_PASSWORD%%|$hass_password|g"     /usr/share/create_tables.sql
-    sed -i -e "s|%%ADDONS_PASSWORD%%|$addons_password|g" /usr/share/create_tables.sql
-
-    if ! mysql "mosquitto" \
-        -u "${MYSQL_USER}" \
-        -p"${MYSQL_PASS}"  \
-        -h "${MYSQL_HOST}" \
-        -P "${MYSQL_PORT}" < /usr/share/create_tables.sql
-    then
-        bashio::log.error "Failed to load database"
-        return 1
-    fi
-}
-
-
-function update_admin_passwords() {
-    local admin_password="$1"
-    local hass_password="$2"
-    local addons_password="$3"
-
-    bashio::log.info "Updating mysql passwords"
-
-    if ! mysql "mosquitto" \
-        -u "${MYSQL_USER}"  \
-        -p"${MYSQL_PASS}"   \
-        -h "${MYSQL_HOST}"  \
-        -P "${MYSQL_PORT}"  \
-        --skip-column-names \
-        -e "
-    UPDATE users
-      SET pw = (
-        case
-          when username = 'admin'
-          then '${admin_password}'
-          when username = 'homeassistant'
-          then '${hass_password}'
-          when username = 'addons'
-          then '${addons_password}'
-        end
-      )
-      WHERE username in ('admin' 'homeassistant', 'addons')
-    "
-    then
-        bashio::log.error "Failed to update admin database passwords"
-        return 1
-    fi
-}
-
+################################################################################
+## Config                                                                     ##
+################################################################################
 
 function write_system_users() {
-    local hass="$1"
-    local addons="$2"
-    local admin="$3"
-
-    bashio::log.info "Setting up mysql system users"
-
-    (
-        echo "{\"homeassistant\": {\"password\": \"$hass\"}, \"addons\": {\"password\": \"$addons\"}, \"admin\": {\"password\": \"$admin\"}}"
-    ) > "${SYSTEM_USER}"
+    jq --null-input \
+        --arg hass "${1}" \
+        --arg addons "${2}" \
+        '{homeassistant: {password: $hass}, addons: {password: $addons}}' \
+        >"${SYSTEM_USER}"
+    chmod 0600 "${SYSTEM_USER}"
 }
 
+function tls_listeners() {
+    local cafile="${1}"
+    local certfile="${2}"
+    local keyfile="${3}"
+    local require_certificate="${4}"
+    local listener
 
-function call_hassio() {
-    local method="${1}"
-    local path="${2}"
-    local data="${3}"
-    local token=
+    for listener in "8883 mqtt" "8884 websockets"; do
+        echo
+        echo "listener ${listener% *}"
+        echo "protocol ${listener#* }"
+        echo "cafile /ssl/${cafile}"
+        echo "certfile /ssl/${certfile}"
+        echo "keyfile /ssl/${keyfile}"
+        echo "require_certificate ${require_certificate}"
+    done
+}
 
-    bashio::log.info "Calling supervisor api"
+function render_config() {
+    local anonymous certfile keyfile cafile require_certificate logging folder
+    local config
 
-    token="Authorization: Bearer ${SUPERVISOR_TOKEN:-}"
-    url="http://supervisor/${path}"
+    anonymous="$(jq --raw-output '.anonymous // false' "${OPTIONS}")"
+    certfile="$(jq --raw-output '.certfile // empty' "${OPTIONS}")"
+    keyfile="$(jq --raw-output '.keyfile // empty' "${OPTIONS}")"
+    cafile="$(jq --raw-output --arg cert "${certfile}" '.cafile // $cert' "${OPTIONS}")"
+    require_certificate="$(jq --raw-output '.require_certificate // false' "${OPTIONS}")"
+    logging="$(bashio::info 'hassio.info.logging' '.logging')"
 
-    # Call API
-    if [ -n "${data}" ]; then
-        curl -f -s -X "${method}" -d "${data}" -H "${token}" "${url}"
+    bashio::log.info "Generating ${CONFIG}"
+
+    # Render from the template on every start so a restart never sees an
+    # already-substituted file. Quoted replacements keep & and \ literal.
+    config="$(<"${CONFIG_TEMPLATE}")"
+    config="${config//%%ANONYMOUS%%/"${anonymous}"}"
+    config="${config//%%AUTH_QUIET_LOGS%%/"${logging}"}"
+    config="${config//%%MYSQL_USER%%/"${MYSQL_USER}"}"
+    config="${config//%%MYSQL_PASS%%/"${MYSQL_PASS}"}"
+    config="${config//%%MYSQL_HOST%%/"${MYSQL_HOST}"}"
+    config="${config//%%MYSQL_PORT%%/"${MYSQL_PORT}"}"
+
+    if [[ "$(jq --raw-output '.customize.active // false' "${OPTIONS}")" == "true" ]]; then
+        folder="$(jq --raw-output '.customize.folder // "mosquitto"' "${OPTIONS}")"
+        config="${config//\#include_dir \/share\/mosquitto/"include_dir /share/${folder}"}"
+    fi
+
+    if [[ -e "/ssl/${cafile}" && -e "/ssl/${certfile}" && -e "/ssl/${keyfile}" ]]; then
+        bashio::log.info "Enabling TLS listeners on 8883 and 8884"
+        config+="$(tls_listeners "${cafile}" "${certfile}" "${keyfile}" "${require_certificate}")"
     else
-        curl -f -s -X "${method}" -H "${token}" "${url}"
+        bashio::log.warning "TLS not enabled: certificate files not found in /ssl"
     fi
 
-    return "${?}"
+    umask 077
+    echo "${config}" >"${CONFIG}"
 }
 
+################################################################################
+## Supervisor                                                                 ##
+################################################################################
 
-function constrain_host_config() {
-    local user=$1
-    local password=$2
-
-    echo "{"
-    echo "  \"host\": \"$(hostname)\","
-    echo "  \"port\": 1883,"
-    echo "  \"ssl\": false,"
-    echo "  \"protocol\": \"3.1.1\","
-    echo "  \"username\": \"${user}\","
-    echo "  \"password\": \"${password}\""
-    echo "}"
+function mqtt_service_config() {
+    jq --null-input \
+        --arg host "$(hostname)" \
+        --arg username "${1}" \
+        --arg password "${2}" \
+        '{host: $host, port: 1883, ssl: false, protocol: "3.1.1", username: $username, password: $password}'
 }
 
-
-function constrain_discovery() {
-    local user="${1}"
-    local password="${2}"
-    local config=
-
-    config="$( constrain_host_config "${user}" "${password}" )"
-
-    echo "{"
-    echo "  \"service\": \"mqtt\","
-    echo "  \"config\": ${config}"
-    echo "}"
+function mqtt_service_host() {
+    bashio::services.available mqtt && bashio::services mqtt host || true
 }
 
+function register_services() {
+    local host
 
-function update_mosquitto_config() {
-
-    bashio::log.info "Updating mosquitto config"
-
-    ## Allow anonymous logins
-    sed -i -e "s|%%ANONYMOUS%%|$ANONYMOUS|g" /etc/mosquitto.conf
-
-    ## Setup logging
-    sed -i -e "s|%%AUTH_QUIET_LOGS%%|$LOGGING|g" /etc/mosquitto.conf
-
-    ## Setup mysql credentials
-    sed -i -e "s|%%MYSQL_USER%%|$MYSQL_USER|g" /etc/mosquitto.conf
-    sed -i -e "s|%%MYSQL_PASS%%|$MYSQL_PASS|g" /etc/mosquitto.conf
-    sed -i -e "s|%%MYSQL_HOST%%|$MYSQL_HOST|g" /etc/mosquitto.conf
-    sed -i -e "s|%%MYSQL_PORT%%|$MYSQL_PORT|g" /etc/mosquitto.conf
-
-    # Enable SSL if exists configs
-    if [[ -e "/ssl/$CAFILE" ]] \
-    && [[ -e "/ssl/$CERTFILE" ]] \
-    && [[ -e "/ssl/$KEYFILE" ]]
-    then
-        bashio::log.info "Setup mosquitto TLS configuration"
-        echo "$SSL" >> /etc/mosquitto.conf
-    else
-        bashio::log.warning "SSL not enabled - No valid certs found!"
+    host="$(mqtt_service_host)"
+    if [[ -n "${host}" && "${host}" != "$(hostname)" ]]; then
+        bashio::log.warning "Another MQTT service is already registered (${host})"
+        return 0
     fi
 
-    # Allow customize configs from share
-    if [[ "$CUSTOMIZE_ACTIVE" == "true" ]]
-    then
-        CUSTOMIZE_FOLDER="$( jq --raw-output '.customize.folder // "/dev/null"' "${CONFIG_PATH}" )"
-        sed -i "s|#include_dir .*|include_dir /share/$CUSTOMIZE_FOLDER|g" /etc/mosquitto.conf
+    bashio::log.info "Registering the mqtt service and Home Assistant discovery"
+    bashio::services.publish mqtt "$(mqtt_service_config addons "${ADDONS_PASSWORD}")" >/dev/null \
+        || bashio::log.error "Can't register the mqtt service"
+    bashio::discovery mqtt "$(mqtt_service_config homeassistant "${HASS_PASSWORD}")" >/dev/null \
+        || bashio::log.error "Can't register Home Assistant mqtt discovery"
+}
+
+function unregister_services() {
+    if [[ "$(mqtt_service_host)" == "$(hostname)" ]]; then
+        bashio::services.delete mqtt >/dev/null \
+            || bashio::log.warning "Can't unregister the mqtt service"
     fi
 }
 
-
 ################################################################################
-## Variables                                                                  ##
-################################################################################
-
-CONFIG_PATH=/data/options.json
-SYSTEM_USER=/data/system_user.json
-
-bashio::log.info "Getting anonymous variable"
-ANONYMOUS="$( jq --raw-output '.anonymous // false' "${CONFIG_PATH}" )" \
-    || bashio::log.error "Failed to get .anonymous"
-
-bashio::log.info "Getting keyfile variable"
-KEYFILE="$( jq --raw-output '.keyfile // empty' "${CONFIG_PATH}" )" \
-    || bashio::log.error "Failed to get keyfile"
-
-bashio::log.info "Getting certfile variable"
-CERTFILE="$( jq --raw-output '.certfile // empty' "${CONFIG_PATH}" )" \
-    || bashio::log.error "Failed to get certfile"
-
-bashio::log.info "Getting require_certificate variable"
-REQUIRE_CERTIFICATE="$( jq --raw-output '.require_certificate // false' "${CONFIG_PATH}" )" \
-    || bashio::log.error "Failed to get require certificate"
-
-bashio::log.info "Getting customize.active variable"
-CUSTOMIZE_ACTIVE="$( jq --raw-output '.customize.active // false' "${CONFIG_PATH}" )" \
-    || bashio::log.error "Failed to get customize.active"
-
-bashio::log.info "Getting cafile variable"
-CAFILE="$( jq --raw-output --exit-status ".cafile | select (.!=null)" "${CONFIG_PATH}" || echo "${CERTFILE}" )" \
-    || bashio::log.error "Failed to get cafile"
-
-bashio::log.info "Getting logging variable"
-LOGGING="$( bashio::info 'hassio.info.logging' '.logging' )" \
-    || bashio::log.error "failed to get logging"
-
-WAIT_PIDS=()
-
-SSL="
-listener 8883
-protocol mqtt
-cafile /ssl/${CAFILE}
-certfile /ssl/${CERTFILE}
-keyfile /ssl/${KEYFILE}
-require_certificate ${REQUIRE_CERTIFICATE}
-
-listener 8884
-protocol websockets
-cafile /ssl/${CAFILE}
-certfile /ssl/${CERTFILE}
-keyfile /ssl/${KEYFILE}
-require_certificate ${REQUIRE_CERTIFICATE}
-"
-
-bashio::log.info "Retrieving mysql username, password host and port"
-
-MYSQL_USER="$( bashio::services mysql username )" \
-    || bashio::log.error "failed to get mysql username"
-MYSQL_PASS="$( bashio::services mysql password )" \
-    || bashio::log.error "failed to get mysql password"
-MYSQL_HOST="$( bashio::services mysql host )" \
-    || bashio::log.error "failed to get mysql host"
-MYSQL_PORT="$( bashio::services mysql port )" \
-    || bashio::log.error "failed to get mysql port"
-
-################################################################################
-## Prepare System Accounts                                                    ##
+## Main                                                                       ##
 ################################################################################
 
-if [[ ! -e "${SYSTEM_USER}" ]]
-then
-    bashio::log.info "Generate system user passwords."
+bashio::log.info "Reading MySQL service credentials"
+MYSQL_USER="$(bashio::services mysql username)"
+MYSQL_PASS="$(bashio::services mysql password)"
+MYSQL_HOST="$(bashio::services mysql host)"
+MYSQL_PORT="$(bashio::services mysql port)"
 
-    HASS_PASSWORD="$( pwgen 64 1 )"
-    ADDONS_PASSWORD="$( pwgen 64 1 )"
-    ADMIN_PASSWORD="$( jq --raw-output '.admin_password' "${CONFIG_PATH}" )"
-    case "${ADMIN_PASSWORD}" in
-        '!secret '*)
-            bashio::exit.nok "admin_password is an unresolved !secret reference (key missing in secrets.yaml) - refusing to configure the broker with it"
-            ;;
-    esac
-
-    bashio::log.info "Initialize system users configuration."
-    write_system_users "$HASS_PASSWORD" "$ADDONS_PASSWORD" "$ADMIN_PASSWORD"
-
+# The database is the source of truth for every user. The add-on only seeds
+# admin, homeassistant and addons when it creates the database.
+if [[ -e "${SYSTEM_USER}" ]]; then
+    HASS_PASSWORD="$(jq --raw-output '.homeassistant.password' "${SYSTEM_USER}")"
+    ADDONS_PASSWORD="$(jq --raw-output '.addons.password' "${SYSTEM_USER}")"
 else
-    HASS_PASSWORD="$( jq --raw-output '.homeassistant.password' "${SYSTEM_USER}" )"
-    ADDONS_PASSWORD="$( jq --raw-output '.addons.password' "${SYSTEM_USER}" )"
-    ADMIN_PASSWORD="$( jq --raw-output '.admin.password' "${SYSTEM_USER}" )"
+    bashio::log.info "Generating system user passwords"
+    HASS_PASSWORD="$(pwgen -s 64 1)"
+    ADDONS_PASSWORD="$(pwgen -s 64 1)"
+fi
+write_system_users "${HASS_PASSWORD}" "${ADDONS_PASSWORD}"
+
+mysql_defaults
+trap 'rm -f "${MYSQL_DEFAULTS}"' EXIT
+wait_for_mysql
+
+if ! database_exists; then
+    ADMIN_PASSWORD="$(jq --raw-output '.admin_password' "${OPTIONS}")"
+    if [[ "${ADMIN_PASSWORD}" == '!secret '* ]]; then
+        bashio::exit.nok "admin_password is an unresolved !secret reference (key missing in secrets.yaml) - refusing to configure the broker with it"
+    fi
+    create_database \
+        "$(pw -p "${ADMIN_PASSWORD}")" \
+        "$(pw -p "${HASS_PASSWORD}")" \
+        "$(pw -p "${ADDONS_PASSWORD}")"
+fi
+rm -f "${MYSQL_DEFAULTS}"
+
+if [[ -f "${CONFIG_OVERRIDE}" ]]; then
+    bashio::log.info "Using ${CONFIG_OVERRIDE} instead of the generated config"
+    cp "${CONFIG_OVERRIDE}" "${CONFIG}"
+else
+    render_config
 fi
 
-################################################################################
-## Create database                                                            ##
-################################################################################
+register_services
 
-DATABASE="$( get_database )"
-HASS_PASSWORD_HASH="$( pw -p "${HASS_PASSWORD}" )"
-ADDONS_PASSWORD_HASH="$( pw -p "${ADDONS_PASSWORD}" )"
-ADMIN_PASSWORD_HASH="$( pw -p "${ADMIN_PASSWORD}" )"
+bashio::log.info "Starting Mosquitto"
+mosquitto -c "${CONFIG}" &
+MOSQUITTO_PID=$!
 
-if ! bashio::var.has_value "${DATABASE}"
-then
-    bashio::log.info "Creating database for mosquitto"
-    create_database
-
-    bashio::log.info "Creating schema for mosquitto database"
-    load_database "${ADMIN_PASSWORD_HASH}" "${HASS_PASSWORD_HASH}" "${ADDONS_PASSWORD_HASH}"
-
-else
-    bashio::log.info "Updating passwords for admin, homeassistant and addons"
-    update_admin_passwords "${ADMIN_PASSWORD_HASH}" "${HASS_PASSWORD_HASH}" "${ADDONS_PASSWORD_HASH}"
-fi
-
-################################################################################
-## Create mosquitto config file                                               ##
-################################################################################
-
-if [[ -f /data/mosquitto.conf ]]
-then
-    bashio::log.info "Found mosquitto config in data: Copy in place to /etc/mosquitto.conf"
-    cp /data/mosquitto.conf /etc/mosquitto.conf
-else
-    bashio::log.info "Generating mosquitto config to /etc/mosquitto.conf"
-    update_mosquitto_config
-fi
-
-################################################################################
-# Service registration                                                        ##
-################################################################################
-
-if call_hassio GET "services/mqtt" \
-    | jq --raw-output ".data.host" \
-    | grep -v "$(hostname)" > /dev/null
-then
-    bashio::log.warning "There is already an MQTT service running!"
-else
-    bashio::log.info "Initialize Home Assistant Add-on mqtt service"
-
-    if ! call_hassio POST "services/mqtt" "$(constrain_host_config addons "${ADDONS_PASSWORD}")" > /dev/null; then
-        bashio::log.error "Can't setup Home Assistant service mqtt"
-    fi
-
-    bashio::log.info "Initialize Home Assistant discovery"
-    if ! call_hassio POST "discovery" "$(constrain_discovery homeassistant "${HASS_PASSWORD}")" > /dev/null; then
-        bashio::log.error "Can't setup Home Assistant discovery mqtt"
-    fi
-fi
-
-################################################################################
-## Start daemon                                                               ##
-################################################################################
-
-bashio::log.info "Starting Mosquitto daemon"
-
-# Start Mosquitto Server
-mosquitto -c /etc/mosquitto.conf &
-WAIT_PIDS+=($!)
-
-################################################################################
-## Handling Closing                                                           ##
-################################################################################
-
-function stop_mqtt() {
-    bashio::log.info "Shutting down mqtt system"
-
-    kill -15 "${WAIT_PIDS[@]}"
-
-    # Remove service
-    if call_hassio GET "services/mqtt" \
-        | jq --raw-output ".data.host" \
-        | grep "$(hostname)" > /dev/null
-    then
-        if ! call_hassio DELETE "services/mqtt"
-        then
-            bashio::log.warning "Service unregister fails!"
-        fi
-    fi
-
-    wait "${WAIT_PIDS[@]}"
+function stop_mosquitto() {
+    bashio::log.info "Shutting down Mosquitto"
+    kill -TERM "${MOSQUITTO_PID}" 2>/dev/null || true
+    unregister_services
+    wait "${MOSQUITTO_PID}" || true
 }
+trap stop_mosquitto SIGTERM SIGHUP
 
-trap "stop_mqtt" SIGTERM SIGHUP
-
-# Wait and hold Add-on running
-wait "${WAIT_PIDS[@]}"
+wait "${MOSQUITTO_PID}"

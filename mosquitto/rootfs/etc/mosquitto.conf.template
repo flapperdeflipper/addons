@@ -1,6 +1,5 @@
 ##
 # defaults
-protocol mqtt
 user root
 
 ##
@@ -12,7 +11,18 @@ log_dest stdout
 persistence true
 persistence_location /data/
 
-max_queued_messages 0
+max_queued_messages 1000
+
+##
+# limits
+# 2.1 lowered the default from 256 MiB to 2 MB. The largest payload seen is
+# zigbee2mqtt's retained bridge/devices (~280 KB), which grows with every
+# paired device; 16 MiB leaves room for that and for networkmap responses.
+max_packet_size 16777216
+
+# 2.1 changed the default to true: clients with overlapping subscriptions
+# (foo/# and foo/bar) would get one copy per matching subscription.
+allow_duplicate_messages false
 
 ##
 # Plugins
