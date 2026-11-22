@@ -1,3 +1,7 @@
+## 1.6.0
+
+- **Changed** — OpenChamber web UI 2.7.0 -> 2.8.0. 2.7.1 and later declare `engines.opencode >=2.2.4`; agent-base 1.4.0 (shipped in 1.5.1) provides OpenCode 2.3.2. The ingress patch applies unchanged (2.x API base handled natively, service-worker patch still matches). Checked locally against an OpenCode 2.3.2 server: UI, `/api/*` proxy and session creation through OpenChamber.
+
 ## 1.5.1
 
 - **Changed** — automated dependency update (Renovate).
