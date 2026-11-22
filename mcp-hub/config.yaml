@@ -4,7 +4,7 @@ slug: mcp_hub
 description: Shared MCP servers over HTTP for OpenCode, LiteLLM and other agents - one process per server instead of one per session.
 url: https://github.com/flapperdeflipper/addons/tree/master/mcp-hub
 image: flapperdeflipper/addon-mcp-hub
-version: "2.0.14"
+version: "2.0.15"
 
 arch:
   - amd64
@@ -40,6 +40,10 @@ options:
   docstore_enabled: true
   docstore_url: "http://4e94d283-couchdb:5985"
   docstore_token: ""
+  mealie_enabled: true
+  mealie_url: "http://4e94d283-mealie:9000"
+  # Mealie API token; a !secret <key> value works (e.g. !secret mealie_mcp_token).
+  mealie_token: ""
 schema:
   token: password
   chrome_devtools_enabled: bool
@@ -58,3 +62,6 @@ schema:
   docstore_enabled: bool
   docstore_url: str
   docstore_token: password
+  mealie_enabled: bool
+  mealie_url: str
+  mealie_token: password
