@@ -10,7 +10,7 @@ It uses a newer auth plugin and a MySQL backend for authentication instead of th
 The mosquitto auth plugin by jpmens is deprecated and does not compile for newer mosquitto versions.
 
 Luckily @iegomez stepped in and created this [wonderful new mosquitto auth plugin in golang](https://github.com/iegomez/mosquitto-go-auth).
-This mosquitto addon makes use for said auth plugin and as such is usable with more recent mosquitto versions.
+That repository was archived in 2025; this addon uses the maintained fork [lhns/mosquitto-go-auth](https://github.com/lhns/mosquitto-go-auth), which keeps the same configuration options and password hashes.
 
 
 ## Using other auth backends

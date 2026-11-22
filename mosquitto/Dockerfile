@@ -13,7 +13,6 @@ FROM golang:${GO_VERSION}-bookworm AS builder
 ARG MOSQUITTO_VERSION
 ARG MOSQUITTO_AUTH_VERSION
 ARG CJSON_VERSION
-ARG LWS_VERSION
 
 WORKDIR /app
 
@@ -30,28 +29,6 @@ RUN set -x \
      wget \
      build-essential \
      git \
- \
- && wget -q https://github.com/warmcat/libwebsockets/archive/v${LWS_VERSION}.tar.gz -O /tmp/lws.tar.gz \
- && mkdir -p /app/lws \
- && tar --strip=1 -xf /tmp/lws.tar.gz -C /app/lws \
- && rm /tmp/lws.tar.gz \
- && cd /app/lws \
- && cmake . \
-     -DCMAKE_BUILD_TYPE=MinSizeRel \
-     -DCMAKE_INSTALL_PREFIX=/usr \
-     -DDISABLE_WERROR=ON \
-     -DLWS_IPV6=ON \
-     -DLWS_WITH_HTTP2=OFF \
-     -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
-     -DLWS_WITHOUT_CLIENT=ON \
-     -DLWS_WITHOUT_EXTENSIONS=ON \
-     -DLWS_WITH_EXTERNAL_POLL=ON \
-     -DLWS_WITHOUT_TESTAPPS=ON \
-     -DLWS_WITH_SHARED=OFF \
-     -DLWS_WITH_ZIP_FOPS=OFF \
-     -DLWS_WITH_ZLIB=OFF \
- && make -j "$( nproc )" \
- && rm -rf /root/.cmake \
  \
  && wget -q https://github.com/DaveGamble/cJSON/archive/v${CJSON_VERSION}.tar.gz -O /tmp/cjson.tar.gz \
  && mkdir -p /app/cjson \
@@ -73,11 +50,15 @@ RUN set -x \
  && tar --strip=1 -xf /tmp/mosq.tar.gz -C /app/mosq \
  && rm /tmp/mosq.tar.gz \
  && make -C /app/mosq -j "$(nproc)" \
-     CFLAGS="-Wall -O2 -I/app/lws/include -I/app" \
-     LDFLAGS="-L/app/lws/lib -L/app/cjson" \
+     CFLAGS="-Wall -O2" \
+     CPPFLAGS="-I/app" \
+     LDFLAGS="-L/app/cjson" \
      WITH_ADNS=no \
      WITH_DOCS=no \
+     WITH_EDITLINE=no \
+     WITH_HTTP_API=no \
      WITH_SHARED_LIBRARIES=yes \
+     WITH_SQLITE=no \
      WITH_STATIC_LIBRARIES=yes \
      WITH_SRV=no \
      WITH_STRIP=yes \
@@ -85,12 +66,12 @@ RUN set -x \
      prefix=/usr \
      binary \
  \
- && wget -q https://github.com/iegomez/mosquitto-go-auth/archive/${MOSQUITTO_AUTH_VERSION}.tar.gz -qO /tmp/plugin.tgz \
+ && wget -q https://github.com/lhns/mosquitto-go-auth/archive/${MOSQUITTO_AUTH_VERSION}.tar.gz -qO /tmp/plugin.tgz \
  && mkdir -p /app/plugin \
  && tar --strip=1 -xf /tmp/plugin.tgz -C /app/plugin \
  && rm /tmp/plugin.tgz \
  && cd /app/plugin \
- && export CGO_CFLAGS="-I/usr/lib/include -I/usr/local/include -I/app/mosq/lib -I/app/mosq/src -I /app/mosq/include -fPIC" \
+ && export CGO_CFLAGS="-I/app -I/usr/lib/include -I/usr/local/include -I/app/mosq/lib -I/app/mosq/src -I /app/mosq/include -fPIC" \
  && export CGO_LDFLAGS="-shared" \
  && make -j "$( nproc )"
 
@@ -132,9 +113,9 @@ COPY --from=builder /app/mosq/apps/db_dump/mosquitto_db_dump         /usr/bin/mo
 ## Copy libs and plugins
 COPY --from=builder /app/mosq/lib/libmosquitto.so.1 /usr/lib/libmosquitto.so.1
 COPY --from=builder /app/mosq/plugins/dynamic-security/mosquitto_dynamic_security.so /usr/lib/mosquitto_dynamic_security.so
-COPY --from=builder /app/mosq/plugins/auth-by-ip/mosquitto_auth_by_ip.so /usr/lib/mosquitto_auth_by_ip.so
-COPY --from=builder /app/mosq/plugins/message-timestamp/mosquitto_message_timestamp.so /usr/lib/mosquitto_message_timestamp.so
-COPY --from=builder /app/mosq/plugins/payload-modification/mosquitto_payload_modification.so /usr/lib/mosquitto_payload_modification.so
+COPY --from=builder /app/mosq/plugins/examples/auth-by-ip/mosquitto_auth_by_ip.so /usr/lib/mosquitto_auth_by_ip.so
+COPY --from=builder /app/mosq/plugins/examples/message-timestamp/mosquitto_message_timestamp.so /usr/lib/mosquitto_message_timestamp.so
+COPY --from=builder /app/mosq/plugins/examples/payload-modification/mosquitto_payload_modification.so /usr/lib/mosquitto_payload_modification.so
 
 ## Copy mosquitto daemon
 COPY --from=builder /app/mosq/src/mosquitto /usr/sbin/mosquitto
