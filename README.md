@@ -6,6 +6,8 @@ My personal home-assistant addons
 
 [IMAP Backup](imap_backup/README.md) is a small Dovecot IMAP server to copy mail into from Apple Mail, stored as Maildir under `/share`.
 
+[Mealie](mealie/DOCS.md) is a recipe manager and meal planner with a phone-friendly web app, OIDC login and AI recipe import.
+
 ## Install
 
 [![Add repository to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/flapperdeflipper/addons)
