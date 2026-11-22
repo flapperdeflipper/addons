@@ -113,11 +113,15 @@ jobs:
         with:
           python-version: '3.15'
 
-      - name: Install AI Usage Proxy test dependencies
-        if: matrix.addon == 'ai_usage_proxy'
+      # Test-only Python packages live next to the tests, so CI and
+      # scripts/test-addon.sh (local runs) install the same set.
+      - name: Install Python test dependencies
+        if: hashFiles(format('{0}/test/test-requirements.txt', matrix.addon)) != ''
+        env:
+          ADDON: ${{ matrix.addon }}
         run: |
           set -euo pipefail
-          python3 -m pip install 'paho-mqtt>=2.1,<3'
+          python3 -m pip install -r "${ADDON}/test/test-requirements.txt"
 
       - name: Set up Node
         uses: actions/setup-node@v7

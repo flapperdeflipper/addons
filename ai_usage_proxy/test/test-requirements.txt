@@ -1,0 +1,4 @@
+# Test-only Python packages for test/test_*.py. Read by CI (tests.yml) and
+# scripts/test-addon.sh. Not part of the image: the image pins its own copy in
+# the Dockerfile.
+paho-mqtt>=2.1,<3
