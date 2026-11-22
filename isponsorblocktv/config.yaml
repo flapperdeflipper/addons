@@ -5,7 +5,7 @@ description: SponsorBlock client for all YouTube TV clients.
 url: "https://github.com/flapperdeflipper/addons/tree/main/isponsorblocktv"
 
 image: flapperdeflipper/addon-isponsorblock
-version: 2026.11.22.01
+version: "2026.11.22.2"
 
 arch:
   - amd64

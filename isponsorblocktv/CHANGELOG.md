@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 2026.11.22.2
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2026.11.22.01
 
 - **Changed** — upstream iSponsorBlockTV pinned to release `v2.11.0` (`ISPONSORBLOCKTV_VERSION` build arg). The build previously cloned whatever was on the default branch.
