@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- **Fixed** — Alpine 3.24.4 is now what ships: `build.yaml`'s `build_from` (which the builder uses) still said 3.24.3 after the Dockerfile default moved.
+
 ## 1.0.1
 
 - **Changed** — automated dependency update (Renovate).

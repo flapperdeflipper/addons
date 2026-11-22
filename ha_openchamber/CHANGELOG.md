@@ -1,3 +1,8 @@
+## 1.5.0
+
+- **Changed** — OpenChamber web UI 2.3.3 -> 2.7.0, the newest release that runs on the OpenCode 2.0.29 runtime in agent-base 1.3.0 (2.7.1 and later declare `engines.opencode >=2.2.4`). The ingress patch applies unchanged: 2.x handles the API base natively and the service-worker patch still matches.
+- **Changed** — bundled openchamber-mcp security update: hono 4.13.14 -> 4.13.19, @hono/node-server 2.1.1 -> 2.1.11 (Dependabot alerts). Lockfile-only.
+
 ## 1.4.3
 
 - **Changed** — dependency security update (supersedes dependabot #285): ip-address 10.7.2 -> 10.7.5 in the bundled openchamber-mcp server (the transitive missed by 1.4.2). Lockfile-only; addon tests 46/46 pass.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.9.9
+
+- **Fixed** — CouchDB 3.5.3 is now what ships: `build.yaml`'s `build_from` (which the builder uses) still said 3.5.2 after the Dockerfile default moved to 3.5.3.
+
 ## 3.9.8
 
 - **Changed** — automated dependency update (Renovate).
