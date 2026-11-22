@@ -1,3 +1,7 @@
+## 3.2.14
+
+- **Changed:** bundled MCP server: drop the `@puppeteer/browsers` override; `puppeteer-core` 25.18.1 already pins 3.2.7, which has no `extract-zip`. The override made Renovate's lockfile updates fail with EOVERRIDE. `@puppeteer/browsers` 3.2.3 -> 3.2.7, `modern-tar` 0.8.5 -> 0.8.6.
+
 ## 3.2.13
 
 - **Changed** — automated dependency update (Renovate).
