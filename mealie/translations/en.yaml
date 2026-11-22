@@ -1,0 +1,26 @@
+---
+configuration:
+  base_url:
+    name: Base URL
+    description: Public URL Mealie is reached on, e.g. https://recipes.example.org. Required for OIDC (callback base) and used in links.
+  trusted_proxies:
+    name: Trusted proxies
+    description: Reverse proxy IPs or CIDRs (comma-separated) allowed to send X-Forwarded headers. Empty trusts none; '*' is refused.
+  allow_password_login:
+    name: Password login
+    description: Show the username/password form. Turn off only once OIDC login works.
+  token_time_hours:
+    name: Session lifetime
+    description: Hours a login session lasts (1-9600).
+  max_upload_size_mb:
+    name: Max upload size
+    description: Largest upload in MiB. Keep the reverse proxy's body size limit in step.
+  http_allow_list:
+    name: HTTP allow list
+    description: Internal hosts or CIDRs (comma-separated) that scraping and webhooks may reach despite the private-address block.
+  log_level:
+    name: Log level
+    description: Mealie log verbosity.
+  oidc:
+    name: OIDC
+    description: OpenID Connect login. enabled needs configuration_url (discovery document), client_id, client_secret (a !secret value works) and base_url. Callback is <base_url>/login. user_group limits who can log in, admin_group grants admin.
