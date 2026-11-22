@@ -17,9 +17,9 @@ class ManifestTests(unittest.TestCase):
             "ingress_port: 8237",
         ):
             self.assertIn(entry, config)
-        # Plain semver, not a fixed value: every release (including the
-        # Renovate post-upgrade bump) changes it.
-        self.assertRegex(config, r"(?m)^version: \d+\.\d+\.\d+$")
+        # Plain semver, not a fixed value: every release changes it. Quoted or
+        # bare: scripts/renovate-post-upgrade.sh writes version: "X.Y.Z".
+        self.assertRegex(config, r'(?m)^version:\s*"?\d+\.\d+\.\d+"?\s*$')
 
     def test_pinned_codex_and_mqtt_in_container(self):
         dockerfile = (ROOT / "Dockerfile").read_text()
