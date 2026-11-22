@@ -16,11 +16,7 @@ The add-on has a couple of options available. To get the add-on running:
 2. Have some patience and wait a couple of minutes.
 3. Check the add-on log output to see the result.
 
-Create a new user for MQTT via the **Configuration** -> **Users (manage users)**.
-Notes:
-
-1. This name cannot be `homeassistant` or `addon`, those are reserved usernames.
-2. If you do not see the option to create a new user, ensure that **Advanced Mode** is enabled in your profile.
+MQTT users are managed in MySQL, not in Home Assistant: see [Mosquitto User management](#mosquitto-user-management).
 
 To use the Mosquitto as a broker, go to the integration page and install the configuration with one click:
 
@@ -48,7 +44,7 @@ admin_password: "somepassword"
 
 ### Option: `admin_password`
 
-The password that should be inserted into the database for an admin user.
+The password for the `admin` superuser, written to the database when the add-on creates it on first start. Changing the option later has no effect: change the password in the database instead (see below).
 
 Default value: `someverysecretthing`
 
@@ -86,9 +82,20 @@ If set to `true` encryption will be enabled using the cert- and keyfile options.
 
 ## Mosquitto User management
 
-This add-on is attached to a MySQL database for authentication. For the internal Home Assistant ecosystem, we register `homeassistant` and `addons`, so these may not be used as user names.
+This add-on is attached to a MySQL database for authentication. For the internal Home Assistant ecosystem, we register `homeassistant` and `addons`, so these may not be used as user names. The add-on generates their passwords when it creates the database.
 
-New passwords can be created using the `np` utility in the container, or by using the [python libraries](https://github.com/fliphess/mosquitto-auth-plug/tree/master/contrib/python3).
+Users live in the `users` table of the `mosquitto` database, topic rights in `acls`. Changes apply to the next login, without a restart. Create a password hash with the `pw` utility in the add-on container:
+
+```sh
+pw -p 'the-new-password'
+```
+
+and store it:
+
+```sql
+INSERT INTO users (username, pw, super) VALUES ('sensor1', '<hash>', 0);
+UPDATE users SET pw = '<hash>' WHERE username = 'admin';
+```
 
 ## Disable listening on insecure (1883) ports
 
