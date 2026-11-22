@@ -1,0 +1,49 @@
+---
+# Ping the central Renovate runner (flapperdeflipper/renovate) on every push
+# to main, so open Renovate PRs that fell behind are regenerated within
+# minutes instead of at the next daily run.
+#
+# Why: every add-on update bumps config.yaml `version:` (post-upgrade task).
+# When one PR merges, a second open PR for the same add-on is left with a
+# version that main already has, and the Version bumps guard fails it. Renovate
+# regenerates a behind PR from the new main and re-runs the post-upgrade task,
+# which picks the next free version, but only when it runs. Do not use
+# GitHub's "Update branch" on Renovate PRs: Renovate stops touching a branch
+# that someone else committed to. Tick the rebase checkbox instead.
+#
+# Requires the RENOVATE_DISPATCH_TOKEN secret (same token as agent-base's
+# trigger-renovate.yml). Without it the job warns and exits successfully.
+name: Trigger Renovate
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+# A burst of merges needs one Renovate run, not one per merge.
+concurrency:
+  group: renovate-dispatch
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    name: Dispatch Renovate run
+    steps:
+      - name: Dispatch Renovate run
+        env:
+          GH_TOKEN: ${{ secrets.RENOVATE_DISPATCH_TOKEN }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "::warning::RENOVATE_DISPATCH_TOKEN is not set; Renovate picks up main at its next scheduled run"
+            exit 0
+          fi
+          gh api repos/flapperdeflipper/renovate/dispatches \
+            -X POST \
+            -f event_type=renovate-trigger \
+            -F "client_payload[source_repository]=${SOURCE_REPOSITORY}" \
+            -F "client_payload[source_sha]=${SOURCE_SHA}"
