@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.14
+
+- **Changed** — security update: hono 4.13.14 -> 4.13.19, @hono/node-server 2.1.1 -> 2.1.11 (Dependabot alerts), transitive via `@modelcontextprotocol/sdk`. Lockfile-only.
+
 ## 2.0.13
 
 - **Changed** — chrome-devtools-mcp 1.13.0 (Renovate).

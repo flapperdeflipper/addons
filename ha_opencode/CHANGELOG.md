@@ -1,3 +1,8 @@
+## 3.2.12
+
+- **Changed** — bundled MCP server security update (Dependabot hono/@hono/node-server alerts): hono 4.13.14 -> 4.13.19, @hono/node-server 2.1.1 -> 2.1.11. Transitive via `@modelcontextprotocol/sdk` and inside its ranges; lockfile-only.
+- **Changed** — LSP server: vscode-languageserver 11.0.0 -> 11.0.1 (supersedes Renovate #345, whose version bump collided with #342).
+
 ## 3.2.11
 
 - **Changed** — automated dependency update (Renovate).

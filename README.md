@@ -6,6 +6,8 @@ My personal home-assistant addons
 
 [IMAP Backup](imap_backup/README.md) is a small Dovecot IMAP server to copy mail into from Apple Mail, stored as Maildir under `/share`.
 
+[Mealie](mealie/DOCS.md) is a recipe manager and meal planner with a phone-friendly web app, OIDC login and AI recipe import.
+
 ## Install
 
 [![Add repository to My Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/flapperdeflipper/addons)
@@ -27,6 +29,16 @@ cosign verify \
 Swap the image reference for any `flapperdeflipper/addon-*` repository and tag.
 
 **Note:** tags published before cosign was enabled are unsigned; only tags built after the signing workflow landed verify successfully.
+
+
+## Running the tests locally
+
+`scripts/test-addon.sh` runs an add-on's test suites the same way CI does: node:test and vitest suites through npm, Python suites through [uv](https://docs.astral.sh/uv/) on Python 3.15 with the packages from `<addon>/test/test-requirements.txt`. Needs Node 26 and uv.
+
+```console
+scripts/test-addon.sh ai_usage_proxy ha_opencode   # selected add-ons
+scripts/test-addon.sh                              # all add-ons + base image pin check
+```
 
 
 ## Disclaimer
