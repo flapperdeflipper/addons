@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.6
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.1.5
 
 - **Fixed** — the image now really uses Python 3.14: 2.1.4 bumped only the Dockerfile default, while the builder takes `build.yaml`'s `build_from` and kept shipping `3.13-alpine3.21`. Both now pin `amd64-base-python:3.14-alpine3.24`.
