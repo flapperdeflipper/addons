@@ -423,12 +423,11 @@ async function readSupervisorMetrics(component, addonSlug) {
 /**
  * The slug of the add-on this server is running inside.
  *
- * This cannot be a literal. It differs per channel (`…_ha_opencode` versus
- * `…_ha_opencode_beta`) and its prefix depends on how the repository was added
- * — `local_` for a local folder, a repository hash otherwise. The guard that
- * uses it stops the agent from tearing down its own container mid-session, so a
- * literal that matches only one channel silently disables the guard everywhere
- * else.
+ * This cannot be a literal: its prefix depends on how the repository was
+ * added — `local_` for a local folder, a repository hash otherwise. The guard
+ * that uses it stops an agent from updating (and so restarting) this add-on
+ * mid-request, so a literal that matches only one install silently disables
+ * the guard everywhere else.
  *
  * Resolved once and cached; the answer cannot change while the process lives.
  */
@@ -447,13 +446,12 @@ async function getSelfAddonSlug() {
 
 /**
  * Conservative fallback for when Supervisor would not tell us our own slug.
- * Matches this add-on under either channel and any repository prefix. It can
- * refuse an update of the *other* channel's add-on, which is a legitimate
- * operation — but declining to press the button is the safe way to be wrong
- * here, and the Home Assistant UI can always do it.
+ * Matches this add-on under any repository prefix. Declining to press the
+ * button is the safe way to be wrong here, and the Home Assistant UI can
+ * always do it.
  */
 function looksLikeThisAddon(slug) {
-  return /(^|_)ha_opencode(_beta)?$/.test(slug || "");
+  return /(^|_)ha_mcp$/.test(slug || "");
 }
 
 async function getErrorLogWithFallback(lines) {

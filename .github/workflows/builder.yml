@@ -121,8 +121,8 @@ jobs:
           # --cosign: keyless-sign pushed images with the workflow's GitHub
           # OIDC identity. Signing runs only after the Docker Hub push
           # (main builds); PR/--test builds never reach it.
-          # --no-cosign-verify: all add-on base images (node/debian/litellm/
-          # golang/searxng) are third-party and unsigned, so
+          # --no-cosign-verify: the third-party base images (couchdb,
+          # alpine, golang, mealie, ...) are unsigned, so
           # base-image signature validation cannot pass and is disabled —
           # the built images themselves still get signed.
           args: |

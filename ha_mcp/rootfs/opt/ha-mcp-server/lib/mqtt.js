@@ -2,8 +2,8 @@
  * MQTT broker access through Home Assistant's own MQTT connection
  * (Supervisor core API + core websocket), so no broker credentials are
  * ever handled. Ported from the standalone mcp-mqtt stdio server so the
- * tools ride every transport ha-mcp-server speaks (stdio for opencode,
- * streamable HTTP for sibling add-ons such as the LiteLLM MCP gateway).
+ * tools ride every transport ha-mcp-server speaks (stdio, and streamable
+ * HTTP for MCP clients such as a LiteLLM MCP gateway).
  */
 import WebSocket from "ws";
 
