@@ -131,7 +131,7 @@ jobs:
       # Suite discovery, so add-ons without tests skip gracefully:
       # 1. add-on level node:test suites in test/ (no dependencies)
       # 2. bundled packages under rootfs/opt/ that declare a test script
-      #    (vitest; openchamber-mcp has none yet and is skipped)
+      #    (vitest)
       # 3. self-running python package tests in test/ (no pytest needed)
       - name: Run test suites
         working-directory: ${{ matrix.addon }}
@@ -140,8 +140,8 @@ jobs:
 
           if ls test/*.test.js >/dev/null 2>&1; then
             # Suites under test/ may import bundled code in rootfs/opt/
-            # whose dependencies ship only in the built image (mcp-hub's
-            # src imports @modelcontextprotocol/sdk and chrome-devtools-mcp).
+            # whose dependencies ship only in the built image (ha_mcp's
+            # server imports @modelcontextprotocol/sdk).
             # Install the bundled packages first so imports resolve.
             for pkg_lock in rootfs/opt/*/package-lock.json; do
               [[ -e "$pkg_lock" ]] || continue

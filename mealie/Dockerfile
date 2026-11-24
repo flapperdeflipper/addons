@@ -2,7 +2,7 @@
 #
 # FROM is hardcoded instead of BUILD_FROM/build.yaml: the Supervisor's
 # build_from regex rejects multi-segment registry paths like
-# ghcr.io/mealie-recipes/... (same approach as the litellm add-on).
+# ghcr.io/mealie-recipes/....
 #
 # Pinned to an immutable release tag. Renovate bumps it; the post-upgrade task
 # bumps config.yaml version and CHANGELOG.md alongside.

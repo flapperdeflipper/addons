@@ -1,7 +1,7 @@
 ---
 name: "Mealie"
 description: "Recipe manager and meal planner with a cooking-friendly mobile web app, OIDC login and AI recipe import"
-version: "1.0.0"
+version: "1.0.1"
 slug: "mealie"
 image: "flapperdeflipper/addon-mealie"
 url: "https://github.com/flapperdeflipper/addons/tree/main/mealie"

@@ -13,7 +13,7 @@ describe("Supervisor application API compatibility", () => {
   it("uses V2 application and store routes when the V2 list is available", async () => {
     const request = vi.fn(async (endpoint, method = "GET", body = null, timeoutMs) => {
       if (endpoint === "/v2/apps") return { apps: [{ slug: "esphome" }] };
-      if (endpoint === "/v2/apps/self/info") return { slug: "local_ha_opencode_beta" };
+      if (endpoint === "/v2/apps/self/info") return { slug: "local_ha_mcp" };
       if (endpoint === "/v2/store/apps/esphome/changelog") return "changes";
       if (endpoint === "/v2/store/apps/esphome/update") {
         return { method, body, timeoutMs, job_id: "job-1" };
@@ -23,7 +23,7 @@ describe("Supervisor application API compatibility", () => {
     const client = createSupervisorAppsClient({ request });
 
     await expect(client.list()).resolves.toEqual([{ slug: "esphome" }]);
-    await expect(client.info("self")).resolves.toEqual({ slug: "local_ha_opencode_beta" });
+    await expect(client.info("self")).resolves.toEqual({ slug: "local_ha_mcp" });
     await expect(client.changelog("esphome")).resolves.toBe("changes");
     await expect(client.update("esphome", { background: true }, 30000)).resolves.toMatchObject({
       job_id: "job-1",
@@ -46,7 +46,7 @@ describe("Supervisor application API compatibility", () => {
     const request = vi.fn(async (endpoint) => {
       if (endpoint === "/v2/apps") throw supervisorError(404);
       if (endpoint === "/addons") return { addons: [{ slug: "esphome" }] };
-      if (endpoint === "/addons/self/info") return { slug: "local_ha_opencode_beta" };
+      if (endpoint === "/addons/self/info") return { slug: "local_ha_mcp" };
       if (endpoint === "/store/addons/esphome/changelog") return "changes";
       if (endpoint === "/store/addons/esphome/update") return { job_id: "job-1" };
       throw new Error(`Unexpected endpoint ${endpoint}`);
@@ -54,7 +54,7 @@ describe("Supervisor application API compatibility", () => {
     const client = createSupervisorAppsClient({ request, onFallback });
 
     await expect(client.list()).resolves.toEqual([{ slug: "esphome" }]);
-    await expect(client.info("self")).resolves.toEqual({ slug: "local_ha_opencode_beta" });
+    await expect(client.info("self")).resolves.toEqual({ slug: "local_ha_mcp" });
     await expect(client.changelog("esphome")).resolves.toBe("changes");
     await expect(client.update("esphome", { background: true })).resolves.toEqual({ job_id: "job-1" });
 

@@ -27,7 +27,7 @@ Images pushed from `main` are signed with [cosign](https://github.com/sigstore/c
 cosign verify \
   --certificate-identity-regexp '^https://github\.com/flapperdeflipper/addons/\.github/workflows/builder\.yml@refs/heads/main$' \
   --certificate-oidc-issuer-regexp '^https://token\.actions\.githubusercontent\.com$' \
-  flapperdeflipper/addon-ha-opencode:2.9.0
+  flapperdeflipper/addon-ha-mcp:1.0.0
 ```
 
 Swap the image reference for any `flapperdeflipper/addon-*` repository and tag.
@@ -40,7 +40,7 @@ Swap the image reference for any `flapperdeflipper/addon-*` repository and tag.
 `scripts/test-addon.sh` runs an add-on's test suites the same way CI does: node:test and vitest suites through npm, Python suites through [uv](https://docs.astral.sh/uv/) on Python 3.15 with the packages from `<addon>/test/test-requirements.txt`. Needs Node 26 and uv.
 
 ```console
-scripts/test-addon.sh ai_usage_proxy ha_opencode   # selected add-ons
+scripts/test-addon.sh ai_usage_proxy ha_mcp       # selected add-ons
 scripts/test-addon.sh                              # all add-ons + base image pin check
 ```
 

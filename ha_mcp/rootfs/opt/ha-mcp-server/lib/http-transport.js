@@ -1,8 +1,8 @@
 // HTTP (streamable) transport for the ha-mcp-server.
 //
 // Serves the exact same tool set as the stdio server on a plain HTTP
-// listener so sibling add-ons (e.g. the LiteLLM MCP gateway) and LAN
-// clients can use it without a local process spawn. Every request must
+// listener so MCP clients on other hosts (e.g. a LiteLLM MCP gateway) can
+// use it without a local process spawn. Every request must
 // carry `Authorization: Bearer <MCP_HTTP_TOKEN>`; anything else is
 // rejected before it reaches the MCP transport.
 //
