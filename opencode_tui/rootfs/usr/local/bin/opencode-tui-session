@@ -1,0 +1,21 @@
+#!/bin/bash
+# The command inside the tmux session: the OpenCode client attached to the
+# remote server. When it exits (quit, server restart, network), wait for a key
+# and start it again, so the panel never ends up on a dead shell.
+set -u
+
+: "${OPENCODE_TUI_SERVER:?OPENCODE_TUI_SERVER is not set (add-on option server_url)}"
+: "${OPENCODE_PASSWORD:?OPENCODE_PASSWORD is not set (add-on option server_password)}"
+directory="${OPENCODE_TUI_DIRECTORY:-/workspace}"
+
+# The client changes into the directory before it sends it to the server as
+# the session's location: it must exist here too, as an empty placeholder
+# (the files are the server's).
+mkdir -p "${directory}"
+
+while true; do
+    opencode --server "${OPENCODE_TUI_SERVER}" "${directory}"
+    status=$?
+    printf '\nOpenCode exited (status %s). Press a key to attach to %s again.\n' "${status}" "${OPENCODE_TUI_SERVER}"
+    read -r -n 1 -s
+done

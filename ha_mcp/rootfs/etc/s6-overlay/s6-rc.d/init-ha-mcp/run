@@ -1,0 +1,72 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# HA MCP: prepare the environment the 8927 service and the helpers read.
+# Writes /data/.env_vars (0600), then starts the background discovery
+# (Zigbee2MQTT, ESPHome Device Builder) and the home briefing; neither blocks
+# the boot. Never fails the oneshot: a failed oneshot takes the container down.
+# ==============================================================================
+
+export HOME="/data"
+ENV_VARS_FILE="/data/.env_vars"
+mkdir -p /data/.cache /data/context
+
+ACCESS_TOKEN=$(bashio::config 'access_token' 2>/dev/null || echo "")
+Z2M_URL_CONFIG=$(bashio::config 'z2m_url' 2>/dev/null || echo "")
+Z2M_TOPIC_CONFIG=$(bashio::config 'z2m_mqtt_topic' 2>/dev/null || echo "")
+
+umask 077
+{
+    # Tool profile: everything except configuration writes (lib/tool-profiles.js).
+    printf 'export OPENCODE_MCP_TOOL_PROFILE=deployed\n'
+    printf 'export OPENCODE_MCP_ENABLED=true\n'
+    printf 'export OPENCODE_NATIVE_HA_MCP_ENABLED=true\n'
+    printf 'export HA_NATIVE_MCP_API_ID=assist\n'
+    printf 'export SCREENSHOT_ENABLED=true\n'
+    printf 'export OPENCODE_HOME_BRIEFING=true\n'
+    # hab and zigporter reach Core through the Supervisor proxy with the
+    # Supervisor token, which the services export at runtime (never stored).
+    printf 'export HA_URL=http://supervisor/core\n'
+    printf 'export HA_VERIFY_SSL=false\n'
+    if [ -n "${ACCESS_TOKEN}" ]; then
+        printf 'export HA_ACCESS_TOKEN=%q\n' "${ACCESS_TOKEN}"
+    fi
+} > "${ENV_VARS_FILE}"
+
+if [ -n "${ACCESS_TOKEN}" ]; then
+    bashio::log.info "Core access token configured (screenshots, ESPHome Device Builder)"
+else
+    bashio::log.warning "No access_token: the screenshot and ESPHome tools will not work"
+fi
+
+DISCOVER_Z2M_FLAG="true"
+if [ -n "${Z2M_URL_CONFIG}" ]; then
+    case "${Z2M_URL_CONFIG}" in
+        http://*|https://*) Z2M_URL="${Z2M_URL_CONFIG}" ;;
+        *) Z2M_URL="http://${Z2M_URL_CONFIG}" ;;
+    esac
+    printf 'export Z2M_URL=%q\n' "${Z2M_URL}" >> "${ENV_VARS_FILE}"
+    if [ -n "${Z2M_TOPIC_CONFIG}" ]; then
+        printf 'export Z2M_MQTT_TOPIC=%q\n' "${Z2M_TOPIC_CONFIG}" >> "${ENV_VARS_FILE}"
+    fi
+    DISCOVER_Z2M_FLAG="false"
+    bashio::log.info "Zigbee2MQTT: ${Z2M_URL} (configured)"
+fi
+
+# Background discovery: Z2M_URL/Z2M_MQTT_TOPIC and HAB_ESPHOME_URL/
+# HAB_ESPHOME_SESSION into /data/.env_vars_discovered.
+rm -f /data/.env_vars_discovered
+if [ -n "${ACCESS_TOKEN}" ] || [ "${DISCOVER_Z2M_FLAG}" = "true" ]; then
+    HA_ACCESS_TOKEN="${ACCESS_TOKEN}" DISCOVER_Z2M="${DISCOVER_Z2M_FLAG}" \
+        setsid node /usr/local/bin/discover-services.js \
+        >/tmp/discover-services.log 2>&1 </dev/null &
+fi
+
+# The home briefing (get_home_context): regenerated at every start.
+rm -f /data/context/home-briefing.md
+OPENCODE_HOME_BRIEFING=true OPENCODE_MCP_ENABLED=true OPENCODE_MCP_TOOL_PROFILE=deployed \
+SCREENSHOT_ENABLED=true Z2M_URL="${Z2M_URL:-}" \
+    setsid node /usr/local/bin/generate-home-context.mjs \
+    >/tmp/home-context.log 2>&1 </dev/null &
+
+exit 0
