@@ -4,6 +4,8 @@ My personal home-assistant addons
 
 [AI Usage Proxy](ai_usage_proxy/README.md) publishes Claude, OpenAI/Codex, and z.ai subscription usage to MQTT displays and provides account management through Home Assistant Ingress.
 
+[HA MCP](ha_mcp/DOCS.md) serves the Home Assistant MCP server over HTTP for agents elsewhere on the network, without the tools that write configuration.
+
 [IMAP Backup](imap_backup/README.md) is a small Dovecot IMAP server to copy mail into from Apple Mail, stored as Maildir under `/share`.
 
 [Mealie](mealie/DOCS.md) is a recipe manager and meal planner with a phone-friendly web app, OIDC login and AI recipe import.
