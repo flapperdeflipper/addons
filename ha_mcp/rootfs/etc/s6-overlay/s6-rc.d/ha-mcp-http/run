@@ -1,0 +1,39 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# HA MCP: ha-mcp-server over streamable HTTP on 8927, bearer authenticated.
+# Fails closed: without a token the port would hand the whole Home Assistant
+# toolset to anyone who reaches it.
+# ==============================================================================
+
+export HOME="/data"
+export XDG_DATA_HOME="/data/.local/share"
+export XDG_CONFIG_HOME="/data/.config"
+export NODE_OPTIONS="--max-old-space-size=512"
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"
+
+# shellcheck source=/dev/null
+[ -f /data/.env_vars ] && source /data/.env_vars
+# shellcheck source=/dev/null
+[ -f /data/.env_vars_discovered ] && source /data/.env_vars_discovered
+
+# The Supervisor token stays process-only; hab and zigporter read HA_TOKEN.
+if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    export HA_TOKEN="${SUPERVISOR_TOKEN}"
+fi
+
+MCP_HTTP_TOKEN=$(bashio::config 'mcp_http_token' 2>/dev/null || echo "")
+case "${MCP_HTTP_TOKEN}" in
+    '!secret '*)
+        bashio::log.error "mcp_http_token is an unresolved !secret reference (key missing in secrets.yaml): fix the key, then restart."
+        exec sleep infinity
+        ;;
+esac
+if ! bashio::var.has_value "${MCP_HTTP_TOKEN}"; then
+    bashio::log.error "Set 'mcp_http_token' in the Configuration tab (a !secret <key> value works), then restart."
+    exec sleep infinity
+fi
+export MCP_HTTP_TOKEN
+
+bashio::log.info "Serving the Home Assistant MCP server on 8927/mcp (bearer authenticated, profile deployed)"
+exec node /opt/ha-mcp-server/index.js --transport http --port 8927

@@ -4,6 +4,8 @@ My personal home-assistant addons
 
 [AI Usage Proxy](ai_usage_proxy/README.md) publishes Claude, OpenAI/Codex, and z.ai subscription usage to MQTT displays and provides account management through Home Assistant Ingress.
 
+[HA MCP](ha_mcp/DOCS.md) serves the Home Assistant MCP server over HTTP for agents elsewhere on the network, without the tools that write configuration.
+
 [IMAP Backup](imap_backup/README.md) is a small Dovecot IMAP server to copy mail into from Apple Mail, stored as Maildir under `/share`.
 
 [OpenCode TUI](opencode_tui/DOCS.md) is OpenCode's terminal interface in a Home Assistant panel, attached to an OpenCode server elsewhere on your network.
