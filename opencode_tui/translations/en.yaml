@@ -1,0 +1,19 @@
+---
+# Field order matches the schema block in config.yaml; the Configuration tab
+# renders fields in that order.
+configuration:
+  server_url:
+    name: "OpenCode server address"
+    description: "Address of the OpenCode server this terminal attaches to, e.g. https://opencode.example.org. The sessions run there."
+
+  server_password:
+    name: "OpenCode server password"
+    description: "The server's basic-auth password (user opencode). A !secret <key> value works."
+
+  directory:
+    name: "Start directory"
+    description: "Directory the sessions start in, as a path on the server (not on this Home Assistant)."
+
+  font_size:
+    name: "Font size"
+    description: "Terminal font size in pixels."
