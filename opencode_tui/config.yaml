@@ -1,0 +1,39 @@
+---
+name: "OpenCode TUI"
+description: "OpenCode's terminal interface through Home Assistant Ingress, attached to a remote OpenCode server"
+version: "1.0.0"
+slug: "opencode_tui"
+image: "flapperdeflipper/addon-opencode-tui"
+url: "https://github.com/flapperdeflipper/addons"
+arch:
+  - aarch64
+  - amd64
+startup: application
+init: false
+# Ingress only: ttyd serves the terminal on 8099, no host port.
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_icon: mdi:robot
+panel_title: OpenCode
+# A client only: sessions run on the OpenCode server, so this add-on needs no
+# Home Assistant or Supervisor API and no folder of this installation.
+hassio_api: false
+homeassistant_api: false
+host_network: false
+privileged: []
+options:
+  # Address of the OpenCode server (`opencode serve`), e.g.
+  # https://opencode.example.org. Required.
+  server_url: null
+  # The server's basic-auth password (user `opencode`). Required. A
+  # !secret <key> value resolves from secrets.yaml.
+  server_password: null
+  # Directory the sessions start in, as a path on the server.
+  directory: "/workspace"
+  font_size: 14
+schema:
+  server_url: url
+  server_password: password
+  directory: str
+  font_size: int(10,24)
