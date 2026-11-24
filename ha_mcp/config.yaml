@@ -1,0 +1,48 @@
+---
+name: "HA MCP"
+description: "The Home Assistant MCP server (ha-mcp-server) over HTTP for agents elsewhere on the network, with the configuration-writing tools left out"
+version: "1.0.0"
+slug: "ha_mcp"
+image: "flapperdeflipper/addon-ha-mcp"
+url: "https://github.com/flapperdeflipper/addons"
+arch:
+  - aarch64
+  - amd64
+startup: services
+boot: auto
+init: false
+ports:
+  8927/tcp: 8927
+ports_description:
+  8927/tcp: "MCP over streamable HTTP (bearer token): the full Home Assistant toolset minus configuration writes"
+# Read-only: the configuration is deployed from git, so no tool writes it.
+map:
+  - type: homeassistant_config
+    read_only: true
+# Supervisor tools (apps, backups, updates, logs) and the Core API.
+hassio_api: true
+hassio_role: manager
+homeassistant_api: true
+host_network: false
+privileged: []
+options:
+  # Bearer token MCP clients must send. Required. A !secret <key> value
+  # resolves from secrets.yaml.
+  mcp_http_token: null
+  # Long-lived access token for Home Assistant Core (screenshots, ESPHome
+  # Device Builder through Ingress). Create at Profile -> Long-lived access
+  # tokens.
+  access_token: ""
+  # Zigbee2MQTT frontend for zigporter; empty = discover the add-on.
+  z2m_url: ""
+  z2m_mqtt_topic: "zigbee2mqtt"
+schema:
+  mcp_http_token: password
+  access_token: password
+  z2m_url: str?
+  z2m_mqtt_topic: str?
+backup_exclude:
+  - ".cache/*"
+  - ".env_vars"
+  - ".env_vars_discovered"
+  - "context/*"
