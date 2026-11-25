@@ -1,7 +1,7 @@
 ---
 name: "Terminal"
-description: "A familiar bash and vim environment with your dotfiles and toolset, through Home Assistant Ingress"
-version: "1.1.9"
+description: "A familiar bash and vim environment with your dotfiles, toolset, Claude Code and OpenCode, through Home Assistant Ingress"
+version: "2.0.0"
 slug: "terminal"
 image: "flapperdeflipper/addon-terminal"
 url: "https://github.com/flapperdeflipper/addons"
@@ -18,8 +18,8 @@ panel_title: Terminal
 map:
   - type: homeassistant_config
     read_only: false
-# hab and zigporter (inherited from the OpenCode image) authenticate with the
-# Supervisor token; without this they start but every call fails.
+# hab and zigporter authenticate with the Supervisor token; without this they
+# start but every call fails.
 hassio_api: true
 hassio_role: manager
 options:
@@ -39,8 +39,11 @@ options:
   # first start; re-run interactively with: dotfiles-sync
   install_python_deps: true
   # --- Advanced ------------------------------------------------------------
-  # Environment variables injected into every shell session. GH_TOKEN here
-  # lets the private dotfiles repository clone over HTTPS without a key.
+  # Environment variables injected into every shell session; a value can be
+  # "!secret <key>". GH_TOKEN lets the private dotfiles repository clone over
+  # HTTPS without a key. opencode-hd reads OPENCODE_SERVER_URL,
+  # OPENCODE_PASSWORD and OPENCODE_DIRECTORY; hab's ESPHome commands
+  # HA_ACCESS_TOKEN; zigporter's Z2M commands Z2M_URL.
   env_vars: []
 schema:
   # --- Terminal appearance -------------------------------------------------
