@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.0.1
 
 - The self-update guard's fallback (used when Supervisor doesn't report this
