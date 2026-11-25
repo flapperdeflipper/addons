@@ -2,5 +2,26 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>flapperdeflipper/renovate:default.json5"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Versions in Dockerfile ARGs marked with a '# renovate:' comment (terminal: OpenCode, Claude Code, ttyd, yq, cosign, hab)",
+      "fileMatch": [
+        "(^|/)Dockerfile$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARG \\S+?=(?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The OpenCode client in terminal must match the OpenCode server on hd (llm-suite): never automerge, bump both together",
+      "matchPackageNames": [
+        "@opencode/cli"
+      ],
+      "automerge": false
+    }
   ]
 }

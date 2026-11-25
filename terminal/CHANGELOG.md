@@ -1,3 +1,11 @@
+## 2.0.0
+
+- **Changed** — self-contained image on Home Assistant's Debian base; the shared agent-base image is no longer used. Same toolset, minus what nothing here used: the 1Password CLI, the Dagu CLI, the PPQ proxy, the skills snapshot. ripgrep added.
+- **Added** — Claude Code (`claude`, pinned, self-update disabled).
+- **Added** — `opencode-hd`: OpenCode's terminal interface attached to the OpenCode server on another host, configured through `env_vars` (replaces the separate OpenCode TUI add-on).
+- **Changed** — the hab/zigporter configuration hints point at this add-on's `env_vars`.
+- **Fixed** — the init service never ran (its s6 `up` file was empty): `env_vars` were never written for sessions and dotfiles never synced at start.
+
 ## 1.1.9
 
 - **Changed** — automated dependency update (Renovate).

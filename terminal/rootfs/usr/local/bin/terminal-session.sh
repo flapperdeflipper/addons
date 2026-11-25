@@ -21,6 +21,7 @@ cd /homeassistant 2>/dev/null || cd /
 # Minimal banner: the dotfiles' own bashrc prints the familiar prompt
 printf '\n'
 printf 'Terminal add-on v%s - /data is HOME, /homeassistant is the working directory\n' "${ADDON_VERSION}"
+printf 'Agents, started by hand: claude (Claude Code), opencode-hd (OpenCode on hd)\n'
 
 if [ ! -d "${HOME}/.dotfiles/.git" ]; then
     printf '\n'
