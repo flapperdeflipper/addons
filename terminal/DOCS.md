@@ -1,9 +1,9 @@
 # Terminal
 
-A personal bash + vim environment inside Home Assistant, built on top of the
-OpenCode add-on image. Your dotfiles and toolset repositories are cloned into
-the container and stowed into the persistent home directory, so the shell
-behaves like any other machine you work on.
+A personal bash + vim environment inside Home Assistant, with Claude Code and
+OpenCode's terminal interface on hand. Your dotfiles and toolset repositories
+are cloned into the container and stowed into the persistent home directory,
+so the shell behaves like any other machine you work on.
 
 ## How it works
 
@@ -19,9 +19,10 @@ behaves like any other machine you work on.
   3. `~/.custom_aliases` is created from the dotfiles template if absent
   4. The dotfiles profile is stowed into `/data` (`update-profile --apply`)
   5. Python dependencies are installed into `/data/.venv` (background)
-- Everything the OpenCode image ships is available: node, npm, gh, glab, jq,
-  yq, rsync, chromium, hab, zigporter, the 1Password CLI and the `opencode`
-  runtime itself.
+- The image carries node, npm, gh, jq, yq, ripgrep, rsync, tmux, cosign, hab,
+  zigporter, Claude Code and the OpenCode client. Every tool is a fixed
+  version; nothing updates itself inside the container (a new version comes
+  with an add-on update).
 
 ## First start: private repository access
 
@@ -40,14 +41,23 @@ keys are stowed into `~/.ssh`, so plain `git pull` over SSH works too.
 
 - `dotfiles-sync` — clone/pull both repositories, re-stow, reinstall python
   dependencies (`--no-python` to skip)
-- `opencode` — the AI coding agent from the base image
-- `hab`, `zigporter`, `yq`, `gh`, `glab` — toolchain from the base image
+- `claude` — Claude Code. Log in once by running it (a browser flow); the
+  login is stored under `/data` (`~/.claude`, `~/.claude.json`), so it
+  survives restarts and is part of the add-on's backups.
+- `opencode-hd [directory]` — OpenCode's terminal interface, attached to the
+  OpenCode server on another host. Needs `OPENCODE_SERVER_URL` and
+  `OPENCODE_PASSWORD` in `env_vars` (the password as `!secret <key>`);
+  `OPENCODE_DIRECTORY` (default `/workspace`) is the project directory on the
+  server. Nothing starts it automatically.
+- `hab`, `zigporter`, `yq`, `gh` — Home Assistant and general tooling. hab's
+  ESPHome commands need `HA_ACCESS_TOKEN`, zigporter's Z2M commands `Z2M_URL`
+  (both in `env_vars`).
 
 ## Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `terminal_theme` | `breeze` | Color scheme (same set as the OpenCode terminal) |
+| `terminal_theme` | `breeze` | Color scheme |
 | `font_size` | `14` | Font size in pixels |
 | `cursor_style` | `block` | Cursor shape |
 | `cursor_blink` | `false` | Blink the cursor |
@@ -55,7 +65,7 @@ keys are stowed into `~/.ssh`, so plain `git pull` over SSH works too.
 | `dotfiles_repo` | `git@github.com:flapperdeflipper/dotfiles.git` | Dotfiles repository URL |
 | `toolset_repo` | `https://github.com/flapperdeflipper/toolset.git` | Toolset repository URL |
 | `install_python_deps` | `true` | Maintain the `/data/.venv` from the dotfiles pyproject |
-| `env_vars` | `[]` | Environment variables for every session (e.g. `GH_TOKEN`) |
+| `env_vars` | `[]` | Environment variables for every session (e.g. `GH_TOKEN`, `OPENCODE_SERVER_URL`); a value can be `!secret <key>` |
 
 ## Notes
 

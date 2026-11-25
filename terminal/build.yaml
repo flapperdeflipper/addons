@@ -1,13 +1,10 @@
 ---
-# Release CI passes the args below to the Docker build. AGENT_BASE pins the
-# shared base image this terminal layers on top of; releases of
-# flapperdeflipper/agent-base open the bump as a pull request automatically.
+# Home Assistant's Debian base (s6 + Bashio); the Dockerfile adds the whole
+# toolchain on top.
 build_from:
-  aarch64: ghcr.io/flapperdeflipper/agent-base:1.4.0
-  amd64: ghcr.io/flapperdeflipper/agent-base:1.4.0
-args:
-  AGENT_BASE: "ghcr.io/flapperdeflipper/agent-base:1.4.0"
+  aarch64: ghcr.io/home-assistant/base-debian:trixie
+  amd64: ghcr.io/home-assistant/base-debian:trixie
 labels:
   org.opencontainers.image.title: "Terminal"
-  org.opencontainers.image.description: "Personal bash and vim terminal add-on built on the agent-base image"
+  org.opencontainers.image.description: "Personal terminal add-on with dotfiles, toolset, Claude Code and OpenCode"
   org.opencontainers.image.source: "https://github.com/flapperdeflipper/addons"

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# opencode-hd - OpenCode's terminal interface attached to the OpenCode server
+# on hd. Started by hand; nothing runs it automatically.
+#
+# Settings come from the add-on's env_vars option (a "!secret <key>" value
+# works there):
+#   OPENCODE_SERVER_URL   the server, e.g. https://opencode.example.org
+#   OPENCODE_PASSWORD     its basic-auth password (user "opencode")
+#   OPENCODE_DIRECTORY    the project directory ON THE SERVER (default /workspace)
+#
+# Usage: opencode-hd [directory]   (a directory argument overrides
+# OPENCODE_DIRECTORY)
+# ==============================================================================
+set -euo pipefail
+
+: "${OPENCODE_SERVER_URL:?OPENCODE_SERVER_URL is not set (add it to the env_vars option and restart the add-on)}"
+: "${OPENCODE_PASSWORD:?OPENCODE_PASSWORD is not set (add it to the env_vars option and restart the add-on)}"
+directory="${1:-${OPENCODE_DIRECTORY:-/workspace}}"
+
+# The client changes into the directory locally before it sends it to the
+# server, so an empty local placeholder has to exist. It stays empty: the files
+# live on the server.
+mkdir -p "${directory}"
+
+export OPENCODE_PASSWORD
+exec opencode --server "${OPENCODE_SERVER_URL}" "${directory}"
