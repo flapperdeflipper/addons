@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- **Changed:** built on Home Assistant's Debian base with only what the server
+  runs (Node 24.21.0, hab, zigporter, Chromium) instead of the shared
+  agent-base image, which goes away. No change to the tools.
+
 ## 1.1.0
 
 - **Added:** `mqtt_publish` accepts `verify: true` — the server subscribes to

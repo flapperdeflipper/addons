@@ -106,7 +106,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      # Node 24 to match the agent-base toolchain the add-ons ship with.
+      # Node 24 to match the Node toolchain the add-ons ship with.
       - name: Set up Python for AI Usage Proxy
         if: matrix.addon == 'ai_usage_proxy'
         uses: actions/setup-python@v7
