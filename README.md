@@ -8,9 +8,9 @@ My personal home-assistant addons
 
 [IMAP Backup](imap_backup/README.md) is a small Dovecot IMAP server to copy mail into from Apple Mail, stored as Maildir under `/share`.
 
-[OpenCode TUI](opencode_tui/DOCS.md) is OpenCode's terminal interface in a Home Assistant panel, attached to an OpenCode server elsewhere on your network.
-
 [Mealie](mealie/DOCS.md) is a recipe manager and meal planner with a phone-friendly web app, OIDC login and AI recipe import.
+
+[Terminal](terminal/DOCS.md) is a personal bash and vim environment with your dotfiles and toolset, Claude Code, and OpenCode's terminal interface for an OpenCode server elsewhere on your network.
 
 ## Install
 
