@@ -5,10 +5,12 @@ import {
   clearMqttRetained,
   formatClearResult,
   formatListenResult,
+  formatPublishVerifyResult,
   listenMqttTopic,
   normalizeListenDuration,
   normalizeTopicList,
   publishMqttMessage,
+  publishMqttMessageVerified,
 } from "../lib/mqtt.js";
 
 afterEach(() => {
@@ -197,5 +199,93 @@ describe("listenMqttTopic", () => {
 
   it("caps collection at MQTT_LISTEN_MAX_EVENTS by default", () => {
     expect(MQTT_LISTEN_MAX_EVENTS).toBe(500);
+  });
+});
+
+describe("publishMqttMessageVerified", () => {
+  it("publishes only after the subscription is confirmed and reports the echo", async () => {
+    vi.useFakeTimers();
+    const sock = fakeSocket();
+    let subscribeSeenBeforePublish = false;
+    const callHA = vi.fn(async () => {
+      subscribeSeenBeforePublish = sock.sent.some((f) => f.type === "mqtt/subscribe" && f.topic === "home/x");
+      // broker echo: the published message comes back on the subscription
+      sock.emit("message", frame({ type: "event", event: { topic: "home/x", payload: "hello" } }));
+    });
+    const pending = publishMqttMessageVerified({
+      callHA, topic: "home/x", payload: "hello", qos: 1, windowSeconds: 5,
+      token: "test-token", openSocket: () => sock,
+    });
+    sock.emit("message", frame({ type: "auth_required" }));
+    sock.emit("message", frame({ type: "auth_ok" }));
+    sock.emit("message", frame({ type: "result", id: 1, success: true }));
+    await vi.advanceTimersByTimeAsync(5000);
+    const result = await pending;
+    expect(subscribeSeenBeforePublish).toBe(true);
+    expect(callHA).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      topic: "home/x", bytes: 5, retained: false,
+      verified: true, verifyWindowSeconds: 5, listenReason: "timeout",
+    });
+  });
+
+  it("reports verified=false when no echo arrives inside the window", async () => {
+    vi.useFakeTimers();
+    const sock = fakeSocket();
+    const callHA = vi.fn(async () => {});
+    const pending = publishMqttMessageVerified({
+      callHA, topic: "home/y", payload: "data", windowSeconds: 2.9,
+      token: "test-token", openSocket: () => sock,
+    });
+    sock.emit("message", frame({ type: "auth_required" }));
+    sock.emit("message", frame({ type: "auth_ok" }));
+    sock.emit("message", frame({ type: "result", id: 1, success: true }));
+    await vi.advanceTimersByTimeAsync(3000);
+    const result = await pending;
+    expect(result.verified).toBe(false);
+    expect(result.listenReason).toBe("timeout");
+    expect(result.verifyWindowSeconds).toBe(2); // clamped like listen windows
+    expect(formatPublishVerifyResult(result)).toContain("NOT verified");
+  });
+
+  it("fails fast instead of deadlocking when the subscription is never confirmed", async () => {
+    vi.useFakeTimers();
+    const sock = fakeSocket();
+    const callHA = vi.fn(async () => {});
+    const pending = publishMqttMessageVerified({
+      callHA, topic: "home/z", payload: "x", windowSeconds: 2,
+      token: "test-token", openSocket: () => sock,
+    });
+    sock.emit("message", frame({ type: "auth_required" }));
+    sock.emit("message", frame({ type: "auth_ok" }));
+    // no subscribe result -> publish step must not fire, guard must abort.
+    // attach the rejection expectation first so the rejection is never unobserved
+    const assertion = expect(pending).rejects.toThrow(/subscription not confirmed/);
+    await vi.advanceTimersByTimeAsync(2000);
+    await assertion;
+    expect(callHA).not.toHaveBeenCalled();
+  });
+
+  it("propagates publish failures without leaking the listen websocket rejection", async () => {
+    vi.useFakeTimers();
+    const sock = fakeSocket();
+    const callHA = vi.fn(async () => { throw new Error("HA API error (500): boom"); });
+    const pending = publishMqttMessageVerified({
+      callHA, topic: "home/z", payload: "x", windowSeconds: 3,
+      token: "test-token", openSocket: () => sock,
+    });
+    sock.emit("message", frame({ type: "auth_required" }));
+    sock.emit("message", frame({ type: "auth_ok" }));
+    sock.emit("message", frame({ type: "result", id: 1, success: true }));
+    const assertion = expect(pending).rejects.toThrow(/boom/);
+    await vi.advanceTimersByTimeAsync(3000);
+    await assertion;
+  });
+
+  it("rejects an empty topic without opening a socket", async () => {
+    const openSocket = vi.fn();
+    await expect(publishMqttMessageVerified({ callHA: vi.fn(), topic: "  ", payload: "x", openSocket }))
+      .rejects.toThrow(/topic/);
+    expect(openSocket).not.toHaveBeenCalled();
   });
 });

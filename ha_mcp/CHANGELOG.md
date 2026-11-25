@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.0
+
+- **Added:** `mqtt_publish` accepts `verify: true` — the server subscribes to
+  the exact topic on Home Assistant's own MQTT connection, waits for the
+  broker to confirm the subscription, publishes, and checks the window for
+  the echo, reporting `verified` in the result. This is the reliable way to
+  test the MQTT publish path from an agent session: the obvious alternative
+  (separate `mqtt_listen` + `mqtt_publish` tool calls) cannot observe its own
+  publish, because tool requests serialize and the listen window always
+  finishes before the publish fires — three false "routing is broken"
+  conclusions during the mosquitto 2.1.4 upgrade verification were caused by
+  exactly this.
+- **Changed:** `mqtt_listen` gained an internal `onSubscribed` hook (fires
+  when the broker confirms the subscription); `mqtt_publish`'s tool
+  description documents the verify option and the loopback gotcha.
+
 ## 1.0.2
 
 - **Changed** — automated dependency update (Renovate).

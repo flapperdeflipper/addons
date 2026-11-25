@@ -105,9 +105,11 @@ import {
   normalizeListenDuration,
   listenMqttTopic,
   publishMqttMessage,
+  publishMqttMessageVerified,
   clearMqttRetained,
   formatListenResult,
   formatClearResult,
+  formatPublishVerifyResult,
 } from "./lib/mqtt.js";
 import {
   normalizeTraceSummaries,
@@ -3908,7 +3910,7 @@ const TOOLS = [
   {
     name: "mqtt_publish",
     title: "MQTT Publish",
-    description: "Publish a message to an MQTT topic via Home Assistant's broker connection. Publishing an empty payload with retain=true clears a retained message on that topic.",
+    description: "Publish a message to an MQTT topic via Home Assistant's broker connection. Publishing an empty payload with retain=true clears a retained message on that topic. Set verify=true to subscribe to the topic server-side before publishing and confirm the broker echoed the message back — the reliable way to test the publish path, since a separate mqtt_listen call may only start after the publish happened.",
     inputSchema: {
       type: "object",
       properties: {
@@ -3916,6 +3918,7 @@ const TOOLS = [
         payload: { type: "string", description: "Message payload (empty string clears a retained message when retain=true)" },
         retain: { type: "boolean", description: "Broker retains the message for future subscribers (default false)" },
         qos: { type: "integer", enum: [0, 1, 2], description: "QoS level (default 0)" },
+        verify: { type: "boolean", description: "Subscribe server-side first and confirm the broker echoed the message back (default false). Adds a ~4s wait." },
       },
       required: ["topic", "payload"],
       additionalProperties: false,
@@ -6931,17 +6934,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case "mqtt_publish": {
-        const published = await publishMqttMessage({
-          callHA,
-          topic: args?.topic,
-          payload: args?.payload,
-          retain: args?.retain,
-          qos: args?.qos,
+        const verify = args?.verify === true;
+        const published = verify
+          ? await publishMqttMessageVerified({
+            callHA,
+            topic: args?.topic,
+            payload: args?.payload,
+            retain: args?.retain,
+            qos: args?.qos,
+          })
+          : await publishMqttMessage({
+            callHA,
+            topic: args?.topic,
+            payload: args?.payload,
+            retain: args?.retain,
+            qos: args?.qos,
+          });
+        sendLog("info", "mqtt", {
+          action: "published",
+          topic: published.topic,
+          bytes: published.bytes,
+          retain: published.retained,
+          ...(verify ? { verified: published.verified } : {}),
         });
-        sendLog("info", "mqtt", { action: "published", topic: published.topic, bytes: published.bytes, retain: published.retained });
+        const text = verify
+          ? formatPublishVerifyResult(published)
+          : `published ${published.bytes} byte(s) to ${published.topic}${published.retained ? " (retained)" : ""}`;
         return makeCompatibleResponse({
           content: [createTextContent(
-            `published ${published.bytes} byte(s) to ${published.topic}${published.retained ? " (retained)" : ""}`,
+            text,
             { audience: ["user", "assistant"], priority: 0.8 }
           )],
         });
