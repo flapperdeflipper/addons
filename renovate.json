@@ -7,8 +7,8 @@
     {
       "customType": "regex",
       "description": "Versions in Dockerfile ARGs marked with a '# renovate:' comment (terminal: OpenCode, Claude Code, ttyd, yq, cosign, hab)",
-      "fileMatch": [
-        "(^|/)Dockerfile$"
+      "managerFilePatterns": [
+        "/(^|/)Dockerfile$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARG \\S+?=(?<currentValue>\\S+)"
