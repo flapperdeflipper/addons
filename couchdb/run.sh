@@ -3,8 +3,7 @@
 set -Eeuo pipefail
 
 # Generic CouchDB add-on with MariaDB-style declarative management:
-# databases, logins (server admins + regular users) and per-database rights,
-# plus an optional agent docstore MCP endpoint (docstore/).
+# databases, logins (server admins + regular users) and per-database rights.
 #
 # History: fork of alexbelgium/hassio-addons obsidian_syncserver_solo (MIT),
 # published here as obsidian-sync, then generalized into this add-on in
@@ -15,10 +14,8 @@ OPTIONS_JSON="/data/options.json"
 ADDON_DIR="/config/couchdb"
 USERS_DIR="${ADDON_DIR}/users"
 DATA_DIR="${ADDON_DIR}/data"
-DOCSTORE_DIR="${ADDON_DIR}/docstore"
 LOCAL_D="/opt/couchdb/etc/local.d"
 COUCH_URL="http://127.0.0.1:5984"
-DOCSTORE_PORT=5985
 
 # Retry budget matches upstream's provision tool: CouchDB can take a while to
 # open its listener on first boot.
@@ -63,8 +60,6 @@ fi
 LOGINS_COUNT="$(jq '.logins // [] | length' "$OPTIONS_JSON")"
 RIGHTS_COUNT="$(jq '.rights // [] | length' "$OPTIONS_JSON")"
 CORS_ORIGINS="$(jq -r '.cors.origins // [] | join(",")' "$OPTIONS_JSON")"
-DOCSTORE_ENABLED="$(jq -r '.docstore.enabled // false' "$OPTIONS_JSON")"
-DOCSTORE_USERNAME="$(jq -r '.docstore.username // "agent"' "$OPTIONS_JSON")"
 
 mkdir -p "$ADDON_DIR" "$USERS_DIR"
 
@@ -160,10 +155,8 @@ COUCH_PID=$!
 
 # Without this, a CouchDB that dies during provisioning leaves the script
 # retrying against a socket that will never come up.
-DOCSTORE_PID=""
 INGRESS_PID=""
 cleanup() {
-    { [[ -n "$DOCSTORE_PID" ]] && kill -TERM "$DOCSTORE_PID" 2> /dev/null; } || true
     { [[ -n "$INGRESS_PID" ]] && kill -TERM "$INGRESS_PID" 2> /dev/null; } || true
     kill -TERM "$COUCH_PID" 2> /dev/null || true
 }
@@ -193,10 +186,8 @@ log "CouchDB is up, applying configuration"
 # NON-DESTRUCTIVE BY DESIGN: provisioning only ever CREATES or ADDS.
 # Removing a database, login or right from the options never deletes or
 # revokes the corresponding object inside CouchDB — clean-up is a manual,
-# deliberate act (Fauxton or curl). The only automated deleter in this
-# add-on is the docstore sweeper, and it removes solely expired documents
-# in registry databases. Nothing ever drops indexes, design documents,
-# databases or users.
+# deliberate act (Fauxton or curl). Nothing in this add-on deletes
+# documents, indexes, design documents, databases or users.
 # ---------------------------------------------------------------------------
 
 # Promotes the single node out of the uninitialised state. A node that is
@@ -390,56 +381,7 @@ for i in $(seq 0 $((LOGINS_COUNT - 1))); do
 done
 
 # ---------------------------------------------------------------------------
-# Step 7: Agent docstore MCP endpoint (optional)
-#
-# Serves the registry-validated doc_* tools on an internal port plus the
-# hourly TTL sweeper. The registry lives in /config so it can be edited
-# without rebuilding the image.
-# ---------------------------------------------------------------------------
-if [[ "$DOCSTORE_ENABLED" == "true" ]]; then
-    mkdir -p "$DOCSTORE_DIR"
-    if [[ ! -f "${DOCSTORE_DIR}/registry.json" ]]; then
-        cp /docstore/registry.default.json "${DOCSTORE_DIR}/registry.json"
-        log "Installed default docstore registry at ${DOCSTORE_DIR}/registry.json"
-    fi
-
-    DOCSTORE_TOKEN="$(jq -r '.docstore.token // empty' "$OPTIONS_JSON")"
-    if [[ -z "$DOCSTORE_TOKEN" ]]; then
-        if [[ -f "${DOCSTORE_DIR}/mcp_token" ]]; then
-            DOCSTORE_TOKEN="$(cat "${DOCSTORE_DIR}/mcp_token")"
-        else
-            DOCSTORE_TOKEN="$(openssl rand -base64 24)"
-            (
-                umask 077
-                printf '%s' "$DOCSTORE_TOKEN" > "${DOCSTORE_DIR}/mcp_token"
-            )
-            warn "Generated docstore MCP token, saved to ${DOCSTORE_DIR}/mcp_token"
-        fi
-    fi
-    jq -e --arg u "$DOCSTORE_USERNAME" '(.logins // []) | any(.username == $u)' \
-        "$OPTIONS_JSON" > /dev/null \
-        || die "docstore.username '${DOCSTORE_USERNAME}' has no matching login"
-
-    # Resolve the docstore user's password the same way provisioning does:
-    # options value, else the generated file. options.json alone would only
-    # ever hold a blank for generated accounts (the 3.6.0 startup bug).
-    DOCSTORE_PASSWORD="$(resolve_password "$DOCSTORE_USERNAME" \
-        "$(jq -r --arg u "$DOCSTORE_USERNAME" \
-            'first((.logins // [])[] | select(.username == $u) | .password // "") // ""' \
-            "$OPTIONS_JSON")")"
-
-    log "Starting docstore MCP endpoint on :${DOCSTORE_PORT} (internal only)"
-    DOCSTORE_PORT="$DOCSTORE_PORT" DOCSTORE_TOKEN="$DOCSTORE_TOKEN" \
-        DOCSTORE_USERNAME="$DOCSTORE_USERNAME" DOCSTORE_PASSWORD="$DOCSTORE_PASSWORD" \
-        python3 /docstore/server.py &
-    DOCSTORE_PID=$!
-    log "Ready. Fauxton: http://<host>:5984/_utils (review docs as '${DOCSTORE_USERNAME}')"
-else
-    log "Docstore disabled (docstore.enabled=false)"
-fi
-
-# ---------------------------------------------------------------------------
-# Step 7b: Ingress auth proxy (Fauxton panel)
+# Step 7: Ingress auth proxy (Fauxton panel)
 #
 # HA ingress (gated by the HA login + panel_admin) fronts this port. The
 # proxy requires the X-Hassio-Key header only HA ingress sends and injects

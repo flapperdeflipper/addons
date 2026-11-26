@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.10.0
+
+- **Removed** — the docstore MCP endpoint (port 5985, `docstore/`) and the `docstore` option. Agents use an external MCP hub's docstore module, which works on the same databases over port 5984 and runs the TTL sweeper; the add-on's endpoint has had no requests since the old LLM add-ons were removed. `/config/couchdb/docstore/` can be deleted by hand.
+
 ## 3.9.9
 
 - **Fixed** — CouchDB 3.5.3 is now what ships: `build.yaml`'s `build_from` (which the builder uses) still said 3.5.2 after the Dockerfile default moved to 3.5.3.
