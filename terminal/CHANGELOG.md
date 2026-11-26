@@ -1,3 +1,7 @@
+## 2.0.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.0.0
 
 - **Changed** — self-contained image on Home Assistant's Debian base; the shared agent-base image is no longer used. Same toolset, minus what nothing here used: the 1Password CLI, the Dagu CLI, the PPQ proxy, the skills snapshot. ripgrep added.

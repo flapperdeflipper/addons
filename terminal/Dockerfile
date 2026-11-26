@@ -26,7 +26,7 @@ FROM node:${NODE_VERSION}-trixie-slim AS node-runtime
 FROM --platform=$BUILDPLATFORM golang:1.27-trixie AS hab-builder
 
 # renovate: datasource=github-tags depName=balloob/home-assistant-build-cli
-ARG HAB_VERSION=1.6.4
+ARG HAB_VERSION=1.10.0
 ARG TARGETARCH
 RUN git clone --depth 1 --branch "${HAB_VERSION}" https://github.com/balloob/home-assistant-build-cli.git /src
 WORKDIR /src
@@ -45,17 +45,17 @@ ARG NODE_VERSION
 # OpenCode client (npm @opencode/cli). Must match the OpenCode server it
 # attaches to (llm-suite on hd): bump both together.
 # renovate: datasource=npm depName=@opencode/cli
-ARG OPENCODE_VERSION=2.3.2
+ARG OPENCODE_VERSION=2.4.2
 # Claude Code (npm @anthropic-ai/claude-code; the package installs the native
 # binary). Updates are disabled at runtime (DISABLE_UPDATES below).
 # renovate: datasource=npm depName=@anthropic-ai/claude-code
-ARG CLAUDE_CODE_VERSION=2.1.326
+ARG CLAUDE_CODE_VERSION=2.1.332
 # renovate: datasource=github-releases depName=tsl0922/ttyd
 ARG TTYD_VERSION=1.7.7
 # renovate: datasource=github-releases depName=mikefarah/yq
-ARG YQ_VERSION=v4.53.6
+ARG YQ_VERSION=v4.54.3
 # renovate: datasource=github-releases depName=sigstore/cosign
-ARG COSIGN_VERSION=v3.1.3
+ARG COSIGN_VERSION=v3.1.6
 
 # Node and npm quiet, both agents' self-updaters off: the image is the version.
 ENV NODE_ENV=production \
