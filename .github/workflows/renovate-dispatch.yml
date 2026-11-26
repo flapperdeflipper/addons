@@ -11,8 +11,9 @@
 # GitHub's "Update branch" on Renovate PRs: Renovate stops touching a branch
 # that someone else committed to. Tick the rebase checkbox instead.
 #
-# Requires the RENOVATE_DISPATCH_TOKEN secret (same token as agent-base's
-# trigger-renovate.yml). Without it the job warns and exits successfully.
+# Requires the RENOVATE_DISPATCH_TOKEN secret: a PAT with Contents: write on
+# flapperdeflipper/renovate (the renovate repo's RENOVATE_TOKEN works). Without
+# it the job warns and exits successfully.
 name: Trigger Renovate
 
 on:
