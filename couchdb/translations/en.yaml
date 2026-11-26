@@ -10,10 +10,7 @@ configuration:
     description: CouchDB users. At least one entry with server_admin true is required; more are allowed — each is asserted as a CouchDB server administrator on every start. the rest are regular users. Blank passwords are generated and saved under /config/couchdb/users/, never printed to the log.
   rights:
     name: Rights
-    description: Per-database grants. Member can read and write documents; admin can additionally manage design documents and Mango indexes (Obsidian LiveSync and the docstore both need admin on their own database). Databases with no members stay readable by any authenticated user.
+    description: Per-database grants. Member can read and write documents; admin can additionally manage design documents and Mango indexes (Obsidian LiveSync and the agent docstore both need admin on their own database). Databases with no members stay readable by any authenticated user.
   cors:
     name: CORS
     description: Cross-origin origins allowed by CouchDB. Defaults to the Obsidian LiveSync app origins; empty list disables CORS.
-  docstore:
-    name: Docstore MCP
-    description: Agent document store endpoint (registry-validated doc_* tools plus TTL sweeper) on internal port 5985. Uses the login matching docstore.username; blank token is generated and saved to /config/couchdb/docstore/mcp_token.

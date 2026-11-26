@@ -9,8 +9,8 @@ It serves two workloads here:
 - **Obsidian LiveSync** vaults (this add-on's origin — the default CORS
   origins are the Obsidian app origins, and the vault database `obsidian` is
   in the default options).
-- **Agent docstore** — a registry-validated MCP endpoint (`doc_*` tools) over
-  the agent databases, with an hourly TTL sweeper.
+- **Agent databases** — the docstore's databases; the tools and the TTL
+  sweeper live in an external MCP hub (see Agent docstore below).
 
 Fork history: alexbelgium/hassio-addons `obsidian_syncserver_solo` (MIT) →
 this repo's `obsidian-sync` → generalized into `couchdb` in 3.6.0.
@@ -40,9 +40,8 @@ revokes the live object — clean-up stays a manual act.
 
 **Non-destructive by design:** provisioning only creates and adds. Removing a
 database, login or right from the options never deletes or revokes anything
-inside CouchDB — clean-up is a manual, deliberate act. The only automated
-deleter is the docstore sweeper (expired documents in registry databases,
-nothing else). `server_admin: true` (logins) is the CouchDB **server**
+inside CouchDB — clean-up is a manual, deliberate act; nothing in the add-on
+deletes data. `server_admin: true` (logins) is the CouchDB **server**
 administrator; `level: admin` (rights) is a **database** administrator —
 design documents and Mango indexes need the latter, which is why the LiveSync
 vault user and the docstore user both use it on their own databases.
@@ -68,7 +67,7 @@ logins:
     server_admin: true
   - username: vault      # LiveSync client account
     password: ""
-  - username: agent      # docstore MCP + human Fauxton review account
+  - username: agent      # mcp-hub docstore + human Fauxton review account
     password: ""
 rights:
   - {database: obsidian,       username: vault, level: admin}   # LiveSync creates indexes
@@ -79,10 +78,6 @@ cors:
     - app://obsidian.md
     - capacitor://localhost
     - http://localhost
-docstore:
-  enabled: true
-  username: agent
-  token: ""              # blank -> generated at /config/couchdb/docstore/mcp_token
 ```
 
 - `!secret <key>` references persist in the stored options and are expanded
@@ -91,8 +86,8 @@ docstore:
   start with the unresolved reference named in the log — it never provisions
   from a literal `!secret` string.
 - Generated credentials land under `/config` (on the host:
-  `/addon_configs/4e94d283_couchdb/couchdb/`): `users/<name>.password`,
-  `docstore/mcp_token`. They are never printed to the add-on log.
+  `/addon_configs/4e94d283_couchdb/couchdb/`): `users/<name>.password`.
+  They are never printed to the add-on log.
 - The server administrator bypasses per-database security — treat it as
   break-glass only. Give day-to-day work (Fauxton review, LiveSync clients
   after migration) its own limited user.
@@ -117,39 +112,17 @@ with TLS in front if you need it reachable from outside the LAN.
 
 ## Agent docstore
 
-With `docstore.enabled: true` the add-on serves a stateless JSON-RPC (MCP)
-endpoint on internal port **5985**, authenticated by bearer token. Tools:
-`doc_get`, `doc_put`, `doc_update`, `doc_delete`, `doc_query` (Mango, capped
-at 200), `task_claim`, `task_complete`. Everything is enforced against
-`/config/couchdb/docstore/registry.json`:
+The agent databases (`agent_handoffs`, `agent_tasks`, `agent_reports`,
+`agent_memory`) are served to agents by an external MCP hub with a docstore
+module: registry-validated `doc_*`/`task_*` tools and the hourly TTL sweeper.
+It connects to port 5984 as the `agent` login, which needs `admin` rights on
+those databases for its Mango indexes.
 
-```json
-{
-  "databases": ["agent_handoffs", "agent_tasks", "agent_reports", "agent_memory"],
-  "types": {
-    "handoff": {"db": "agent_handoffs", "id_pattern": "^handoff/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$", "ttl_days": 90},
-    "task":    {"db": "agent_tasks", "id_pattern": "^task/[a-z0-9-]+/[a-z0-9-]+$", "ttl_days": 30, "ttl_from": "done"},
-    "report":  {"db": "agent_reports", "id_pattern": "^report/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$", "ttl_days": 180},
-    "dossier": {"db": "agent_memory", "id_pattern": "^dossier/[a-z0-9-]+$"},
-    "note":    {"db": "agent_memory", "id_pattern": "^note/[a-z0-9/-]+$"}
-  }
-}
-```
-
-Rules enforced in code, not prose:
-
-- Only registry databases are writable/queryable through the tools — the
-  vault database cannot be named at all.
-- The `_id` namespace prefix **is** the type; it must match the type's
-  pattern (a `handoff/...` id can only carry a handoff).
-- Writes stamp `type`, `created`/`updated`, `agent`, `session`.
-- TTLs: `expires` is stamped per type unless the doc sets it explicitly;
-  `"expires": null` opts out. Tasks expire relative to their `done`
-  timestamp.
-- The sweeper purges expired docs hourly and logs the count.
-
-Edit the registry freely and restart the add-on; it is plain JSON under
-`/config`.
+**Upgrading to 3.10.0:** the add-on's own docstore endpoint (port 5985) and
+the `docstore` option are gone. Supervisor ignores a stored `docstore` key
+with a warning ("Option 'docstore' does not exist in the schema") until the
+options are saved again. `/config/couchdb/docstore/` (`registry.json`,
+`mcp_token`) is no longer used and can be deleted by hand.
 
 ## Migrating from obsidian-sync (3.5.2.2)
 
