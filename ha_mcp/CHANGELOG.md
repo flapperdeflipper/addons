@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 1.2.0
 
 - **Changed:** built on Home Assistant's Debian base with only what the server
