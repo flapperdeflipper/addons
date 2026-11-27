@@ -50,6 +50,9 @@ ARG OPENCODE_VERSION=2.4.2
 # binary). Updates are disabled at runtime (DISABLE_UPDATES below).
 # renovate: datasource=npm depName=@anthropic-ai/claude-code
 ARG CLAUDE_CODE_VERSION=2.1.332
+# Lens plugin for OpenCode (BerriAI/litellm-lens-plugins, opencode/), pinned
+# to a commit: the repo has no releases or npm package. Bump by hand.
+ARG LITELLM_LENS_PLUGINS_REF=49ba6ebd9cb29e162b06423cc661ff47740a0f50
 # renovate: datasource=github-releases depName=tsl0922/ttyd
 ARG TTYD_VERSION=1.7.7
 # renovate: datasource=github-releases depName=mikefarah/yq
@@ -204,6 +207,13 @@ RUN npm install -g --omit=dev --omit=peer --no-audit --no-fund \
     && find /usr/local/lib/node_modules -type f \( -name '*.d.ts' -o -name '*.map' -o -name '*.pdb' \) -delete \
     && test "$(opencode --version)" = "opencode v${OPENCODE_VERSION}" \
     && claude --version | grep -q "^${CLAUDE_CODE_VERSION} "
+
+# Lens plugin for a local OpenCode; init-terminal links it into OpenCode's
+# plugin directory. It stays off until both LITELLM_LENS_OPENCODE_* are set.
+RUN npm install -g --omit=dev --no-audit --no-fund \
+        "git+https://github.com/BerriAI/litellm-lens-plugins.git#${LITELLM_LENS_PLUGINS_REF}" \
+    && npm cache clean --force \
+    && test -f /usr/local/lib/node_modules/litellm-lens-plugins/opencode/index.js
 
 # Our rootfs: s6 services, helper scripts, profile.d wrappers, the ttyd page
 COPY rootfs /

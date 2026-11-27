@@ -97,5 +97,16 @@ else
     bashio::log.info "Dotfiles sync disabled by configuration - using whatever is in /data"
 fi
 
+# ==============================================================================
+# Lens plugin for a local OpenCode: a module in OpenCode's global plugin
+# directory that re-exports the plugin from the image (rewritten every start so
+# it follows the image). opencode-hd's sessions run on the server and are
+# traced there. The plugin stays off until LITELLM_LENS_OPENCODE_URL and
+# LITELLM_LENS_OPENCODE_API_KEY are set (env_vars).
+# ==============================================================================
+mkdir -p /data/.config/opencode/plugins
+printf 'export { default } from "/usr/local/lib/node_modules/litellm-lens-plugins/opencode/index.js"\n' \
+    >/data/.config/opencode/plugins/litellm-lens.js
+
 bashio::log.info "Terminal initialization complete"
 exit 0
