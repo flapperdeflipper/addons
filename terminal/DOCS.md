@@ -53,6 +53,26 @@ keys are stowed into `~/.ssh`, so plain `git pull` over SSH works too.
   ESPHome commands need `HA_ACCESS_TOKEN`, zigporter's Z2M commands `Z2M_URL`
   (both in `env_vars`).
 
+## Lens traces
+
+Sessions can be recorded in a LiteLLM Lens instance. Both need a Lens tracing
+key (Lens: Home > Copy instructions with new key), best as `!secret <key>`.
+Traces hold prompts, replies, file contents and command output.
+
+- OpenCode (a local `opencode`): the Lens plugin ships in the image. Set
+  `LITELLM_LENS_OPENCODE_URL` (the Lens address) and
+  `LITELLM_LENS_OPENCODE_API_KEY` (the key). `opencode-hd` sessions run on the
+  server and are traced there.
+- Claude Code: its own telemetry. Set `CLAUDE_CODE_ENABLE_TELEMETRY=1`,
+  `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1`, `OTEL_TRACES_EXPORTER=otlp`,
+  `OTEL_LOGS_EXPORTER=otlp`, `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`,
+  `OTEL_EXPORTER_OTLP_ENDPOINT` (the Lens address), `OTEL_EXPORTER_OTLP_HEADERS`
+  (`Authorization=Bearer <key>`), and for content `OTEL_LOG_USER_PROMPTS=1`,
+  `OTEL_LOG_ASSISTANT_RESPONSES=1`, `OTEL_LOG_TOOL_DETAILS=1`,
+  `OTEL_LOG_TOOL_CONTENT=1`, `OTEL_LOG_RAW_API_BODIES=1` and
+  `CLAUDE_CODE_OTEL_CONTENT_MAX_LENGTH=16777216`. See Lens's
+  [Claude Code guide](https://github.com/BerriAI/lens/blob/main/docs/claude-code.md).
+
 ## Options
 
 | Option | Default | Description |
