@@ -43,6 +43,20 @@ BASE_OPTIONS = {
     },
 }
 
+BASE_OPTIONS["postgres"] = {
+    "enabled": False,
+    "server": "",
+    "port": 5432,
+    "database": "mealie",
+    "user": "mealie",
+    "password": "",
+}
+
+POSTGRES_OPTIONS = dict(
+    BASE_OPTIONS,
+    postgres=dict(BASE_OPTIONS["postgres"], enabled=True, server="db.example.org", password="not-a-real-password"),
+)
+
 OIDC_OPTIONS = dict(
     BASE_OPTIONS,
     base_url="https://recipes.example.org/",
@@ -195,6 +209,49 @@ def test_oidc_needs_base_url():
 def test_no_login_method_is_refused():
     code, _, env, _ = run_addon(dict(BASE_OPTIONS, allow_password_login=False))
     assert code != 0 and not env
+
+
+def test_manifest_postgres_password_is_password():
+    assert re.search(r"^\s+password:\s*password\?\s*$", CONFIG, re.M), (
+        "postgres.password schema must be password"
+    )
+
+
+def test_sqlite_is_the_default():
+    code, log, env, _ = run_addon(BASE_OPTIONS)
+    assert code == 0, log
+    assert env.get("DB_ENGINE") == "sqlite"
+    assert not any(k.startswith("POSTGRES_") for k in env)
+
+
+def test_postgres_password_goes_to_file_not_env():
+    code, log, env, _ = run_addon(POSTGRES_OPTIONS)
+    assert code == 0, log
+    assert env.get("DB_ENGINE") == "postgres"
+    assert env.get("POSTGRES_SERVER") == "db.example.org"
+    assert env.get("POSTGRES_PORT") == "5432"
+    assert env.get("POSTGRES_DB") == "mealie" and env.get("POSTGRES_USER") == "mealie"
+    assert env.get("PGSSLMODE") == "require", "the remote database connection must require TLS"
+    assert "POSTGRES_PASSWORD" not in env, "wrapper must pass the password as a file, not an env var"
+    path = env.get("POSTGRES_PASSWORD_FILE", "")
+    with open(path, encoding="utf-8") as fh:
+        assert fh.read() == "not-a-real-password"
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o400
+    assert "not-a-real-password" not in log, "password leaked into the log"
+
+
+def test_postgres_missing_fields_fail_closed():
+    for key in ("server", "database", "user", "password"):
+        opts = dict(POSTGRES_OPTIONS, postgres=dict(POSTGRES_OPTIONS["postgres"], **{key: ""}))
+        code, log, env, _ = run_addon(opts)
+        assert code != 0 and not env, "empty postgres.%s must stop startup" % key
+
+
+def test_postgres_unresolved_secret_fails_closed():
+    opts = dict(POSTGRES_OPTIONS, postgres=dict(POSTGRES_OPTIONS["postgres"], password="!secret missing_key"))
+    code, log, env, _ = run_addon(opts)
+    assert code != 0 and not env
+    assert "unresolved" in log
 
 
 def main():

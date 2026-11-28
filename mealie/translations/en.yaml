@@ -21,6 +21,9 @@ configuration:
   log_level:
     name: Log level
     description: Mealie log verbosity.
+  postgres:
+    name: Postgres
+    description: Use a Postgres database instead of the local SQLite file. enabled needs server, database, user and password (a !secret value works); TLS is required. Back the database up on the Postgres host.
   oidc:
     name: OIDC
     description: OpenID Connect login. enabled needs configuration_url (discovery document), client_id, client_secret (a !secret value works) and base_url. Callback is <base_url>/login. user_group limits who can log in, admin_group grants admin.

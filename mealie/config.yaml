@@ -1,7 +1,7 @@
 ---
 name: "Mealie"
 description: "Recipe manager and meal planner with a cooking-friendly mobile web app, OIDC login and AI recipe import"
-version: "1.0.1"
+version: "1.1.0"
 slug: "mealie"
 image: "flapperdeflipper/addon-mealie"
 url: "https://github.com/flapperdeflipper/addons/tree/main/mealie"
@@ -23,9 +23,9 @@ hassio_api: false
 homeassistant_api: false
 host_network: false
 privileged: []
-# Mealie keeps everything (SQLite database, recipe images, its own backups)
-# under DATA_DIR=/data/mealie. A cold backup stops the add-on first, so the
-# SQLite file is never copied mid-write.
+# Mealie keeps recipe images and its own backups under DATA_DIR=/data/mealie,
+# and the SQLite database too unless postgres is enabled. A cold backup stops
+# the add-on first, so nothing is copied mid-write.
 backup: cold
 backup_exclude:
   # Mealie's own backup archives; the HA backup already holds the live data.
@@ -69,6 +69,17 @@ options:
     auto_redirect: false
     # Keep OIDC sessions across browser restarts.
     remember_me: false
+  # Postgres instead of the SQLite file under /data/mealie. TLS is required.
+  # The database is then not in this add-on's Home Assistant backup: back it
+  # up on the Postgres host.
+  postgres:
+    enabled: false
+    server: ""
+    port: 5432
+    database: "mealie"
+    user: "mealie"
+    # A !secret <key> value resolves from secrets.yaml.
+    password: ""
 schema:
   base_url: "url?"
   trusted_proxies: str?
@@ -88,3 +99,10 @@ schema:
     admin_group: str?
     auto_redirect: bool
     remember_me: bool
+  postgres:
+    enabled: bool
+    server: str?
+    port: port
+    database: str
+    user: str
+    password: password?

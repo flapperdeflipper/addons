@@ -2,8 +2,8 @@
 # Mealie add-on entrypoint.
 #
 # Runs as root: reads /data/options.json, exports Mealie's environment, puts
-# the OIDC client secret in a file only the Mealie user can read (Mealie's
-# own *_FILE secret pattern), then hands over to the upstream entrypoint
+# the OIDC client secret and the Postgres password in files only the Mealie
+# user can read (Mealie's own *_FILE secret pattern), then hands over to the upstream entrypoint
 # /app/run.sh. That script drops to PUID/PGID (911) via gosu, loads the
 # secret file into the mealie process environment and execs mealie. The
 # value stays out of this wrapper's environment, the log and docker inspect.
@@ -17,8 +17,8 @@ SECRETS_DIR=/run/mealie-secrets
 echo "[mealie] add-on starting"
 
 # One python pass over the options. Emits shell assignments; values are
-# shlex-quoted and never logged. The OIDC secret is written to its file here
-# so it never passes through the shell. Captured first: a failure inside
+# shlex-quoted and never logged. Secrets are written to their files here so
+# they never pass through the shell. Captured first: a failure inside
 # eval "$(...)" would otherwise be swallowed.
 SETTINGS=$(
     python3 - "${SECRETS_DIR}" <<'PYEOF'
@@ -28,6 +28,7 @@ secrets_dir = sys.argv[1]
 with open('/data/options.json', encoding='utf-8') as fh:
     opts = json.load(fh)
 oidc = opts.get('oidc') or {}
+postgres = opts.get('postgres') or {}
 
 def emit(name, value):
     print('%s=%s' % (name, shlex.quote(str(value))))
@@ -44,6 +45,14 @@ def flag(value):
 
 def unresolved(value):
     return text(value).startswith('!secret ')
+
+def secret_file(name, value):
+    os.makedirs(secrets_dir, mode=0o700, exist_ok=True)
+    path = os.path.join(secrets_dir, name)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o400)
+    with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+        fh.write(value)
+    return path
 
 base_url = text(opts.get('base_url'))
 trusted = text(opts.get('trusted_proxies'))
@@ -83,14 +92,29 @@ if oidc.get('enabled'):
     for key, name in (('user_group', 'OIDC_USER_GROUP'), ('admin_group', 'OIDC_ADMIN_GROUP')):
         if text(oidc.get(key)):
             env[name] = text(oidc[key])
-    os.makedirs(secrets_dir, mode=0o700, exist_ok=True)
-    path = os.path.join(secrets_dir, 'oidc_client_secret')
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o400)
-    with os.fdopen(fd, 'w', encoding='utf-8') as fh:
-        fh.write(text(oidc['client_secret']))
-    env['OIDC_CLIENT_SECRET_FILE'] = path
+    env['OIDC_CLIENT_SECRET_FILE'] = secret_file('oidc_client_secret', text(oidc['client_secret']))
 elif not opts.get('allow_password_login', True):
     fail('allow_password_login is false and OIDC is disabled: nobody could log in')
+
+# Postgres instead of the SQLite file under DATA_DIR. TLS is required
+# (PGSSLMODE, read by libpq): the database sits on another host.
+if postgres.get('enabled'):
+    for key in ('server', 'database', 'user', 'password'):
+        if not text(postgres.get(key)):
+            fail('postgres.enabled is true but postgres.%s is empty' % key)
+        if unresolved(postgres.get(key)):
+            fail('postgres.%s is an unresolved !secret reference (key missing in secrets.yaml)' % key)
+    env.update({
+        'DB_ENGINE': 'postgres',
+        'POSTGRES_SERVER': text(postgres['server']),
+        'POSTGRES_PORT': postgres.get('port', 5432),
+        'POSTGRES_DB': text(postgres['database']),
+        'POSTGRES_USER': text(postgres['user']),
+        'PGSSLMODE': 'require',
+    })
+    env['POSTGRES_PASSWORD_FILE'] = secret_file('postgres_password', text(postgres['password']))
+else:
+    env['DB_ENGINE'] = 'sqlite'
 
 for name, value in env.items():
     emit('export ' + name, value)
@@ -113,6 +137,6 @@ chown -R "${MEALIE_UID}:${MEALIE_GID}" "${DATA_DIR}"
 export DATA_DIR
 
 # shellcheck disable=SC2154 # both are exported by the eval above
-echo "[mealie] data dir ${DATA_DIR}, OIDC ${OIDC_AUTH_ENABLED}, password login ${ALLOW_PASSWORD_LOGIN}, trusted proxies '${HOST_IP:-none}'"
+echo "[mealie] data dir ${DATA_DIR}, database ${DB_ENGINE}${POSTGRES_SERVER:+ on ${POSTGRES_SERVER}}, OIDC ${OIDC_AUTH_ENABLED}, password login ${ALLOW_PASSWORD_LOGIN}, trusted proxies '${HOST_IP:-none}'"
 
 exec /app/run.sh "$@"

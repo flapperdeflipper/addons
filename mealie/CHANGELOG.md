@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## 1.1.0
+
+- **Added** — `postgres` options: Mealie can use a Postgres database instead of the SQLite file (TLS required, password as a file only the Mealie user can read). Off by default; existing installs keep SQLite until it is enabled. DOCS: how to move the data with a Mealie backup and restore.
+
 ## 1.0.1
 
 - **Changed** — Dockerfile comment no longer refers to the removed LiteLLM add-on. No functional change.
