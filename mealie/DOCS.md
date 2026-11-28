@@ -132,6 +132,15 @@ still runs on SQLite, enable `postgres` and restart, then restore that backup
 in the empty database. The SQLite file stays in `/data/mealie` until you
 delete it.
 
+A restore switches off foreign-key checks for its session, which a normal
+role may not do. Grant the role that one setting first (Postgres 15 or
+newer), or the restore stops with `permission denied to set parameter
+"session_replication_role"`:
+
+```sql
+GRANT SET ON PARAMETER session_replication_role TO mealie;
+```
+
 ## Backups
 
 `backup: cold`: Home Assistant stops the add-on while it backs up, so the
