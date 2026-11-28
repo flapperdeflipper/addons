@@ -26,7 +26,7 @@ FROM node:${NODE_VERSION}-trixie-slim AS node-runtime
 FROM --platform=$BUILDPLATFORM golang:1.27-trixie AS hab-builder
 
 # renovate: datasource=github-tags depName=balloob/home-assistant-build-cli
-ARG HAB_VERSION=1.10.0
+ARG HAB_VERSION=1.11.0
 ARG TARGETARCH
 RUN git clone --depth 1 --branch "${HAB_VERSION}" https://github.com/balloob/home-assistant-build-cli.git /src
 WORKDIR /src
