@@ -56,7 +56,7 @@ class ServiceTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.providers = {
-            key: FakeProvider(Path(self.tmp.name), key) for key in ("claude", "openai")
+            key: FakeProvider(Path(self.tmp.name), key) for key in ("claude", "zai")
         }
         from service import UsageService
 
@@ -68,12 +68,12 @@ class ServiceTests(unittest.TestCase):
 
     def test_provider_flow_isolation_and_late_code_rejection(self):
         claude_flow = self.service.action("claude", "connect")["flow_id"]
-        openai_flow = self.service.action("openai", "connect")["flow_id"]
+        zai_flow = self.service.action("zai", "connect")["flow_id"]
         self.service.tick("claude")
-        self.service.tick("openai")
-        self.assertNotEqual(claude_flow, openai_flow)
+        self.service.tick("zai")
+        self.assertNotEqual(claude_flow, zai_flow)
         with self.assertRaises(ProviderError):
-            self.service.action("openai", "complete", "code#state", claude_flow)
+            self.service.action("zai", "complete", "code#state", claude_flow)
         self.service.action("claude", "cancel", flow_id=claude_flow)
         self.service.tick("claude")
         with self.assertRaises(ProviderError):
@@ -114,9 +114,9 @@ class ServiceTests(unittest.TestCase):
             p.has_token = True
         self.service.start()
         deadline = time.monotonic() + 1
-        while not self.providers["openai"].reads and time.monotonic() < deadline:
+        while not self.providers["zai"].reads and time.monotonic() < deadline:
             time.sleep(0.01)
-        self.assertGreater(self.providers["openai"].reads, 0)
+        self.assertGreater(self.providers["zai"].reads, 0)
         self.providers["claude"].block.set()
 
     def test_failed_key_submission_keeps_form_and_existing_reading(self):
@@ -140,12 +140,12 @@ class ServiceTests(unittest.TestCase):
 
     def test_failed_login_start_can_be_retried(self):
         def reject():
-            raise ProviderError("Device login unavailable")
+            raise ProviderError("Authorization unavailable")
 
-        self.providers["openai"].start_auth = reject
-        self.service.action("openai", "connect")
-        self.service.tick("openai")
-        self.assertEqual(self.service.view("openai")["flow_id"], "")
+        self.providers["zai"].start_auth = reject
+        self.service.action("zai", "connect")
+        self.service.tick("zai")
+        self.assertEqual(self.service.view("zai")["flow_id"], "")
 
     def test_auth_error_remains_visible_when_existing_connection_poll_succeeds(self):
         provider = self.providers["claude"]
@@ -178,17 +178,17 @@ class ServiceTests(unittest.TestCase):
             self.service.action("claude", "credentials", "old-tab-key", old_flow)
 
     def test_expired_flow_ends_even_if_provider_cancel_fails(self):
-        flow = self.service.action("openai", "connect")["flow_id"]
-        self.service.tick("openai")
-        self.service.states["openai"].flow_started -= 901
+        flow = self.service.action("zai", "connect")["flow_id"]
+        self.service.tick("zai")
+        self.service.states["zai"].flow_started -= 901
 
         def fail_cancel():
-            raise ProviderError("Account service unavailable")
+            raise ProviderError("Authorization service unavailable")
 
-        self.providers["openai"].cancel_auth = fail_cancel
-        self.service.tick("openai")
-        self.assertNotEqual(self.service.view("openai")["flow_id"], flow)
-        self.assertFalse(self.service.view("openai")["flow_ready"])
+        self.providers["zai"].cancel_auth = fail_cancel
+        self.service.tick("zai")
+        self.assertNotEqual(self.service.view("zai")["flow_id"], flow)
+        self.assertFalse(self.service.view("zai")["flow_ready"])
 
     def test_rejected_credentials_are_retried_without_reconnect(self):
         provider = self.providers["claude"]
@@ -232,10 +232,10 @@ class ServiceTests(unittest.TestCase):
         def crash():
             raise RuntimeError("boom")
 
-        self.providers["openai"].start_auth = crash
-        self.service.action("openai", "connect")
-        self.service.tick("openai")
-        self.assertEqual(self.service.view("openai")["flow_id"], "")
+        self.providers["zai"].start_auth = crash
+        self.service.action("zai", "connect")
+        self.service.tick("zai")
+        self.assertEqual(self.service.view("zai")["flow_id"], "")
 
     def test_rate_limited_round_with_reading_confirms_current(self):
         provider = self.providers["claude"]

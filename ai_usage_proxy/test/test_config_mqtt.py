@@ -296,6 +296,90 @@ class ConfigMqttTests(unittest.TestCase):
             client.messages["ai/usage/claude/windows/seven_day/used_percent"], ""
         )
 
+    def test_retired_provider_topics_are_cleared_and_forgotten(self):
+        from config import load_options
+        from mqtt_publisher import MqttPublisher
+
+        client = FakeClient()
+        options = load_options(self.root)
+        # An earlier release tracked the OpenAI provider's retained topics.
+        (self.root / "mqtt_manifest.json").write_text(
+            json.dumps(
+                {
+                    "claude": ["ai/usage/claude/status"],
+                    "openai": [
+                        "ai/usage/openai/state",
+                        "homeassistant/sensor/ai_usage_proxy/openai_status/config",
+                    ],
+                }
+            )
+        )
+        publisher = MqttPublisher(
+            options,
+            self.root,
+            lambda *_: None,
+            providers=("claude", "zai"),
+            client=client,
+        )
+        publisher.connected = True
+        publisher.publish_provider(view())
+        self.assertEqual(client.messages["ai/usage/openai/state"], "")
+        self.assertEqual(
+            client.messages["homeassistant/sensor/ai_usage_proxy/openai_status/config"],
+            "",
+        )
+        manifest = json.loads((self.root / "mqtt_manifest.json").read_text())
+        self.assertEqual(list(manifest), ["claude"])
+
+    def test_failed_retired_provider_clear_is_retried_after_restart(self):
+        from config import load_options
+        from mqtt_publisher import MqttPublisher
+
+        class RejectFirstClear(FakeClient):
+            reject = True
+
+            def publish(self, topic, payload, qos=0, retain=False):
+                # Only the retired provider's clear is rejected; Claude
+                # publishes empty payloads of its own (an unknown reset).
+                if (
+                    self.reject
+                    and topic.startswith("ai/usage/openai/")
+                    and payload == ""
+                ):
+                    self.reject = False
+                    return type("FailedPublish", (), {"rc": 4})()
+                return super().publish(topic, payload, qos, retain)
+
+        client = RejectFirstClear()
+        options = load_options(self.root)
+        (self.root / "mqtt_manifest.json").write_text(
+            json.dumps({"openai": ["ai/usage/openai/state"]})
+        )
+
+        def make():
+            return MqttPublisher(
+                options,
+                self.root,
+                lambda *_: None,
+                providers=("claude", "zai"),
+                client=client,
+            )
+
+        publisher = make()
+        publisher.connected = True
+        publisher.publish_provider(view())
+        # The rejected clear is neither delivered nor forgotten.
+        self.assertNotIn("ai/usage/openai/state", client.messages)
+        manifest = json.loads((self.root / "mqtt_manifest.json").read_text())
+        self.assertEqual(manifest["openai"], ["ai/usage/openai/state"])
+
+        publisher = make()
+        publisher.connected = True
+        publisher.publish_provider(view())
+        self.assertEqual(client.messages["ai/usage/openai/state"], "")
+        manifest = json.loads((self.root / "mqtt_manifest.json").read_text())
+        self.assertNotIn("openai", manifest)
+
     def test_retained_or_nonexact_commands_do_not_trigger_http_work(self):
         from config import load_options
         from mqtt_publisher import MqttPublisher
@@ -308,14 +392,14 @@ class ConfigMqttTests(unittest.TestCase):
         )
 
         class Message:
-            topic = "ai/usage/openai/command/refresh"
+            topic = "ai/usage/zai/command/refresh"
             retain = True
 
         pub.on_message(None, None, Message())
         self.assertFalse(calls)
         Message.retain = False
         pub.on_message(None, None, Message())
-        self.assertEqual(calls, [("openai", "refresh")])
+        self.assertEqual(calls, [("zai", "refresh")])
         Message.topic = "other/command/refresh"
         pub.on_message(None, None, Message())
         self.assertEqual(len(calls), 1)

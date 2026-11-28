@@ -60,10 +60,6 @@ class Provider(ABC):
     def save_key(self, value: str) -> None:
         raise ProviderError("This connection does not use an API key")
 
-    def check_auth(self) -> bool:
-        """Check a pending device login without blocking. True means complete."""
-        return False
-
     def cancel_auth(self) -> None:
         pass
 

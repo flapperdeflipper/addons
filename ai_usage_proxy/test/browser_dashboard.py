@@ -49,12 +49,6 @@ class PreviewProvider(FakeProvider):
     def start_auth(self):
         return AuthView(self.auth_kind, "https://example.com/authorize", "ABCD-1234")
 
-    def check_auth(self):
-        if getattr(self, "approved", False):
-            self.has_token = True
-            return True
-        return False
-
     def save_key(self, value):
         if value != "valid-test-key":
             raise ProviderError("Replacement key rejected", "auth_required")
@@ -66,12 +60,9 @@ def main():
     from playwright.sync_api import expect, sync_playwright
 
     with tempfile.TemporaryDirectory() as tmp:
-        providers = {
-            key: PreviewProvider(Path(tmp), key) for key in ("claude", "openai", "zai")
-        }
+        providers = {key: PreviewProvider(Path(tmp), key) for key in ("claude", "zai")}
         for key, name, kind in (
             ("claude", "Claude", "authorization_code"),
-            ("openai", "OpenAI / Codex", "device_code"),
             ("zai", "z.ai", "api_key"),
         ):
             providers[key].name, providers[key].auth_kind = name, kind
@@ -99,12 +90,10 @@ def main():
                 failures = []
                 page.on("pageerror", lambda error: failures.append(str(error)))
                 page.goto(f"http://127.0.0.1:{server.server_port}/")
-                expect(page.locator(".card")).to_have_count(3)
-                claude, openai, zai = [page.locator(".card").nth(n) for n in range(3)]
+                expect(page.locator(".card")).to_have_count(2)
+                claude, zai = [page.locator(".card").nth(n) for n in range(2)]
                 expect(claude.locator(".metric-value").first).to_contain_text("22%")
                 expect(claude.locator(".metric-value").first).to_contain_text("used")
-                openai.get_by_role("button", name="Connect", exact=True).click()
-                expect(openai.locator(".device-code")).to_have_text("ABCD-1234")
                 zai.get_by_role("button", name="Connect", exact=True).click()
                 field = zai.get_by_label("Coding Plan API key")
                 expect(field).to_have_attribute("type", "password")
@@ -120,8 +109,6 @@ def main():
                 field.fill("valid-test-key")
                 zai.get_by_role("button", name="Save and test").click()
                 expect(zai.locator(".badge")).to_have_text("Connected")
-                providers["openai"].approved = True
-                expect(openai.locator(".badge")).to_have_text("Connected")
                 claude.get_by_role("button", name="Manage connection").click()
                 claude.get_by_role("button", name="Reconnect", exact=True).click()
                 code = claude.get_by_role("textbox", name="Claude authorization code")
@@ -142,7 +129,7 @@ def main():
                     path="/private/tmp/ai-usage-dashboard-desktop.png", full_page=True
                 )
                 page.set_viewport_size({"width": 390, "height": 844})
-                expect(page.locator(".card")).to_have_count(3)
+                expect(page.locator(".card")).to_have_count(2)
                 assert page.evaluate(
                     "document.documentElement.scrollWidth <= innerWidth"
                 )
@@ -152,7 +139,7 @@ def main():
                 assert not failures, failures
                 browser.close()
                 print(
-                    "Browser acceptance passed: used values, all 3 connection flows, rejected key recovery, form persistence, responsive layout, no JS errors."
+                    "Browser acceptance passed: used values, both connection flows, rejected key recovery, form persistence, responsive layout, no JS errors."
                 )
         finally:
             server.shutdown()

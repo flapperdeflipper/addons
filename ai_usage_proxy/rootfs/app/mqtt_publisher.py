@@ -8,7 +8,7 @@ import re
 import threading
 import urllib.error
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from pathlib import Path
 from typing import Any
 
@@ -37,11 +37,15 @@ class MqttPublisher:
         root: Path,
         action: Callable[..., Any],
         *,
+        providers: Collection[str] | None = None,
         client: Any = None,
     ) -> None:
         self.options = options
         self.root = root
         self.action = action
+        # IDs this add-on ships; any other key in the inventory belongs to a
+        # retired provider. None leaves the inventory alone.
+        self.providers = providers
         self.client = client
         self.connected = False
         self.source = "not connected"
@@ -212,6 +216,27 @@ class MqttPublisher:
             if previous != inventory:
                 self.inventory[key] = inventory
                 self._store_inventory()
+            self._retire_providers()
+
+    def _retire_providers(self) -> None:
+        """Clear what a provider this add-on no longer ships left on the broker."""
+        if self.providers is None:
+            return
+        changed = False
+        for key in sorted(set(self.inventory) - set(self.providers)):
+            # An unconfirmed clear stays tracked, so it is retried until done.
+            pending = [
+                topic for topic in self.inventory[key] if not self._send(topic, None)
+            ]
+            if pending and pending == self.inventory[key]:
+                continue
+            if pending:
+                self.inventory[key] = pending
+            else:
+                del self.inventory[key]
+            changed = True
+        if changed:
+            self._store_inventory()
 
     def _provider_diagnostics(
         self, key: str, view: dict[str, Any], root: str, configs: dict[str, dict[str, Any]]

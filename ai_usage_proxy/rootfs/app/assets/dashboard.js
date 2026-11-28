@@ -84,11 +84,10 @@ function createCard(state) {
   const node = element('article', 'card');
   const heading = element('div', 'card-heading');
   const title = element('div', 'provider-title');
-  const marks = {claude: '✳', openai: 'O', zai: 'Z'};
+  const marks = {claude: '✳', zai: 'Z'};
   title.append(element('span', 'monogram', marks[state.id] || state.name[0]));
   const titleText = element('div');
-  titleText.append(element('h2', '', state.name), element('p', 'provider-note',
-    state.id === 'openai' ? 'Codex subscription' : 'Subscription usage'));
+  titleText.append(element('h2', '', state.name), element('p', 'provider-note', 'Subscription usage'));
   title.append(titleText);
   const badge = element('span', 'badge');
   heading.append(title, badge);
@@ -178,12 +177,6 @@ async function renderPanel(card) {
     const input = element('textarea'); input.placeholder = 'code#state';
     input.setAttribute('aria-label', 'Claude authorization code'); input.autocomplete = 'off';
     panel.append(input, button('Connect Claude', () => action(card, 'complete', input.value.trim()), 'primary'));
-  } else if (flow.kind === 'device_code') {
-    panel.append(authLink(flow.url, 'Open OpenAI verification page'), element('p', '', 'Sign in and enter this code:'));
-    const code = element('code', 'device-code', flow.code);
-    panel.append(code, button('Copy code', () => copy(flow.code, code), 'quiet'),
-      element('p', 'waiting', 'Waiting for approval…'),
-      element('p', '', 'If device login is unavailable, enable it in your ChatGPT security settings or workspace permissions.'));
   } else if (flow.kind === 'api_key') {
     panel.append(element('p', '', 'Use your Personal Coding Plan key. Standard API keys may not expose subscription usage.'));
     panel.append(authLink('https://z.ai/manage-apikey/apikey-list', 'Open z.ai key management'));

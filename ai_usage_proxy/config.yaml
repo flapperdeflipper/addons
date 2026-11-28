@@ -1,10 +1,10 @@
 ---
 name: AI Usage Proxy
 slug: ai_usage_proxy
-description: Claude, OpenAI and z.ai subscription usage with account management and MQTT metrics.
+description: Claude and z.ai subscription usage with account management and MQTT metrics.
 url: https://github.com/flapperdeflipper/addons/tree/main/ai_usage_proxy
 image: flapperdeflipper/addon-ai-usage-proxy
-version: "2.1.6"
+version: "2.2.0"
 
 arch:
   - amd64
