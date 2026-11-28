@@ -289,7 +289,6 @@ class UsageService:
         if command:
             self._command(key, command)
         with state.lock:
-            pending = state.flow is not None
             expired = bool(
                 state.flow_id
                 and (
@@ -313,22 +312,6 @@ class UsageService:
                     state.auth_message = (
                         "Connection attempt expired. Please start again."
                     )
-        elif pending and provider.auth_kind == "device_code":
-            try:
-                completed = provider.check_auth()
-                if completed:
-                    with state.lock:
-                        state.flow_id = ""
-                        state.flow = None
-                        state.snapshot = None
-                        state.connection = "connected"
-                        state.force = True
-                        state.retry_at = 0
-            except ProviderError as error:
-                with state.lock:
-                    state.flow_id = ""
-                    state.flow = None
-                    state.auth_message = str(error)
         with state.lock:
             connected = provider.connected()
             if not connected and state.status == "starting":

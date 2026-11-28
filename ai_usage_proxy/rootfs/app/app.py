@@ -30,7 +30,9 @@ def main() -> None:
     root = private_directory(data_directory())
     options = load_options(root)
     service = UsageService(create_providers(root), options["poll_interval"])
-    publisher = MqttPublisher(options, root, service.action)
+    publisher = MqttPublisher(
+        options, root, service.action, providers=tuple(service.providers)
+    )
     service.listeners.append(lambda key: publisher.publish_provider(service.view(key)))
     server = make_server(service, publisher)
     shutdown = threading.Event()

@@ -20,12 +20,15 @@ class ManifestTests(unittest.TestCase):
         # Plain semver, not a fixed value: every release changes it. Quoted or
         # bare: scripts/renovate-post-upgrade.sh writes version: "X.Y.Z".
         self.assertRegex(config, r'(?m)^version:\s*"?\d+\.\d+\.\d+"?\s*$')
+        # Claude and z.ai only: the OpenAI / Codex provider was removed.
+        self.assertNotIn("OpenAI", config)
 
-    def test_pinned_codex_and_mqtt_in_container(self):
+    def test_image_pins_mqtt_and_ships_no_codex(self):
         dockerfile = (ROOT / "Dockerfile").read_text()
-        self.assertIn("--checksum=sha256:", dockerfile)
-        self.assertIn("codex-0.164.0-linux-x64.tgz", dockerfile)
         self.assertIn("paho-mqtt>=2.1,<3", dockerfile)
+        # The bundled Codex account service was the only reason this add-on
+        # resolved chatgpt.com.
+        self.assertNotIn("codex", dockerfile.lower())
 
 
 if __name__ == "__main__":

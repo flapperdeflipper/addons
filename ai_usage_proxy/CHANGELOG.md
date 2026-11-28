@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.2.0
+
+- **Removed:** the OpenAI / Codex provider. This add-on ships Claude and z.ai only: no OpenAI card, no `ai/usage/openai/*` topics and no OpenAI Home Assistant entities
+- **Breaking:** a display subscribed to `ai/usage/openai/...` has to drop that feed
+- The bundled Codex account service binary is gone from the image. A connected OpenAI card polled it every `poll_interval`, which is why the add-on resolved `chatgpt.com` around the clock
+- **Changed:** at start, the credentials the OpenAI card had stored (`/data/providers/openai/`) are deleted, and the retired provider's retained MQTT topics and Home Assistant discovery configs are cleared from the broker
+
 ## 2.1.6
 
 - **Changed** — automated dependency update (Renovate).

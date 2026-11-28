@@ -2,7 +2,7 @@
 
 My personal home-assistant addons
 
-[AI Usage Proxy](ai_usage_proxy/README.md) publishes Claude, OpenAI/Codex, and z.ai subscription usage to MQTT displays and provides account management through Home Assistant Ingress.
+[AI Usage Proxy](ai_usage_proxy/README.md) publishes Claude and z.ai subscription usage to MQTT displays and provides account management through Home Assistant Ingress.
 
 [HA MCP](ha_mcp/DOCS.md) serves the Home Assistant MCP server over HTTP for agents elsewhere on the network, without the tools that write configuration.
 
