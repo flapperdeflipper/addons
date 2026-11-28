@@ -1,7 +1,7 @@
 ---
 name: "HA MCP"
 description: "The Home Assistant MCP server (ha-mcp-server) over HTTP for agents elsewhere on the network, with the configuration-writing tools left out"
-version: "1.2.2"
+version: "1.2.3"
 slug: "ha_mcp"
 image: "flapperdeflipper/addon-ha-mcp"
 url: "https://github.com/flapperdeflipper/addons"
