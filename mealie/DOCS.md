@@ -108,8 +108,34 @@ adds meal plan calendars and shopping list to-do entities. Point it at
 Open a recipe and enable the screen wake lock switch so the screen stays on
 while cooking. Shopping lists and meal plans work from the same web app.
 
+## Database
+
+By default Mealie uses a SQLite file under `/data/mealie`. To use Postgres
+instead, create a role and database on the Postgres server and set:
+
+```yaml
+postgres:
+  enabled: true
+  server: db.example.org
+  port: 5432
+  database: mealie
+  user: mealie
+  password: "!secret mealie_postgres_password"
+```
+
+The connection requires TLS. The password is handed to Mealie as a file
+readable only by the Mealie user (`POSTGRES_PASSWORD_FILE`). An empty or
+unresolved field stops the add-on.
+
+To move existing data: create a backup in Mealie (Admin -> Backups) while it
+still runs on SQLite, enable `postgres` and restart, then restore that backup
+in the empty database. The SQLite file stays in `/data/mealie` until you
+delete it.
+
 ## Backups
 
 `backup: cold`: Home Assistant stops the add-on while it backs up, so the
-SQLite file is consistent. Mealie's own backup archives
-(`/data/mealie/backups`) are excluded from the Home Assistant backup.
+SQLite file and recipe images are consistent. With `postgres` enabled the
+database is not part of that backup: back it up on the Postgres host. Mealie's
+own backup archives (`/data/mealie/backups`) are excluded from the Home
+Assistant backup.
