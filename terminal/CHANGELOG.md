@@ -1,3 +1,7 @@
+## 2.1.1
+
+- **Changed** — automated dependency update (Renovate).
+
 ## 2.1.0
 
 - **Added** — the Lens plugin for OpenCode (BerriAI/litellm-lens-plugins, pinned commit), linked into OpenCode's plugin directory at start. It records a local `opencode` once `LITELLM_LENS_OPENCODE_URL` and `LITELLM_LENS_OPENCODE_API_KEY` are set in `env_vars`; `opencode-hd` sessions are traced on the server.
